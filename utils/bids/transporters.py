@@ -1,5 +1,3 @@
-from sqlalchemy import desc
-
 from config.db_config import Session
 from utils.response import *
 
@@ -11,7 +9,7 @@ async def notify_transporters_for_bid(bid_id: str):
 async def historical_rates(transporter_id: str, bid_id: str):
 
     session = Session()
-    
+
     bid_id = bid_id.replace("-", "")
     model = f'T_{bid_id}'
 
