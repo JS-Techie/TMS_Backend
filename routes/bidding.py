@@ -86,6 +86,8 @@ async def fetch_all_rates_given_by_transporter(bid_id: str, req: HistoricalRates
         return ServerError(err=err, errMsg=str(err))
 
 
+#Juned you will work on the below APIs
+
 # @bidding_router.post("/filter")
 # async def get_bids_according_to_filter(req : FilterBidsRequest):
 
