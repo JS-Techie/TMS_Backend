@@ -54,7 +54,7 @@ async def publish_new_bid(bid_id: str, bg_tasks: BackgroundTasks):
             return ErrorResponse(data=bid_id, client_msg=os.getenv("BID_PUBLISH_ERROR"), dev_msg=error)
 
         # This might have to be done in a separate thread
-        bg_tasks.add_task(transporter.notify(bid_id))
+        # bg_tasks.add_task(transporter.notify(bid_id))
 
         return SuccessResponse(data=bid_id, client_msg=f"Bid-{bid_id} is now published!", dev_msg="Bid status was updated successfully!")
 
@@ -101,7 +101,6 @@ async def provide_new_rate_for_bid(bid_id: str, bidReq: TransporterBidReq):
         if error:
             return ErrorResponse(data=[], dev_msg=error, client_msg=os.getenv("BID_RATE_ERROR"))
 
-        # Update the redis sorted set here
         (sorted_bid_details, error) = redis.update(sorted_set=bid_id,
                                                    transporter_id=bid.transporter_id, rate=bid.rate)
 
