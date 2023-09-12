@@ -59,3 +59,7 @@ async def get_table_and_model(table_name: str):
         return False, str(e)
     finally:
         engine.dispose()
+
+def get_bid_model_name(bid_id : str) -> str:
+    bid_id = bid_id.replace("-", "")
+    return f'T_{bid_id}'

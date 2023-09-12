@@ -12,3 +12,7 @@ class FilterBidsRequest(BaseModel):
 class HistoricalRatesReq(BaseModel):
     transporter_id : UUID
 
+class TransporterBidReq(BaseModel):
+    transporter_id : UUID
+    rate : float
+    comment : str
