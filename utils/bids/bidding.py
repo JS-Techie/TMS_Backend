@@ -4,14 +4,40 @@ from utils.response import *
 from config.db_config import Session
 from models.models import *
 from utils.db import *
+import datetime
+from utils.utilities import convert_date_to_string, log
 
 
 class Bid:
 
-    async def initiate():
-        pass
+    async def initiate(self):
 
-    async def get_status_wise(status: str):
+        try:
+
+            current_time = convert_date_to_string(datetime.datetime.now())
+            bids_to_be_initiated = []
+
+            (bids,error) = self.get_status_wise(status="live")
+
+            if error:
+                log("ERROR OCCURED DURING FETCH BIDS STATUSWISE",error)
+                return
+
+            for bid in bids:
+                if convert_date_to_string(bid.created_at) == current_time:
+                    bids_to_be_initiated.append(bid.bl_id)
+
+            updated_bids = update(BiddingLoad).where(BiddingLoad.id.in_(
+                bids_to_be_initiated)).values(BiddingLoad.load_status == "in_progress")
+
+            log("BIDS ARE IN PROGRESS", bids)
+
+        except Exception as e:
+            log("ERROR DURING INITIATE BID", str(e))
+
+        return
+
+    async def get_status_wise(self, status: str) -> (any,str):
 
         session = Session()
 
@@ -22,18 +48,18 @@ class Bid:
                     .join(LoadAssigned)
                     .join(LkpReason)
                     .join(Transporter)
-                    .filter(BiddingLoad.load_status == status)
+                    .filter(BiddingLoad.load_status == status, BiddingLoad.is_active == True)
                     .filter(MapLoadSrcDestPair.mlsdp_bidding_load_id == BiddingLoad.bl_id)
                     .filter(LoadAssigned.la_bidding_load_id == BiddingLoad.bl_id)
                     .filter(Transporter.trnsp_id == LoadAssigned.la_transporter_id)
                     .all()
                     )
 
-            return SuccessResponse(data=bids, dev_msg="Correct status, data fetched", client_msg=f"Fetched all {status} bids successfully!")
+            return (bids,"")
 
         except Exception as e:
             session.rollback()
-            return ServerError(err=e, errMsg=str(e))
+            return({},str(e))
 
         finally:
             session.close()

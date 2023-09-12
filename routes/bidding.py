@@ -22,7 +22,12 @@ async def get_bids_according_to_status(status: str):
         if status not in valid_load_status:
             return ErrorResponse(data=[], dev_msg="Incorrect status requested, please check status parameter in request", client_msg="Something went wrong,please try again in sometime!")
 
-        return await fetch_bids_statuswise(status)
+        (bids,error) = await bid.get_status_wise(status)
+
+        if error:
+            return ErrorResponse(data=[], dev_msg=err, client_msg="Something went wrong,please try again in sometime!")
+        
+        return SuccessResponse(data=bids, dev_msg="Correct status, data fetched", client_msg=f"Fetched all {status} bids successfully!")
 
     except Exception as err:
         return ServerError(err=err, errMsg=str(err))
