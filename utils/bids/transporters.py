@@ -22,7 +22,7 @@ class Transporter:
             rates = (session
                      .query(model)
                      .filter(model.transporter_id == transporter_id)
-                     .order_by(model.created_at).desc()
+                     .order_by(model.created_at.desc())
                      .all()
                      )
 

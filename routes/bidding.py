@@ -95,8 +95,8 @@ async def provide_new_rate_for_bid(bid_id: str, bidReq: TransporterBidReq):
         if not rate.valid:
             return ErrorResponse(data=[], client_msg=f"You entered an incorrect bid rate! Decrement is {bid_details.bid_price_decrement}", dev_msg="Incorrect bid price entered")
 
-        (update_bid_table, error) = bid.new_bid(
-            bid_id, bid.transporter_id, bid.rate)
+        (new_record, error) = bid.new_bid(
+            bid_id, bidReq.transporter_id, bidReq.rate,bidReq.comment)
 
         if error:
             return ErrorResponse(data=[], dev_msg=error, client_msg=os.getenv("BID_RATE_ERROR"))
@@ -107,7 +107,7 @@ async def provide_new_rate_for_bid(bid_id: str, bidReq: TransporterBidReq):
 
         # emit socket event here
 
-        return SuccessResponse(data=[], dev_msg="Bid submitted successfully", client_msg=f"Bid for Bid-{bid_id} submitted!")
+        return SuccessResponse(data=new_record, dev_msg="Bid submitted successfully", client_msg=f"Bid for Bid-{bid_id} submitted!")
 
     except Exception as err:
         return ServerError(err=err, errMsg=str(err))
