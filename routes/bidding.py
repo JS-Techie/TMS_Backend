@@ -3,11 +3,16 @@ from uuid import UUID
 
 from utils.response import *
 from data.bidding import valid_load_status
-from utils.bids.bidding import fetch_bids_statuswise, bid_id_is_valid, update_bid_status, create_bid_table
-from utils.bids.transporters import notify_transporters_for_bid, historical_rates
-from schemas.bidding import HistoricalRatesReq
+from utils.bids.bidding import Bid
+from utils.bids.transporters import Transporter
+from utils.redis import Redis
+from schemas.bidding import HistoricalRatesReq, TransporterBidReq
 
 bidding_router: APIRouter = APIRouter(prefix="/bid")
+
+transporter = Transporter()
+bid = Bid()
+redis = Redis()
 
 
 @bidding_router.get("/{status}")
@@ -28,47 +33,101 @@ async def publish_new_bid(bid_id: str, bg_tasks: BackgroundTasks):
 
     try:
 
-        (valid_bid_id, error) = await bid_id_is_valid(bid_id)
+        (valid_bid_id, error) = await bid.is_valid(bid_id)
 
         if not valid_bid_id:
             return ErrorResponse(data=bid_id, client_msg="The bid requested is not available at this time", dev_msg=error)
 
-        (update_successful, error) = await update_bid_status(bid_id=bid_id, status="live")
+        (update_successful, error) = await bid.update_status(bid_id=bid_id, status="live")
 
         if not update_successful:
             return ErrorResponse(data=bid_id, client_msg=f"Something went wrong while trying to publish Bid-{bid_id}, please try again after sometime!", dev_msg=error)
 
-        (new_bid_table_creation_successful, error) = await create_bid_table(bid_id)
+        (new_bid_table_creation_successful, error) = await bid.create_table(bid_id)
 
         if not new_bid_table_creation_successful:
             return ErrorResponse(data=bid_id, client_msg=f"Something went wrong while trying to publish Bid-{bid_id}, please try again after sometime!", dev_msg=error)
 
-        bg_tasks.add_task(notify_transporters_for_bid(bid_id))
+        bg_tasks.add_task(transporter.notify(bid_id))
 
         return SuccessResponse(data=bid_id, client_msg=f"Bid-{bid_id} is now published!", dev_msg="Bid status was updated successfully!")
 
     except Exception as err:
         return ServerError(err=err, errMsg=str(err))
 
-# @bidding_router.post("/rate/{bid_id}",response_model=None)
-# async def provide_new_rate_for_bid(bid_id: UUID):
 
-#     session = Session()
+@bidding_router.post("/rate/{bid_id}", response_model=None)
+async def provide_new_rate_for_bid(bid_id: str, bidReq: TransporterBidReq):
 
-#     try:
-#         #check number of tries in the bid from settings
-#         #if this transporter has already provided equal or more than number of bids, then they are not allowed agaim
-#         # if they are allowed, get the bid decrement price and check if new price entered meets bid decrement criteria
-#         # if it meets bid decrement criteria, update the record in redis sorted set and send response back to the frontend as a socket event which basicallt sends the entire sorted set back
-#         # also append this record to a table in DB
-#         return SuccessResponse(data=[])
+    try:
 
-#     except Exception as err:
-#         session.rollback()
-#         return ServerError(err=err,errMsg=str(err))
+        (valid_bid_id, error) = await bid.is_valid(bid_id)
 
-#     finally:
-#         session.close()
+        if not valid_bid_id:
+            return ErrorResponse(data=bid_id, client_msg="The bid requested is not available at this time", dev_msg=error)
+
+        (bid_details, error) = await bid.details(bid_id)
+
+        if error:
+            return ErrorResponse(data=[], client_msg="Something went wrong while trying to submit your bid, please try again in sometime!", dev_msg=error)
+
+        (transporter_attempts, error) = await transporter.attempts(
+            bid_id=bid_id, transporter_id=bid.transporter_id)
+
+        if error:
+            return ErrorResponse(data=[], client_msg="Something went wrong while trying to submit your bid, please try again in sometime!", dev_msg=error)
+
+        if transporter_attempts >= bid_details.no_of_tries:
+            return ErrorResponse(data=[], client_msg="You have exceeded the number of tries for this bid!", dev_msg=f"Number of tries for Bid-{bid_id} exceeded!")
+
+        (lowest_price, error) = await bid.lowest_price(bid_id)
+
+        if error:
+            return ErrorResponse(data=[], client_msg="Something went wrong while fetching the lowest price for this bid", dev_msg=error)
+
+        (transporter_lowest_price, error) = await transporter.lowest_price(bid_id, bid.transporter_id)
+
+        if error:
+            return ErrorResponse(data=[], client_msg="Something went wrong while fetching the lowest price for this bid", dev_msg=error)
+
+        (rate, error) = bid.va(bid_mode=bid_details.bid_mode, rate=bid.rate,
+                               decrement=bid_details.bid_price_decrement, lowest_price=lowest_price, transporter_lowest=transporter_lowest_price)
+
+        if not rate.valid:
+            return ErrorResponse(data=[], client_msg=f"You entered an incorrect bid rate! Your previous rate was {rate.previous_rate}, decrement is {bid_details.bid_price_decrement}", dev_msg="Incorrect bid price entered")
+
+        (update_bid_table, error) = insert_new_record_in_bid_table(
+            bid_id, bid.transporter_id, bid.rate)
+
+        if error:
+            return ErrorResponse(data=[], dev_msg=error, client_msg="Something went wrong while trying to submit your bid, please try again in 60 seconds!")
+
+        # Update the redis sorted set here
+        (sorted_bid_details, error) = redis.update(sorted_set=bid_id,
+                                                   transporter_id=bid.transporter_id, rate=bid.rate)
+
+        # emit socket event here
+
+        return SuccessResponse(data=[], dev_msg="Bid submitted successfully", client_msg=f"Bid for Bid-{bid_id} submitted!")
+
+    except Exception as err:
+        return ServerError(err=err, errMsg=str(err))
+
+
+@bidding_router.get("/lowest/{bid_id}")
+async def get_lowest_price_of_current_bid(bid_id: str):
+
+    try:
+
+        (lowest_price, error) = get_lowest_price(bid_id)
+
+        if error:
+            return ErrorResponse(data=[], client_msg="Something went wrong while fetching the lowest price for this bid", dev_msg=error)
+
+        return SuccessResponse(data=lowest_price, dev_msg="Lowest price found for current bid", client_msg="Fetched lowest price for Bid-{bid_id}!")
+
+    except Exception as err:
+        return ServerError(err=err, errMsg=str(err))
 
 
 @bidding_router.post("/history/{bid_id}")
@@ -86,7 +145,7 @@ async def fetch_all_rates_given_by_transporter(bid_id: str, req: HistoricalRates
         return ServerError(err=err, errMsg=str(err))
 
 
-#Juned you will work on the below APIs
+# Juned you will work on the below APIs
 
 # @bidding_router.post("/filter")
 # async def get_bids_according_to_filter(req : FilterBidsRequest):
