@@ -11,9 +11,6 @@ class Bid:
     async def initiate():
         pass
 
-    async def close():
-        pass
-
     async def get_status_wise(status: str):
 
         session = Session()
@@ -126,7 +123,7 @@ class Bid:
         finally:
             session.close()
 
-    async def insert_new_record_in_bid_table():
+    async def new_bid():
         pass
 
     async def lowest_price(bid_id: str) -> (float, str):
@@ -145,3 +142,6 @@ class Bid:
 
         finally:
             session.close()
+
+    async def close():
+        pass

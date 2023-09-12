@@ -96,7 +96,7 @@ async def provide_new_rate_for_bid(bid_id: str, bidReq: TransporterBidReq):
         if not rate.valid:
             return ErrorResponse(data=[], client_msg=f"You entered an incorrect bid rate! Your previous rate was {rate.previous_rate}, decrement is {bid_details.bid_price_decrement}", dev_msg="Incorrect bid price entered")
 
-        (update_bid_table, error) = insert_new_record_in_bid_table(
+        (update_bid_table, error) = bid.new_bid(
             bid_id, bid.transporter_id, bid.rate)
 
         if error:
@@ -119,7 +119,7 @@ async def get_lowest_price_of_current_bid(bid_id: str):
 
     try:
 
-        (lowest_price, error) = get_lowest_price(bid_id)
+        (lowest_price, error) = bid.lowest_price(bid_id)
 
         if error:
             return ErrorResponse(data=[], client_msg="Something went wrong while fetching the lowest price for this bid", dev_msg=error)
@@ -134,12 +134,12 @@ async def get_lowest_price_of_current_bid(bid_id: str):
 async def fetch_all_rates_given_by_transporter(bid_id: str, req: HistoricalRatesReq):
 
     try:
-        (valid_bid_id, error) = await bid_id_is_valid(bid_id)
+        (valid_bid_id, error) = await bid.is_valid(bid_id)
 
         if not valid_bid_id:
             return ErrorResponse(data=bid_id, client_msg="The bid requested is not available at this time", dev_msg=error)
 
-        return historical_rates(transporter_id=req.transporter_id, bid_id=bid_id)
+        return transporter.historical_rates(transporter_id=req.transporter_id, bid_id=bid_id)
 
     except Exception as err:
         return ServerError(err=err, errMsg=str(err))
