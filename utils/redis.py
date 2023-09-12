@@ -10,16 +10,18 @@ class Redis:
         redis.zadd(sorted_set,{transporter_id : rate})
 
     async def get_first(self,sorted_set:str):
-        pass
+        
+        return redis.zrange(sorted_set,0,0)
 
     async def get_last(self,sorted_set:str):
-        pass
+         
+         return redis.zrevrange(sorted_set,0,0)
 
     async def get_first_n(self,sorted_set : str, n : int):
-        pass
+        return redis.zrange(sorted_set,0,n)
 
     async def get_last_n(self,sorted_set : str, n : int):
-        pass
+       return redis.zrevrange(sorted_set,0,n)
 
     async def exists(self,sorted_set : str,key : str) -> bool:
         if not redis.zscore(sorted_set, key):
