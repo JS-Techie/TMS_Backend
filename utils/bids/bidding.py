@@ -1,5 +1,6 @@
 from sqlalchemy import update
 import datetime
+import os
 
 from utils.response import *
 from config.db_config import Session
@@ -64,7 +65,7 @@ class Bid:
         finally:
             session.close()
 
-    async def is_valid(bid_id: str) -> (bool, str):
+    async def is_valid(self, bid_id: str) -> (bool, str):
 
         session = Session()
 
@@ -87,7 +88,7 @@ class Bid:
         finally:
             session.close()
 
-    async def update_status(bid_id: str, status: str) -> (bool, str):
+    async def update_status(self, bid_id: str, status: str) -> (bool, str):
 
         session = Session()
 
@@ -110,7 +111,7 @@ class Bid:
         finally:
             session.close()
 
-    async def create_table(bid_id: str) -> (bool, str):
+    async def create_table(self, bid_id: str) -> (bool, str):
 
         try:
 
@@ -127,7 +128,7 @@ class Bid:
 
             return (False, str(e))
 
-    async def details(bid_id: str) -> (bool, str):
+    async def details(self, bid_id: str) -> (bool, str):
 
         session = Session()
 
@@ -150,32 +151,56 @@ class Bid:
     async def new_bid():
         pass
 
-    async def decrement_on_lowest_price(bid_id : str, rate : float,decrement : float) -> (any,str):
+    async def decrement_on_lowest_price(self, bid_id: str, rate: float, decrement: float) -> (any, str):
 
         session = Session()
 
         try:
-            pass
-        
+            (lowest_price, error) = self.lowest_price(bid_id=bid_id)
+
+            if error:
+                return ErrorResponse(data=[], dev_msg=str(error), client_msg=os.getenv("BID_SUBMIT_ERROR"))
+
+            if (rate + decrement < lowest_price):
+                return {{
+                    "valid": True,
+                }, ""}
+
+            return ({
+                "valid": False
+            }, "Incorrect Bid price, has to be lower")
+
         except Exception as e:
-            return ({},str(e))
-        
+            return ({}, str(e))
+
         finally:
             session.close()
 
-    async def decrement_on_transporter_lowest_price(bid_id : str,transporter_id : str,rate : float,decrement : float) -> (any,str):
+    async def decrement_on_transporter_lowest_price(self, bid_id: str, transporter_id: str, rate: float, decrement: float) -> (any, str):
+
         session = Session()
+        model = get_bid_model_name(bid_id=bid_id)
 
         try:
-            pass
-        
+            bid = session.query(model).filter(
+                model.transporter_id == transporter_id).order_by(model.created_at).first()
+
+            if (bid.rate > rate + decrement):
+                return {{
+                    "valid": True,
+                }, ""}
+
+            return ({
+                "valid": False
+            }, "Incorrect Bid price, has to be lower")
+
         except Exception as e:
-            return ({},str(e))
-        
+            return ({}, str(e))
+
         finally:
             session.close()
 
-    async def lowest_price(bid_id: str) -> (float, str):
+    async def lowest_price(self, bid_id: str) -> (float, str):
 
         session = Session()
         model = get_bid_model_name(bid_id)
@@ -191,6 +216,5 @@ class Bid:
         finally:
             session.close()
 
-    async def close():
+    async def close(self,):
         pass
-    
