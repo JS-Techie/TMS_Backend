@@ -1,4 +1,4 @@
-from sqlalchemy import MetaData, Table, Column, UUID, text,ForeignKey,Double,Integer,DateTime,Boolean,String
+from sqlalchemy import MetaData, Table, Column, UUID, text, ForeignKey, Double, Integer, DateTime, Boolean, String
 
 from config.db_config import engine
 from models.models import Base
@@ -28,16 +28,21 @@ async def get_table_and_model(table_name: str):
 
         table = Table(
             table_name, metadata,
-            id = Column (UUID(as_uuid=True), primary_key=True,server_default=text('gen_random_uuid()')),
-            transporter_id = Column(UUID(as_uuid=True),ForeignKey('t_transporter.trnsp_id'),nullable=False),
-            rate = Column(Double,nullable=False),
-            comment = Column(String,nullable=False),
-            attempt_number = Column(Integer,nullable=False),
-            created_at = Column(DateTime, nullable = False, server_default = text("now()")),
-            created_by = Column(UUID(as_uuid=True), ForeignKey('t_user.user_id'), nullable = False),
-            updated_at = Column(DateTime, nullable = True),
-            updated_by = Column(UUID(as_uuid=True), ForeignKey('t_user.user_id'), nullable = True),
-            is_active = Column(Boolean, nullable=False, default=True),
+            id=Column(UUID(as_uuid=True), primary_key=True,
+                      server_default=text('gen_random_uuid()')),
+            transporter_id=Column(UUID(as_uuid=True), ForeignKey(
+                't_transporter.trnsp_id'), nullable=False),
+            rate=Column(Double, nullable=False),
+            comment=Column(String, nullable=False),
+            attempt_number=Column(Integer, nullable=False),
+            created_at=Column(DateTime, nullable=False,
+                              server_default=text("now()")),
+            created_by=Column(UUID(as_uuid=True), ForeignKey(
+                't_user.user_id'), nullable=False),
+            updated_at=Column(DateTime, nullable=True),
+            updated_by=Column(UUID(as_uuid=True), ForeignKey(
+                't_user.user_id'), nullable=True),
+            is_active=Column(Boolean, nullable=False, default=True),
         )
 
         metadata.create_all(engine)
@@ -60,6 +65,7 @@ async def get_table_and_model(table_name: str):
     finally:
         engine.dispose()
 
-def get_bid_model_name(bid_id : str) -> str:
+
+def get_bid_model_name(bid_id: str) -> str:
     bid_id = bid_id.replace("-", "")
     return f'T_{bid_id}'

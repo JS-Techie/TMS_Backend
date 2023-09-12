@@ -2,7 +2,9 @@ from config.db_config import Session
 from utils.response import *
 from models.models import *
 from utils.db import *
+from utils.bids.bidding import Bid
 
+bid = Bid()
 
 class Transporter:
 
@@ -33,10 +35,17 @@ class Transporter:
         finally:
             session.close()
 
-    async def is_valid_bid_rate() -> (any, str):
+    async def is_valid_bid_rate(bid_id : str, show_rate_to_transporter : bool,rate : float,transporter_id : str,decrement : float) -> (any, str):
+
         session = Session()
+
         try:
-            pass
+            
+            if show_rate_to_transporter:
+                return bid.decrement_on_lowest_price(bid_id,rate,decrement)
+            
+            return bid.decrement_on_transporter_lowest_price(bid_id,transporter_id,rate,decrement)
+
 
         except Exception as e:
             session.rollback()

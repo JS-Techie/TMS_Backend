@@ -1,5 +1,4 @@
 from fastapi import APIRouter, BackgroundTasks
-from uuid import UUID
 
 from utils.response import *
 from data.bidding import valid_load_status
@@ -15,18 +14,18 @@ bid = Bid()
 redis = Redis()
 
 
-@bidding_router.get("/{status}")
+@bidding_router.get("/status/{status}")
 async def get_bids_according_to_status(status: str):
 
     try:
         if status not in valid_load_status:
             return ErrorResponse(data=[], dev_msg="Incorrect status requested, please check status parameter in request", client_msg="Something went wrong,please try again in sometime!")
 
-        (bids,error) = await bid.get_status_wise(status)
+        (bids, error) = await bid.get_status_wise(status)
 
         if error:
             return ErrorResponse(data=[], dev_msg=err, client_msg="Something went wrong,please try again in sometime!")
-        
+
         return SuccessResponse(data=bids, dev_msg="Correct status, data fetched", client_msg=f"Fetched all {status} bids successfully!")
 
     except Exception as err:
@@ -77,7 +76,7 @@ async def provide_new_rate_for_bid(bid_id: str, bidReq: TransporterBidReq):
             return ErrorResponse(data=[], client_msg="Something went wrong while trying to submit your bid, please try again in sometime!", dev_msg=error)
 
         (transporter_attempts, error) = await transporter.attempts(
-            bid_id=bid_id, transporter_id=bid.transporter_id)
+            bid_id=bid_id, transporter_id=bidReq.transporter_id)
 
         if error:
             return ErrorResponse(data=[], client_msg="Something went wrong while trying to submit your bid, please try again in sometime!", dev_msg=error)
@@ -85,18 +84,10 @@ async def provide_new_rate_for_bid(bid_id: str, bidReq: TransporterBidReq):
         if transporter_attempts >= bid_details.no_of_tries:
             return ErrorResponse(data=[], client_msg="You have exceeded the number of tries for this bid!", dev_msg=f"Number of tries for Bid-{bid_id} exceeded!")
 
-        (lowest_price, error) = await bid.lowest_price(bid_id)
+        (rate,error) = transporter.is_valid_bid_rate(bid_id,bid_details.show_current_lowest_rate_transporter,bidReq.rate,bidReq.transporter_id,bid_details.bid_price_decrement)
 
         if error:
-            return ErrorResponse(data=[], client_msg="Something went wrong while fetching the lowest price for this bid", dev_msg=error)
-
-        (transporter_lowest_price, error) = await transporter.lowest_price(bid_id, bid.transporter_id)
-
-        if error:
-            return ErrorResponse(data=[], client_msg="Something went wrong while fetching the lowest price for this bid", dev_msg=error)
-
-        (rate, error) = bid.va(bid_mode=bid_details.bid_mode, rate=bid.rate,
-                               decrement=bid_details.bid_price_decrement, lowest_price=lowest_price, transporter_lowest=transporter_lowest_price)
+            return ErrorResponse(data={},dev_msg=error,client_msg="Valid bid rate could not be determined, please try again in sometime!")
 
         if not rate.valid:
             return ErrorResponse(data=[], client_msg=f"You entered an incorrect bid rate! Your previous rate was {rate.previous_rate}, decrement is {bid_details.bid_price_decrement}", dev_msg="Incorrect bid price entered")
@@ -105,7 +96,7 @@ async def provide_new_rate_for_bid(bid_id: str, bidReq: TransporterBidReq):
             bid_id, bid.transporter_id, bid.rate)
 
         if error:
-            return ErrorResponse(data=[], dev_msg=error, client_msg="Something went wrong while trying to submit your bid, please try again in 60 seconds!")
+            return ErrorResponse(data=[], dev_msg=error, client_msg="Something went wrong while trying to submit your bid, please try again in sometime!")
 
         # Update the redis sorted set here
         (sorted_bid_details, error) = redis.update(sorted_set=bid_id,
@@ -124,10 +115,14 @@ async def get_lowest_price_of_current_bid(bid_id: str):
 
     try:
 
-        (lowest_price, error) = bid.lowest_price(bid_id)
+        (lowest_price, error) = redis.get_first(bid_id)
 
         if error:
-            return ErrorResponse(data=[], client_msg="Something went wrong while fetching the lowest price for this bid", dev_msg=error)
+
+            (lowest_price, error) = bid.lowest_price(bid_id)
+
+            if error:
+                return ErrorResponse(data=[], client_msg="Something went wrong while fetching the lowest price for this bid", dev_msg=error)
 
         return SuccessResponse(data=lowest_price, dev_msg="Lowest price found for current bid", client_msg="Fetched lowest price for Bid-{bid_id}!")
 
@@ -148,35 +143,3 @@ async def fetch_all_rates_given_by_transporter(bid_id: str, req: HistoricalRates
 
     except Exception as err:
         return ServerError(err=err, errMsg=str(err))
-
-
-# Juned you will work on the below APIs
-
-# @bidding_router.post("/filter")
-# async def get_bids_according_to_filter(req : FilterBidsRequest):
-
-# return {"Hello"}
-
-# @bidding_router.post("/assign/{bid_id}")
-# async def assign_transporters_to_bid(bid_id: UUID):
-#     pass
-
-
-# @bidding_router.patch("/rebid/{bid_id}")
-# async def rebid(bid_id: UUID):
-#     pass
-
-
-# @bidding_router.patch("/match/{bid_id}")
-# async def negotiate_price_for_bid_match(bid_id: UUID):
-#     pass
-
-
-# @bidding_router.patch("/approval/{bid_id}")
-# async def send_bid_for_approval(bid_id: UUID):
-#     pass
-
-
-# @bidding_router.delete("/cancel/{bid_id}")
-# async def cancel_bid(bid_id: UUID):
-#     pass

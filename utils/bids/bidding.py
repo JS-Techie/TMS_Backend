@@ -1,11 +1,11 @@
 from sqlalchemy import update
+import datetime
 
 from utils.response import *
 from config.db_config import Session
 from models.models import *
 from utils.db import *
-import datetime
-from utils.utilities import convert_date_to_string, log
+from utils.utilities import *
 
 
 class Bid:
@@ -17,10 +17,10 @@ class Bid:
             current_time = convert_date_to_string(datetime.datetime.now())
             bids_to_be_initiated = []
 
-            (bids,error) = self.get_status_wise(status="live")
+            (bids, error) = self.get_status_wise(status="live")
 
             if error:
-                log("ERROR OCCURED DURING FETCH BIDS STATUSWISE",error)
+                log("ERROR OCCURED DURING FETCH BIDS STATUSWISE", error)
                 return
 
             for bid in bids:
@@ -37,7 +37,7 @@ class Bid:
 
         return
 
-    async def get_status_wise(self, status: str) -> (any,str):
+    async def get_status_wise(self, status: str) -> (any, str):
 
         session = Session()
 
@@ -55,11 +55,11 @@ class Bid:
                     .all()
                     )
 
-            return (bids,"")
+            return (bids, "")
 
         except Exception as e:
             session.rollback()
-            return({},str(e))
+            return ({}, str(e))
 
         finally:
             session.close()
@@ -138,8 +138,6 @@ class Bid:
             if not bid_details:
                 return False, ""
 
-            session.refresh(bid_details)
-
             return (True, bid_details)
 
         except Exception as e:
@@ -152,6 +150,31 @@ class Bid:
     async def new_bid():
         pass
 
+    async def decrement_on_lowest_price(bid_id : str, rate : float,decrement : float) -> (any,str):
+
+        session = Session()
+
+        try:
+            pass
+        
+        except Exception as e:
+            return ({},str(e))
+        
+        finally:
+            session.close()
+
+    async def decrement_on_transporter_lowest_price(bid_id : str,transporter_id : str,rate : float,decrement : float) -> (any,str):
+        session = Session()
+
+        try:
+            pass
+        
+        except Exception as e:
+            return ({},str(e))
+        
+        finally:
+            session.close()
+
     async def lowest_price(bid_id: str) -> (float, str):
 
         session = Session()
@@ -159,7 +182,6 @@ class Bid:
 
         try:
             bid = session.query(model).order_by(model.rate).asc().first()
-            session.refresh(bid)
             return (bid.rate, "")
 
         except Exception as e:
@@ -171,3 +193,4 @@ class Bid:
 
     async def close():
         pass
+    
