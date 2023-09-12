@@ -2,6 +2,7 @@ from sqlalchemy import MetaData, Table, Column, UUID, text, ForeignKey, Double, 
 
 from config.db_config import engine
 from models.models import Base
+from utils.utilities import *
 
 
 def generate_tables():
@@ -47,7 +48,7 @@ async def get_table_and_model(table_name: str):
 
         metadata.create_all(engine)
 
-        print("TABLE CREATED : ", table, " [OK]")
+        log("TABLE CREATED",table)
 
         model_code = f"""
             class {table_name.capitalize()}(Base,Persistance):

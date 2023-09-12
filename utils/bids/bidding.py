@@ -148,38 +148,38 @@ class Bid:
         finally:
             session.close()
 
-    async def new_bid(bid_id : str,transporter_id : str, rate : float,comment : str) -> (any,str):
+    async def new_bid(bid_id: str, transporter_id: str, rate: float, comment: str) -> (any, str):
 
         session = Session()
         model = get_bid_model_name(bid_id=bid_id)
 
-        try:    
+        try:
 
             attempt_number = 0
-            attempted = session.query(model).filter(model.transporter_id == transporter_id).order_by(model.created_at.desc()).first()
+            attempted = session.query(model).filter(
+                model.transporter_id == transporter_id).order_by(model.created_at.desc()).first()
 
             if attempted:
                 attempt_number = attempted.attempt_number + 1
 
             bid = (model(
-                transporter_id = transporter_id,
-                rate = rate,
-                comment = comment,
-                attempt_number = attempt_number
+                transporter_id=transporter_id,
+                rate=rate,
+                comment=comment,
+                attempt_number=attempt_number
             ))
 
             session.add(bid)
             session.commit()
             session.refresh(bid)
 
-            return (bid,"")
+            return (bid, "")
 
         except Exception as e:
             session.rollback()
-            return ({},str(e))
+            return ({}, str(e))
         finally:
             session.close()
-
 
     async def decrement_on_lowest_price(self, bid_id: str, rate: float, decrement: float) -> (any, str):
 

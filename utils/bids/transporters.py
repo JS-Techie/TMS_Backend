@@ -9,7 +9,7 @@ bid = Bid()
 class Transporter:
 
     async def notify(bid_id: str):
-        print("Notification to transporters will be sent here!")
+        log("Notification to transporters will be sent here!")
 
     async def historical_rates(transporter_id: str, bid_id: str):
 

@@ -2,7 +2,7 @@ import os
 import datetime
 
 
-def log(key: str, value: str):
+def log(key: str, value: str | None = None):
     if os.getenv("print") == "true":
         print(key, " : ", value)
 
