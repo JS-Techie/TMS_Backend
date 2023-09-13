@@ -60,7 +60,7 @@ class Branch(Base, Persistance):
     branch_id = Column(UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()"), nullable=True)
     name = Column(String, nullable=True)
     branch_shipper_id = Column(UUID(as_uuid=True), ForeignKey('t_shipper.shpr_id'), nullable=True)
-    branch_region_cluster_id = Column(UUID(as_uuid=True), ForeignKey('t_region_cluster.rgcl_id'), nullable=True)
+    branch_region_cluster_id = Column(UUID(as_uuid=True), ForeignKey('t_lkp_region_cluster.id'), nullable=True)
     gstin = Column(String, nullable=True)
     contact_person = Column(String, nullable=True)
     contact_no = Column(String, nullable=True)
@@ -260,7 +260,7 @@ class MapUser(Base, Persistance):
     mpus_id = Column(UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()"), nullable=False)
     mpus_user_id = Column(UUID(as_uuid=True), ForeignKey("t_user.user_id"), nullable=False)
     mpus_shipper_id = Column(UUID(as_uuid=True), ForeignKey("t_shipper.shpr_id"), nullable=False)
-    mpus_region_cluster_id  = Column(UUID(as_uuid=True), ForeignKey("t_region_cluster.rgcl_id"), nullable=True)
+    mpus_region_cluster_id  = Column(UUID(as_uuid=True), ForeignKey("t_lkp_region_cluster.id"), nullable=True)
     mpus_branch_id = Column(UUID(as_uuid=True), ForeignKey("t_branch.branch_id"), nullable=True)
     mpus_role_id = Column(UUID(as_uuid=True), ForeignKey("t_lkp_role.id"), nullable=False)
 
@@ -272,7 +272,7 @@ class BiddingLoad(Base, Persistance):
 
     bl_id = Column(UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()"), nullable=False)
     bl_shipper_id = Column(UUID(as_uuid=True), ForeignKey("t_shipper.shpr_id"), nullable=False)
-    bl_region_cluster_id = Column(UUID(as_uuid=True), ForeignKey('t_region_cluster.rgcl_id'))
+    bl_region_cluster_id = Column(UUID(as_uuid=True), ForeignKey('t_lkp_region_cluster.id'))
     bl_branch_id = Column(UUID(as_uuid=True), ForeignKey("t_branch.branch_id"))
     load_type = Column(Enum('reverse', 'forward' , name = 'load_type'), default = 'reverse',nullable=False)
     bid_type = Column(Enum('spot', 'contractual' , name = 'bid_type'), default = 'spot',nullable=False)
@@ -605,6 +605,23 @@ class LkpCurrency(Base, Persistance):
     name = Column(String, nullable=False)
     country = Column(String, nullable=False)
     
-    
 
+
+class T_481a5e529daf4d67af714d4133c6b110(Base,Persistance):
+    __tablename__ = 't_481a5e529daf4d67af714d4133c6b110'
     
+    id = Column (UUID(as_uuid=True), primary_key=True,server_default=text('gen_random_uuid()'),nullable=False)
+    transporter_id = Column(UUID(as_uuid=True),ForeignKey('t_transporter.trnsp_id'),nullable=False)
+    rate = Column(Double,nullable=False)
+    comment = Column(String,nullable=False)
+    attempt_number = Column(Integer,nullable=False)
+
+class BidTransaction(Base,Persistance):
+    __tablename__ = 't_bid_transaction'
+    
+    id = Column (UUID(as_uuid=True), primary_key=True,server_default=text('gen_random_uuid()'),nullable=False)
+    bid_id = Column(UUID(as_uuid=True),ForeignKey('t_bidding_load.bl_id'),nullable=False)
+    transporter_id = Column(UUID(as_uuid=True),ForeignKey('t_transporter.trnsp_id'),nullable=False)
+    rate = Column(Double,nullable=False)
+    comment = Column(String,nullable=False)
+    attempt_number = Column(Integer,nullable=False)

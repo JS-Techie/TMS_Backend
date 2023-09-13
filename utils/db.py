@@ -19,52 +19,29 @@ def generate_tables():
 def append_model_to_file(model_code):
     with open('models/models.py', 'a') as model_file:
         model_file.write(model_code)
+    
+    log("WRITTEN TO MODELS.PY")
+    
 
 
-async def get_table_and_model(table_name: str):
-
-    metadata = MetaData()
+def get_table_and_model(table_name: str):
 
     try:
 
-        table = Table(
-            table_name, metadata,
-            id=Column(UUID(as_uuid=True), primary_key=True,
-                      server_default=text('gen_random_uuid()')),
-            transporter_id=Column(UUID(as_uuid=True), ForeignKey(
-                't_transporter.trnsp_id'), nullable=False),
-            rate=Column(Double, nullable=False),
-            comment=Column(String, nullable=False),
-            attempt_number=Column(Integer, nullable=False),
-            created_at=Column(DateTime, nullable=False,
-                              server_default=text("now()")),
-            created_by=Column(UUID(as_uuid=True), ForeignKey(
-                't_user.user_id'), nullable=False),
-            updated_at=Column(DateTime, nullable=True),
-            updated_by=Column(UUID(as_uuid=True), ForeignKey(
-                't_user.user_id'), nullable=True),
-            is_active=Column(Boolean, nullable=False, default=True),
-        )
-
-        metadata.create_all(engine)
-
-        log("TABLE CREATED",table)
-
         model_code = f"""
-            class {table_name.capitalize()}(Base,Persistance):
-                 __tablename__ = '{table_name}'
-                id = Column (UUID(as_uuid=True), primary_key=True,server_default=text('gen_random_uuid()')),
-                transporter_id = Column(UUID(as_uuid=True),ForeignKey('t_transporter.trnsp_id'),nullable=False),
-                rate = Column(Double,nullable=False),
-                comment = Column(String,nullable=False),
-                attempt_number = Column(Integer,nullable=False),
-            """
+class {table_name.capitalize()}(Base,Persistance):
+    __tablename__ = '{table_name}'
+    
+    id = Column (UUID(as_uuid=True), primary_key=True,server_default=text('gen_random_uuid()'),nullable=False)
+    transporter_id = Column(UUID(as_uuid=True),ForeignKey('t_transporter.trnsp_id'),nullable=False)
+    rate = Column(Double,nullable=False)
+    comment = Column(String,nullable=False)
+    attempt_number = Column(Integer,nullable=False)
+"""
 
         return (True, model_code)
     except Exception as e:
         return False, str(e)
-    finally:
-        engine.dispose()
 
 
 def get_bid_model_name(bid_id: str) -> str:

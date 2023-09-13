@@ -7,6 +7,7 @@ from utils.bids.bidding import Bid
 from utils.bids.transporters import Transporter
 from utils.redis import Redis
 from schemas.bidding import HistoricalRatesReq, TransporterBidReq
+from utils.db import *
 
 bidding_router: APIRouter = APIRouter(prefix="/bid")
 
@@ -43,15 +44,17 @@ async def publish_new_bid(bid_id: str, bg_tasks: BackgroundTasks):
         if not valid_bid_id:
             return ErrorResponse(data=[], client_msg=os.getenv("NOT_FOUND_ERROR"), dev_msg=error)
 
-        (update_successful, error) = await bid.update_status(bid_id=bid_id, status="live")
+        (update_successful, error) = await bid.update_status(bid_id=bid_id, status="draft")
 
         if not update_successful:
             return ErrorResponse(data=bid_id, client_msg=os.getenv("BID_PUBLISH_ERROR"), dev_msg=error)
 
-        (new_bid_table_creation_successful, error) = await bid.create_table(bid_id)
+        (new_bid_table_creation_successful, error) = bid.create_table(bid_id)
 
         if not new_bid_table_creation_successful:
             return ErrorResponse(data=bid_id, client_msg=os.getenv("BID_PUBLISH_ERROR"), dev_msg=error)
+        
+        generate_tables()
 
         # This might have to be done in a separate thread
         # bg_tasks.add_task(transporter.notify(bid_id))

@@ -44,18 +44,18 @@ class Bid:
 
         try:
 
-            bids = (session.query(BiddingLoad, MapLoadSrcDestPair, LoadAssigned, Transporter)
-                    .join(MapLoadSrcDestPair)
-                    .join(LoadAssigned)
-                    .join(LkpReason)
-                    .join(Transporter)
-                    .filter(BiddingLoad.load_status == status, BiddingLoad.is_active == True)
-                    .filter(MapLoadSrcDestPair.mlsdp_bidding_load_id == BiddingLoad.bl_id)
-                    .filter(LoadAssigned.la_bidding_load_id == BiddingLoad.bl_id)
-                    .filter(Transporter.trnsp_id == LoadAssigned.la_transporter_id)
-                    .all()
-                    )
-
+            # bids = (session.query(BiddingLoad, MapLoadSrcDestPair, LoadAssigned, Transporter)
+            #         .join(MapLoadSrcDestPair)
+            #         .join(LoadAssigned)
+            #         .join(LkpReason)
+            #         .join(Transporter)
+            #         .filter(BiddingLoad.load_status == status, BiddingLoad.is_active == True)
+            #         .filter(MapLoadSrcDestPair.mlsdp_bidding_load_id == BiddingLoad.bl_id)
+            #         .filter(LoadAssigned.la_bidding_load_id == BiddingLoad.bl_id)
+            #         .filter(Transporter.trnsp_id == LoadAssigned.la_transporter_id)
+            #         .all()
+            #         )
+            bids= session.query(BiddingLoad).filter(BiddingLoad.load_status == status).all()
             return (bids, "")
 
         except Exception as e:
@@ -93,31 +93,33 @@ class Bid:
         session = Session()
 
         try:
-
-            updated_bid = (update(BiddingLoad)
-                           .where(BiddingLoad.bl_id == bid_id)
-                           .values(load_status=status)
-                           )
-
-            if not session.execute(updated_bid):
-                return (False, "Bid status could not be updated!")
+            log("bid_id",bid_id)
+            log("status",status)
+            
+            bid_to_be_updated = session.query(BiddingLoad).filter(BiddingLoad.bl_id == bid_id).first()
+            
+            if not bid_to_be_updated:
+                return (False, "Bid requested could not be found")
+            
+            setattr(bid_to_be_updated,"load_status",status)
+            session.commit()
 
             return (True, "")
 
         except Exception as e:
             session.rollback()
             return (False, str(e))
-
+        
         finally:
             session.close()
 
-    async def create_table(self, bid_id: str) -> (bool, str):
+    def create_table(self, bid_id: str) -> (bool, str):
 
         try:
 
             table_name = 't_' + bid_id.replace('-', '')
 
-            (success, model_or_err) = await get_table_and_model(table_name)
+            (success, model_or_err) = get_table_and_model(table_name)
 
             if success:
                 append_model_to_file(model_or_err)
