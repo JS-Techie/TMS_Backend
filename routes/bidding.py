@@ -3,7 +3,7 @@ import os
 
 from utils.response import *
 from data.bidding import valid_load_status
-from utils.bids.bidding import Bid
+from utils.bids.biddingDeprecated import Bid
 from utils.bids.transporters import Transporter
 from utils.redis import Redis
 from schemas.bidding import HistoricalRatesReq, TransporterBidReq

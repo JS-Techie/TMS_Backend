@@ -2,7 +2,7 @@ from config.db_config import Session
 from utils.response import *
 from models.models import *
 from utils.db import *
-from utils.bids.bidding import Bid
+from utils.bids.biddingDeprecated import Bid
 
 bid = Bid()
 

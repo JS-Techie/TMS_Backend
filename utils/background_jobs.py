@@ -1,6 +1,6 @@
 from apscheduler.schedulers.background import BackgroundScheduler
 
-from utils.bids.bidding import Bid
+from utils.bids.biddingDeprecated import Bid
 
 bid = Bid()
 
