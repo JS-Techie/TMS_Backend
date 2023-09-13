@@ -10,5 +10,4 @@ app : FastAPI = FastAPI()
 
 setup_routes(app)
 
-# generate_tables()
 
