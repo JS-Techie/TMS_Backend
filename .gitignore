@@ -3,3 +3,4 @@ venv
 __pycache__
 APIList.txt
 transporter_rate.py
+bidenv
