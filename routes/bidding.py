@@ -1,13 +1,13 @@
 from fastapi import APIRouter, BackgroundTasks
 import os
 
-from utils.response import *
+from utils.response import ErrorResponse,SuccessResponse,ServerError
 from data.bidding import valid_load_status
 from utils.bids.biddingDeprecated import Bid
 from utils.bids.transporters import Transporter
 from utils.redis import Redis
-from schemas.bidding import HistoricalRatesReq, TransporterBidReq
-from utils.db import *
+from schemas.bidding import HistoricalRatesReq,TransporterBidReq
+
 
 bidding_router: APIRouter = APIRouter(prefix="/bid")
 
@@ -54,7 +54,6 @@ async def publish_new_bid(bid_id: str, bg_tasks: BackgroundTasks):
         if not new_bid_table_creation_successful:
             return ErrorResponse(data=bid_id, client_msg=os.getenv("BID_PUBLISH_ERROR"), dev_msg=error)
         
-        generate_tables()
 
         # This might have to be done in a separate thread
         # bg_tasks.add_task(transporter.notify(bid_id))
@@ -66,7 +65,7 @@ async def publish_new_bid(bid_id: str, bg_tasks: BackgroundTasks):
 
 
 @bidding_router.post("/rate/{bid_id}", response_model=None)
-async def provide_new_rate_for_bid(bid_id: str, bidReq: TransporterBidReq):
+async def provide_new_rate_for_bid(bid_id: str, bid_req: TransporterBidReq):
 
     try:
 
@@ -81,7 +80,7 @@ async def provide_new_rate_for_bid(bid_id: str, bidReq: TransporterBidReq):
             return ErrorResponse(data=[], client_msg=os.getenv("BID_RATE_ERROR"), dev_msg=error)
 
         (transporter_attempts, error) = await transporter.attempts(
-            bid_id=bid_id, transporter_id=bidReq.transporter_id)
+            bid_id=bid_id, transporter_id=bid_req.transporter_id)
 
         if error:
             return ErrorResponse(data=[], client_msg=os.getenv("BID_RATE_ERROR"), dev_msg=error)
@@ -90,7 +89,7 @@ async def provide_new_rate_for_bid(bid_id: str, bidReq: TransporterBidReq):
             return ErrorResponse(data=[], client_msg="You have exceeded the number of tries for this bid!", dev_msg=f"Number of tries for Bid-{bid_id} exceeded!")
 
         (rate, error) = transporter.is_valid_bid_rate(bid_id, bid_details.show_current_lowest_rate_transporter,
-                                                      bidReq.rate, bidReq.transporter_id, bid_details.bid_price_decrement)
+                                                      bid_req.rate, bid_req.transporter_id, bid_details.bid_price_decrement)
 
         if error:
             return ErrorResponse(data={}, dev_msg=error, client_msg=os.getenv("BID_RATE_ERROR"))
@@ -99,7 +98,7 @@ async def provide_new_rate_for_bid(bid_id: str, bidReq: TransporterBidReq):
             return ErrorResponse(data=[], client_msg=f"You entered an incorrect bid rate! Decrement is {bid_details.bid_price_decrement}", dev_msg="Incorrect bid price entered")
 
         (new_record, error) = bid.new_bid(
-            bid_id, bidReq.transporter_id, bidReq.rate,bidReq.comment)
+            bid_id, bid_req.transporter_id, bid_req.rate,bid_req.comment)
 
         if error:
             return ErrorResponse(data=[], dev_msg=error, client_msg=os.getenv("BID_RATE_ERROR"))
