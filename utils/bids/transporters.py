@@ -1,7 +1,7 @@
 from config.db_config import Session
 from utils.response import ServerError,SuccessResponse
 from models.models import BidTransaction,TransporterModel
-from utils.bids.biddingDeprecated import Bid
+from utils.bids.bidding import Bid
 from utils.utilities import log
 
 bid = Bid()
