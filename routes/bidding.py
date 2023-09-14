@@ -1,13 +1,13 @@
 from fastapi import APIRouter, BackgroundTasks
 import os
-
+from typing import List
 
 from utils.response import ErrorResponse,SuccessResponse,SuccessNoContentResponse,ServerError
-from data.bidding import valid_load_status,valid_rebid_status, valid_cancel_status
+from data.bidding import valid_load_status,valid_rebid_status, valid_cancel_status, valid_assignment_status
 from utils.bids.bidding import Bid
 from utils.bids.transporters import Transporter
 from utils.redis import Redis
-from schemas.bidding import HistoricalRatesReq,TransporterBidReq
+from schemas.bidding import HistoricalRatesReq,TransporterBidReq, TransporterAssignReq
 
 
 bidding_router: APIRouter = APIRouter(prefix="/bid")
@@ -27,7 +27,7 @@ async def get_bids_according_to_status(status: str):
         (bids, error) = await bid.get_status_wise(status)
 
         if error:
-            return ErrorResponse(data=[], dev_msg=err, client_msg=os.getenv("GENERIC_ERROR"))
+            return ErrorResponse(data=[], dev_msg=error, client_msg=os.getenv("GENERIC_ERROR"))
 
         return SuccessResponse(data=bids, dev_msg="Correct status, data fetched", client_msg=f"Fetched all {status} bids successfully!")
 
@@ -198,12 +198,43 @@ async def rebid(bid_id: str):
             return ErrorResponse(data=[],client_msg="This bid is not valid and cannot be cancelled!",dev_msg=f"Bid-{bid_id} is {bid_details.status}, cannot be cancelled!")
         
         
+        
         (update_successful, error) = await bid.update_status(bid_id=bid_id, status="cancelled")
         
         if not update_successful:
             return ErrorResponse(data=bid_id, client_msg=os.getenv("BID_CANCEL_ERROR"), dev_msg=error)
         
         return SuccessNoContentResponse(dev_msg="Bid cancelled successfully", client_msg="Your Bid is Successfully Cancelled")
+        
+        
+    except Exception as err:
+        return ServerError(err=err, errMsg=str(err))
+    
+    
+@bidding_router.post("/assign/{bid_id}")
+async def assign(bid_id:str, transporters:List[TransporterAssignReq]):
+    
+    try:
+        (valid_bid_id, error) = await bid.is_valid(bid)
+        
+        if not valid_bid_id:
+            return ErrorResponse(data=[], client_msg=os.getenv("INVALID_BID_ERROR"), dev_msg=error)
+        
+        (bid_details,error) = await bid.details(bid_id=bid_id)
+        
+        if error:
+            return ErrorResponse(data=[],client_msg="Something went wrong while trying to Assign Transporter", dev_msg=error)
+        
+        if bid_details.load_status not in valid_assignment_status:
+            return ErrorResponse(data=[],client_msg="Transporter cannot be assigned to this bid",dev_msg=f"transporter cannot be assigned to bid with status- {bid_details.load_status}")
+        
+        
+        (assigned_loads, error) = await bid.assign(bid_id=bid_id, transporters= transporters)
+        
+        if error:
+            return ErrorResponse(data=[], client_msg="Something Went Wrong While Assigning Transporters", dev_msg=error)
+        
+        return SuccessResponse(data=assigned_loads, dev_msg="Load Assigned Successfully", client_msg=f"Load-{bid_id} assignment was successful!")
         
         
     except Exception as err:
