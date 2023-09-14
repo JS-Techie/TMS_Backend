@@ -2,12 +2,13 @@ from fastapi import APIRouter, BackgroundTasks
 import os
 
 
-from utils.response import ErrorResponse,SuccessResponse,SuccessNoContentResponse,ServerError
-from data.bidding import valid_load_status,valid_rebid_status, valid_cancel_status
+from utils.response import ErrorResponse, SuccessResponse, SuccessNoContentResponse, ServerError
+from data.bidding import valid_load_status, valid_rebid_status, valid_cancel_status
 from utils.bids.bidding import Bid
 from utils.bids.transporters import Transporter
 from utils.redis import Redis
-from schemas.bidding import HistoricalRatesReq,TransporterBidReq
+from schemas.bidding import HistoricalRatesReq, TransporterBidReq
+from config.socket import socket
 
 
 bidding_router: APIRouter = APIRouter(prefix="/bid")
@@ -45,12 +46,13 @@ async def publish_new_bid(bid_id: str, bg_tasks: BackgroundTasks):
         if not valid_bid_id:
             return ErrorResponse(data=[], client_msg=os.getenv("NOT_FOUND_ERROR"), dev_msg=error)
 
-        (update_successful, error) = await bid.update_status(bid_id=bid_id, status="live")
+        (update_successful, error) = await bid.update_status(bid_id=bid_id, status="pending")
 
         if not update_successful:
             return ErrorResponse(data=bid_id, client_msg=os.getenv("BID_PUBLISH_ERROR"), dev_msg=error)
         # This might have to be done in a separate thread
         # bg_tasks.add_task(transporter.notify(bid_id))
+
 
         return SuccessResponse(data=bid_id, client_msg=f"Bid-{bid_id} is now published!", dev_msg="Bid status was updated successfully!")
 
@@ -95,21 +97,21 @@ async def provide_new_rate_for_bid(bid_id: str, bid_req: TransporterBidReq):
             return ErrorResponse(data=[], client_msg=f"You entered an incorrect bid rate! Decrement is {bid_details.bid_price_decrement}", dev_msg="Incorrect bid price entered")
 
         (new_record, error) = bid.new_bid(
-            bid_id, bid_req.transporter_id, bid_req.rate,bid_req.comment)
+            bid_id, bid_req.transporter_id, bid_req.rate, bid_req.comment)
 
         if error:
             return ErrorResponse(data=[], dev_msg=error, client_msg=os.getenv("BID_RATE_ERROR"))
-        
-        (transporter_name,error) = transporter.name(transporter_id = bid_req.transporter_id)
-        
-        if error:
-            return ErrorResponse(data=[],client_msg=os.getenv("BID_RATE_ERROR"),dev_msg=error)
-        
-        
-        (sorted_bid_details, error) = redis.update(sorted_set=bid_id,
-                                                   transporter_id=bid.transporter_id, rate=bid.rate)
 
-        # emit socket event here
+        (transporter_name, error) = transporter.name(
+            transporter_id=bid_req.transporter_id)
+
+        if error:
+            return ErrorResponse(data=[], client_msg=os.getenv("BID_RATE_ERROR"), dev_msg=error)
+
+        (sorted_bid_details, error) = redis.update(sorted_set=bid_id,
+                                                   transporter_id=bid_req.transporter_id,comment=bid_req.rate ,transporter_name=transporter_name,rate=bid_req.rate,attempts = transporter_attempts + 1)
+
+        await socket.emit("bid",sorted_bid_details)
 
         return SuccessResponse(data=new_record, dev_msg="Bid submitted successfully", client_msg=f"Bid for Bid-{bid_id} submitted!")
 
@@ -152,59 +154,52 @@ async def fetch_all_rates_given_by_transporter(bid_id: str, req: HistoricalRates
         return ServerError(err=err, errMsg=str(err))
 
 
-
 @bidding_router.put("/rebid/{bid_id}")
 async def rebid(bid_id: str):
-    
+
     try:
         (valid_bid_id, error) = await bid.is_valid(bid_id)
-        
+
         if not valid_bid_id:
             return ErrorResponse(data=[], client_msg=os.getenv("INVALID_BID_ERROR"), dev_msg=error)
-        
-        (bid_details,error )= await bid.details(bid_id=bid_id)
-        
+
+        (bid_details, error) = await bid.details(bid_id=bid_id)
+
         if error:
-            return ErrorResponse(data=[],client_msg="Something went wrong while trying to rebid", dev_msg=error)
-        
+            return ErrorResponse(data=[], client_msg="Something went wrong while trying to rebid", dev_msg=error)
+
         if bid_details.status not in valid_rebid_status:
-            return ErrorResponse(data=[],client_msg="This bid is not valid for rebid!",dev_msg=f"Bid-{bid_id} is {bid_details.status}, cannot be rebid!")
-        
-        #call create load api
-        
-        
-        
+            return ErrorResponse(data=[], client_msg="This bid is not valid for rebid!", dev_msg=f"Bid-{bid_id} is {bid_details.status}, cannot be rebid!")
+
+        # call create load api
+
     except Exception as err:
         return ServerError(err=err, errMsg=str(err))
-        
-        
-        
-        
+
+
 @bidding_router.put("/cancel/{bid_id}")
 async def rebid(bid_id: str):
-    
+
     try:
         (valid_bid_id, error) = await bid.is_valid(bid_id)
-        
+
         if not valid_bid_id:
             return ErrorResponse(data=[], client_msg=os.getenv("INVALID_BID_ERROR"), dev_msg=error)
-        
-        (bid_details,error) = await bid.details(bid_id=bid_id)
-        
+
+        (bid_details, error) = await bid.details(bid_id=bid_id)
+
         if error:
-            return ErrorResponse(data=[],client_msg="Something went wrong while trying to cancel", dev_msg=error)
-        
+            return ErrorResponse(data=[], client_msg="Something went wrong while trying to cancel", dev_msg=error)
+
         if bid_details.status not in valid_cancel_status:
-            return ErrorResponse(data=[],client_msg="This bid is not valid and cannot be cancelled!",dev_msg=f"Bid-{bid_id} is {bid_details.status}, cannot be cancelled!")
-        
-        
+            return ErrorResponse(data=[], client_msg="This bid is not valid and cannot be cancelled!", dev_msg=f"Bid-{bid_id} is {bid_details.status}, cannot be cancelled!")
+
         (update_successful, error) = await bid.update_status(bid_id=bid_id, status="cancelled")
-        
+
         if not update_successful:
             return ErrorResponse(data=bid_id, client_msg=os.getenv("BID_CANCEL_ERROR"), dev_msg=error)
-        
+
         return SuccessNoContentResponse(dev_msg="Bid cancelled successfully", client_msg="Your Bid is Successfully Cancelled")
-        
-        
+
     except Exception as err:
         return ServerError(err=err, errMsg=str(err))
