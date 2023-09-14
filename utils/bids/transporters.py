@@ -1,6 +1,6 @@
 from config.db_config import Session
 from utils.response import ServerError,SuccessResponse
-from models.models import BidTransaction
+from models.models import BidTransaction,TransporterModel
 from utils.bids.biddingDeprecated import Bid
 from utils.utilities import log
 
@@ -92,7 +92,7 @@ class Transporter:
             session.close()
 
 
-    async def name(transporter_id : str) -> (str,str):
+    async def name(self,transporter_id : str) -> (str,str):
         
         session = Session()
         

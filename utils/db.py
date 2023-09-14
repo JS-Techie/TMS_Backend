@@ -2,7 +2,7 @@ from sqlalchemy import MetaData, Table, Column, UUID, text, ForeignKey, Double, 
 
 from config.db_config import engine
 from models.models import Base
-from utils.utilities import *
+from utils.utilities import log
 
 
 def generate_tables():

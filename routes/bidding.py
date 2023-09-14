@@ -2,7 +2,7 @@ from fastapi import APIRouter, BackgroundTasks
 import os
 
 
-from utils.response import *
+from utils.response import ErrorResponse,SuccessResponse,SuccessNoContentResponse,ServerError
 from data.bidding import valid_load_status,valid_rebid_status, valid_cancel_status
 from utils.bids.bidding import Bid
 from utils.bids.transporters import Transporter
@@ -100,14 +100,14 @@ async def provide_new_rate_for_bid(bid_id: str, bid_req: TransporterBidReq):
         if error:
             return ErrorResponse(data=[], dev_msg=error, client_msg=os.getenv("BID_RATE_ERROR"))
         
-        (transporter_name,error) = transporter.name(transporter_id = bidReq.transporter_id)
+        (transporter_name,error) = transporter.name(transporter_id = bid_req.transporter_id)
         
         if error:
             return ErrorResponse(data=[],client_msg=os.getenv("BID_RATE_ERROR"),dev_msg=error)
         
         
         (sorted_bid_details, error) = redis.update(sorted_set=bid_id,
-                                                   transporter_id=bid.transporter_id,transporter_name=transporter_name, rate=bid.rate)
+                                                   transporter_id=bid.transporter_id, rate=bid.rate)
 
         # emit socket event here
 
@@ -144,7 +144,7 @@ async def fetch_all_rates_given_by_transporter(bid_id: str, req: HistoricalRates
         (valid_bid_id, error) = await bid.is_valid(bid_id)
 
         if not valid_bid_id:
-            return ErrorResponse(data=bid_id, client_msg="The bid requested is not available at this time", dev_msg=error)
+            return ErrorResponse(data=bid_id, client_msg=os.getenv("INVALID_BID_ERROR"), dev_msg=error)
 
         return transporter.historical_rates(transporter_id=req.transporter_id, bid_id=bid_id)
 
@@ -160,7 +160,7 @@ async def rebid(bid_id: str):
         (valid_bid_id, error) = await bid.is_valid(bid_id)
         
         if not valid_bid_id:
-            return ErrorResponse(data=[], client_msg="The bid requested is not available at this time", dev_msg=error)
+            return ErrorResponse(data=[], client_msg=os.getenv("INVALID_BID_ERROR"), dev_msg=error)
         
         (bid_details,error )= await bid.details(bid_id=bid_id)
         
@@ -187,7 +187,7 @@ async def rebid(bid_id: str):
         (valid_bid_id, error) = await bid.is_valid(bid_id)
         
         if not valid_bid_id:
-            return ErrorResponse(data=[], client_msg="The bid requested is not available at this time", dev_msg=error)
+            return ErrorResponse(data=[], client_msg=os.getenv("INVALID_BID_ERROR"), dev_msg=error)
         
         (bid_details,error) = await bid.details(bid_id=bid_id)
         
