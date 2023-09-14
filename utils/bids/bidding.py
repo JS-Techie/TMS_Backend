@@ -1,42 +1,61 @@
+
 from sqlalchemy import update
 from sqlalchemy.sql.functions import func
-from sqlalchemy.orm import joinedload
-import datetime
-import os
+import datetime,os
+
+
+
 
 from utils.response import ErrorResponse
 from config.db_config import Session
 from models.models import BiddingLoad, MapLoadSrcDestPair, LoadAssigned, TransporterModel, LkpReason, BidTransaction, MapLoadMaterial,LkpMaterial, PriceMatchRequest
 from schemas.bidding import TransporterAssignReq
 from utils.utilities import log, convert_date_to_string
+from config.scheduler import Scheduler
 
+sched = Scheduler()
 
 class Bid:
 
     async def initiate(self):
 
+        session = Session()
+        current_time = convert_date_to_string(datetime.datetime.now())
+        bids_to_be_initiated = []
+
         try:
 
-            current_time = convert_date_to_string(datetime.datetime.now())
-            bids_to_be_initiated = []
-
-            (bids, error) = self.get_status_wise(status="live")
+            (bids, error) = self.get_status_wise(status="not_started")
 
             if error:
                 log("ERROR OCCURED DURING FETCH BIDS STATUSWISE", error)
                 return
 
             for bid in bids:
-                if convert_date_to_string(bid.created_at) == current_time:
+                if convert_date_to_string(bid.bid_time) == current_time:
                     bids_to_be_initiated.append(bid.bl_id)
 
-            update(BiddingLoad).where(BiddingLoad.id.in_(
-                bids_to_be_initiated)).values(BiddingLoad.load_status == "in_progress")
+            for bid in bids_to_be_initiated:
+                setattr(bid, "load_status", "live")
+
+            session.commit()
+
+            scheduler = sched.new_scheduler()
+            scheduler.add_job(func=self.close,trigger="interval",id="close-bid",minutes=1)
+            sched.start(scheduler=scheduler)
+
+            
 
             log("BIDS ARE IN PROGRESS", bids)
+            return
 
         except Exception as e:
+            session.rollback()
             log("ERROR DURING INITIATE BID", str(e))
+            return
+
+        finally:
+            session.close()
 
     async def get_status_wise(self, status: str) -> (any, str):
 
@@ -156,7 +175,7 @@ class Bid:
         finally:
             session.close()
 
-    async def new_bid(self,bid_id: str, transporter_id: str, rate: float, comment: str) -> (any, str):
+    async def new_bid(self, bid_id: str, transporter_id: str, rate: float, comment: str) -> (any, str):
 
         session = Session()
 
@@ -170,7 +189,7 @@ class Bid:
                 attempt_number = attempted.attempt_number + 1
 
             bid = BidTransaction(
-                bid_id = bid_id,
+                bid_id=bid_id,
                 transporter_id=transporter_id,
                 rate=rate,
                 comment=comment,
@@ -256,8 +275,35 @@ class Bid:
             session.close()
 
     async def close(self):
-        # Will close the bid here
-        pass
+
+        session = Session()
+        current_time = convert_date_to_string(datetime.datetime.now())
+        bids_to_be_closed = []
+
+        try:
+            (bids, error) = self.get_status_wise(status="live")
+
+            if error:
+                log("ERROR OCCURED DURING FETCH BIDS STATUSWISE", error)
+                return
+
+            for bid in bids:
+                if convert_date_to_string(bid.bid_end_time) == current_time:
+                    bids_to_be_closed.append(bid.bl_id)
+
+            for bid in bids_to_be_closed:
+                setattr(bid, "load_status", "pending")
+
+            return
+
+        except Exception as e:
+            session.rollback()
+            log("ERROR DURING CLOSE BID", str(e))
+            return
+
+        finally:
+            session.close()
+      
 
     async def assign(bid_id: str, transporters: list) ->(list, str):
         
@@ -301,4 +347,3 @@ class Bid:
         finally:
             session.close()
             
-    
