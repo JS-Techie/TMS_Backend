@@ -469,7 +469,7 @@ class TrackingFleet(Base, Persistance):
 ##Transporter
     
 
-class Transporter(Base,Persistance):
+class TransporterModel(Base,Persistance):
     __tablename__ = "t_transporter"
     
     trnsp_id = Column(UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()"), nullable=False)

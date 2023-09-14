@@ -94,13 +94,16 @@ class Bid:
 
         try:
 
-            updated_bid = (update(BiddingLoad)
-                           .where(BiddingLoad.bl_id == bid_id)
-                           .values(load_status=status)
-                           )
-
-            if not session.execute(updated_bid):
-                return (False, "Bid status could not be updated!")
+            log("bid_id",bid_id)
+            log("status",status)
+            
+            bid_to_be_updated = session.query(BiddingLoad).filter(BiddingLoad.bl_id == bid_id).first()
+            
+            if not bid_to_be_updated:
+                return (False, "Bid requested could not be found")
+            
+            setattr(bid_to_be_updated,"load_status",status)
+            session.commit()
 
             return (True, "")
 
@@ -108,26 +111,11 @@ class Bid:
             session.rollback()
             return (False, str(e))
 
+        
         finally:
             session.close()
-
-    async def create_table(self, bid_id: str) -> (bool, str):
-
-        try:
-
-            table_name = 't_' + bid_id.replace('-', '')
-
-            (success, model_or_err) = await get_table_and_model(table_name)
-
-            if success:
-                append_model_to_file(model_or_err)
-                return (True, "")
-            return (False, model_or_err)
-
-        except Exception as e:
-
-            return (False, str(e))
-
+            
+            
     async def details(self, bid_id: str) -> (bool, str):
 
         session = Session()
@@ -181,6 +169,7 @@ class Bid:
         finally:
             session.close()
 
+
     async def decrement_on_lowest_price(self, bid_id: str, rate: float, decrement: float) -> (any, str):
 
         session = Session()
@@ -210,11 +199,11 @@ class Bid:
     async def decrement_on_transporter_lowest_price(self, bid_id: str, transporter_id: str, rate: float, decrement: float) -> (any, str):
 
         session = Session()
-        model = get_bid_model_name(bid_id=bid_id)
 
         try:
-            bid = session.query(model).filter(
-                model.transporter_id == transporter_id).order_by(model.created_at).first()
+            bid = session.query(BidTransaction).filter(
+                BidTransaction.transporter_id == transporter_id, BidTransaction.bid_id == bid_id).order_by(BidTransaction.created_at).first()
+
 
             if (bid.rate > rate + decrement):
                 return {{
@@ -229,6 +218,40 @@ class Bid:
             session.rollback()
             return ({}, str(e))
 
+        finally:
+            session.close()
+
+
+    async def new_bid(bid_id: str, transporter_id: str, rate: float, comment: str) -> (any, str):
+
+        session = Session()
+
+        try:
+
+            attempt_number = 0
+            attempted = session.query(BidTransaction).filter(
+                BidTransaction.transporter_id == transporter_id, BidTransaction.bid_id == bid_id).order_by(BidTransaction.created_at.desc()).first()
+
+            if attempted:
+                attempt_number = attempted.attempt_number + 1
+
+            bid = (BidTransaction(
+                bid_id = bid_id,
+                transporter_id=transporter_id,
+                rate=rate,
+                comment=comment,
+                attempt_number=attempt_number
+            ))
+
+            session.add(bid)
+            session.commit()
+            session.refresh(bid)
+
+            return (bid, "")
+
+        except Exception as e:
+            session.rollback()
+            return ({}, str(e))
         finally:
             session.close()
 
@@ -250,3 +273,4 @@ class Bid:
 
     async def close(self):
         pass
+

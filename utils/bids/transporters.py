@@ -60,6 +60,7 @@ class Transporter:
             no_of_tries = session.query(BidTransaction).filter(
                 BidTransaction.transporter_id == transporter_id,BidTransaction.bid_id == bid_id).count()
 
+
             return (no_of_tries, "")
 
         except Exception as e:
@@ -72,8 +73,6 @@ class Transporter:
     async def lowest_price(self,bid_id: str, transporter_id: str) -> (float, str):
 
         session = Session()
-
-
         try:
 
             transporter_bid = (session
@@ -91,3 +90,23 @@ class Transporter:
 
         finally:
             session.close()
+
+
+    async def name(transporter_id : str) -> (str,str):
+        
+        session = Session()
+        
+        try:
+            transporter = session.query(TransporterModel).filter(TransporterModel.trnsp_id == transporter_id).first()
+            
+            if not transporter:
+                return ("","Requested transporter details was not found")
+            
+            return (transporter.name,"") 
+           
+        except Exception as err:
+            session.rollback()
+            return ("",str(err))
+        finally:
+            session.close()
+        
