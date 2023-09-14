@@ -1,6 +1,7 @@
 valid_load_status = ['draft','not_started','live','pending','partially_confirmed','confirmed', 'completed','cancelled']
 valid_rebid_status = ['not_started','pending','partially_confirmed','confirmed']
-valid_cancel_status = ['draft','pending','partially_confirmed','confirmed']
+valid_cancel_status = ['draft','not_started','pending','partially_confirmed','confirmed']
+valid_assignment_status = ['pending','partially_confirmed']
 
     # load id
     # multiple src and dest
