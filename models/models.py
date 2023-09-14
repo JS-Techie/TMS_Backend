@@ -469,7 +469,7 @@ class TrackingFleet(Base, Persistance):
 ##Transporter
     
 
-class Transporter(Base,Persistance):
+class TransporterModel(Base,Persistance):
     __tablename__ = "t_transporter"
     
     trnsp_id = Column(UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()"), nullable=False)
@@ -606,15 +606,6 @@ class LkpCurrency(Base, Persistance):
     country = Column(String, nullable=False)
     
 
-
-class T_481a5e529daf4d67af714d4133c6b110(Base,Persistance):
-    __tablename__ = 't_481a5e529daf4d67af714d4133c6b110'
-    
-    id = Column (UUID(as_uuid=True), primary_key=True,server_default=text('gen_random_uuid()'),nullable=False)
-    transporter_id = Column(UUID(as_uuid=True),ForeignKey('t_transporter.trnsp_id'),nullable=False)
-    rate = Column(Double,nullable=False)
-    comment = Column(String,nullable=False)
-    attempt_number = Column(Integer,nullable=False)
 
 class BidTransaction(Base,Persistance):
     __tablename__ = 't_bid_transaction'

@@ -3,10 +3,10 @@ from config.redis import redis
 
 class Redis:
 
-    async def update(self, sorted_set: str, transporter_id: str, rate: float) -> (any, str):
+    async def update(self, sorted_set: str, transporter_id: str, transporter_name : str,rate: float) -> (any, str):
 
         if self.exists(sorted_set=sorted_set, key=transporter_id):
-            redis.zadd(sorted_set, {transporter_id: rate}, xx=True)
+            redis.zadd(sorted_set, {{transporter_id : transporter_id,transporter_name : transporter_name}: rate}, xx=True)
 
         redis.zadd(sorted_set, {transporter_id: rate})
 
