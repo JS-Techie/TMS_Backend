@@ -604,7 +604,6 @@ class LkpCurrency(Base, Persistance):
     id = Column(UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()"), nullable=False)
     name = Column(String, nullable=False)
     country = Column(String, nullable=False)
-    
 
 
 class BidTransaction(Base,Persistance):

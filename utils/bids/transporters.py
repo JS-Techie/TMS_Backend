@@ -1,28 +1,27 @@
 from config.db_config import Session
-from utils.response import *
-from models.models import *
-from utils.db import *
+from utils.response import ServerError,SuccessResponse
+from models.models import BidTransaction
 from utils.bids.biddingDeprecated import Bid
+from utils.utilities import log
 
 bid = Bid()
 
 class Transporter:
 
-    async def notify(bid_id: str):
+    async def notify(self,bid_id: str):
+        log(bid_id)
         log("Notification to transporters will be sent here!")
 
-    async def historical_rates(transporter_id: str, bid_id: str):
+    async def historical_rates(self,transporter_id: str, bid_id: str):
 
         session = Session()
-
-        model = get_bid_model_name(bid_id)
 
         try:
 
             rates = (session
-                     .query(model)
-                     .filter(model.transporter_id == transporter_id)
-                     .order_by(model.created_at.desc())
+                     .query(BidTransaction)
+                     .filter(BidTransaction.transporter_id == transporter_id,BidTransaction.bid_id == bid_id)
+                     .order_by(BidTransaction.created_at.desc())
                      .all()
                      )
 
@@ -35,7 +34,7 @@ class Transporter:
         finally:
             session.close()
 
-    async def is_valid_bid_rate(bid_id : str, show_rate_to_transporter : bool,rate : float,transporter_id : str,decrement : float) -> (any, str):
+    async def is_valid_bid_rate(self,bid_id : str, show_rate_to_transporter : bool,rate : float,transporter_id : str,decrement : float) -> (any, str):
 
         session = Session()
 
@@ -53,13 +52,14 @@ class Transporter:
         finally:
             session.rollback()
 
-    async def attempts(bid_id: str, transporter_id: str) -> (int, str):
+    async def attempts(self,bid_id: str, transporter_id: str) -> (int, str):
 
         session = Session()
 
         try:
             no_of_tries = session.query(BidTransaction).filter(
-                BidTransaction.transporter_id == transporter_id, BidTransaction.bid_id == bid_id).count()
+                BidTransaction.transporter_id == transporter_id,BidTransaction.bid_id == bid_id).count()
+
 
             return (no_of_tries, "")
 
@@ -70,14 +70,14 @@ class Transporter:
         finally:
             session.close()
 
-    async def lowest_price(bid_id: str, transporter_id: str) -> (float, str):
+    async def lowest_price(self,bid_id: str, transporter_id: str) -> (float, str):
 
         session = Session()
         try:
 
             transporter_bid = (session
                                .query(BidTransaction)
-                               .filter(BidTransaction.transporter_id == transporter_id, BidTransaction.bid_id == bid_id)
+                               .filter(BidTransaction.transporter_id == transporter_id,BidTransaction.bid_id == bid_id)
                                .order_by(BidTransaction.rate)
                                .first()
                                )
