@@ -179,7 +179,7 @@ async def rebid(bid_id: str):
 
 
 @bidding_router.put("/cancel/{bid_id}")
-async def rebid(bid_id: str):
+async def cancel_bid(bid_id: str):
 
     try:
         (valid_bid_id, error) = await bid.is_valid(bid_id)
