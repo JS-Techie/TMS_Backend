@@ -173,6 +173,7 @@ class Bid:
     async def new_bid(self, bid_id: str, transporter_id: str, rate: float, comment: str) -> (any, str):
 
         session = Session()
+        user_id = os.getenv("USER_ID")
 
         try:
 
@@ -188,7 +189,8 @@ class Bid:
                 transporter_id=transporter_id,
                 rate=rate,
                 comment=comment,
-                attempt_number=attempt_number
+                attempt_number=attempt_number,
+                created_by=user_id
             )
 
             session.add(bid)
@@ -212,12 +214,13 @@ class Bid:
 
             if error:
                 return ErrorResponse(data=[], dev_msg=str(error), client_msg=os.getenv("BID_SUBMIT_ERROR"))
-
+                
             if (rate + decrement < lowest_price):
-                return {{
+                log("BID RATE OK", rate)
+                return ({
                     "valid": True,
-                }, ""}
-
+                }, "")
+            log("BID RATE NOT OK", rate)
             return ({
                 "valid": False
             }, "Incorrect Bid price, has to be lower")
@@ -236,12 +239,14 @@ class Bid:
         try:
             bid = session.query(BidTransaction).filter(
                 BidTransaction.transporter_id == transporter_id, BidTransaction.bid_id == bid_id).order_by(BidTransaction.created_at).first()
-
+            if not bid:
+                return ({"valid":True},"")
+            log("TRANSPORTER BID RATE OK", bid)
             if (bid.rate > rate + decrement):
-                return {{
+                return ({
                     "valid": True,
-                }, ""}
-
+                }, "")
+            log("TRANSPORTER BID RATE NOT VALID", bid)
             return ({
                 "valid": False
             }, "Incorrect Bid price, has to be lower")
@@ -260,7 +265,14 @@ class Bid:
         try:
             bid = session.query(BidTransaction).filter(
                 BidTransaction.bid_id == bid_id).order_by(BidTransaction.rate.asc()).first()
+            
+            
+            if not bid:
+                return (float("inf"),"")
+            log("BID DETAILS OK", bid)
             return (bid.rate, "")
+        
+            
 
         except Exception as e:
             session.rollback()

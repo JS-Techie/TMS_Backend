@@ -8,13 +8,11 @@ from utils.bids.bidding import Bid
 from utils.bids.transporters import Transporter
 from utils.redis import Redis
 from schemas.bidding import HistoricalRatesReq,TransporterBidReq, TransporterAssignReq
-from config.socket import socket
 from utils.utilities import log
 
 
 
 bidding_router: APIRouter = APIRouter(prefix="/bid")
-
 transporter = Transporter()
 bid = Bid()
 redis = Redis()
@@ -86,9 +84,11 @@ async def provide_new_rate_for_bid(bid_id: str, bid_req: TransporterBidReq):
         log("BID DETAILS FOUND",bid_id)
         
         if bid_details.bid_mode == "private_pool":
-            (allowed_transporter_to_bid, error) = await transporter.is_transporter_allowed_to_bid(shipper_id= bid_details.bl_shipper_id, transporter_id= bid_req.transporter_id)
+            log("REQUEST TRANSPORTER ID:", bid_req.transporter_id)
+            log("BID SHIPPER ID", bid_details.bl_shipper_id)
+            (allowed_transporter_to_bid, error) = await transporter.allowed_to_bid(shipper_id=bid_details.bl_shipper_id, transporter_id=bid_req.transporter_id)
             
-            if allowed_transporter_to_bid:
+            if not allowed_transporter_to_bid:
                 return ErrorResponse(data=[], client_msg="Transporter Not Allowed to participate in the private Bid",dev_msg="bid is private, transporter not allowed")
         
         log("TRANSPORTER ALLOWED TO BID",bid_id)
@@ -107,16 +107,18 @@ async def provide_new_rate_for_bid(bid_id: str, bid_req: TransporterBidReq):
 
         (rate, error) = await transporter.is_valid_bid_rate(bid_id, bid_details.show_current_lowest_rate_transporter,
                                                       bid_req.rate, bid_req.transporter_id, bid_details.bid_price_decrement)
+        
+        log("RATE OBJECT",rate)
 
         if error:
             return ErrorResponse(data={}, dev_msg=error, client_msg=os.getenv("BID_RATE_ERROR"))
 
-        if not rate.valid:
+        if not rate["valid"]:
             return ErrorResponse(data=[], client_msg=f"You entered an incorrect bid rate! Decrement is {bid_details.bid_price_decrement}", dev_msg="Incorrect bid price entered")
         
         log("VALID RATE",bid_id)
 
-        (new_record, error) = bid.new_bid(
+        (new_record, error) = await bid.new_bid(
             bid_id, bid_req.transporter_id, bid_req.rate, bid_req.comment)
         
         log("NEW BID INSERTED",bid_id)
@@ -124,7 +126,7 @@ async def provide_new_rate_for_bid(bid_id: str, bid_req: TransporterBidReq):
         if error:
             return ErrorResponse(data=[], dev_msg=error, client_msg=os.getenv("BID_RATE_ERROR"))
 
-        (transporter_name, error) = transporter.name(
+        (transporter_name, error) = await transporter.name(
             transporter_id=bid_req.transporter_id)
         
         log("TRANSPORTER NAME",transporter_name)
@@ -132,16 +134,16 @@ async def provide_new_rate_for_bid(bid_id: str, bid_req: TransporterBidReq):
         if error:
             return ErrorResponse(data=[], client_msg=os.getenv("BID_RATE_ERROR"), dev_msg=error)
 
-        (sorted_bid_details, error) = redis.update(sorted_set=bid_id,
-                                                   transporter_id=bid_req.transporter_id,comment=bid_req.rate ,transporter_name=transporter_name,rate=bid_req.rate,attempts = transporter_attempts + 1)
+        (sorted_bid_details, error) = await redis.update(sorted_set=bid_id,
+                                                   transporter_id=str(bid_req.transporter_id),comment=bid_req.comment ,transporter_name=transporter_name,rate=bid_req.rate,attempts = transporter_attempts + 1)
         
         log("BID DETAILS",sorted_bid_details)
 
-        await socket.emit("bid",sorted_bid_details)
+        # await socket.emit("bid",sorted_bid_details)
         
-        log("SOCKET EVENT SENT",bid_id)
+        # log("SOCKET EVENT SENT",bid_id)
 
-        return SuccessResponse(data=new_record, dev_msg="Bid submitted successfully", client_msg=f"Bid for Bid-{bid_id} submitted!")
+        return SuccessResponse(data=sorted_bid_details, dev_msg="Bid submitted successfully", client_msg=f"Bid for Bid-{bid_id} submitted!")
 
     except Exception as err:
         return ServerError(err=err, errMsg=str(err))

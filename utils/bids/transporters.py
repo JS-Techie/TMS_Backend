@@ -50,7 +50,7 @@ class Transporter:
             session.rollback()
             return ({}, str(e))
         finally:
-            session.rollback()
+            session.close()
 
     async def attempts(self,bid_id: str, transporter_id: str) -> (int, str):
 
@@ -112,13 +112,13 @@ class Transporter:
         
         
 
-    async def is_transporter_allowed_to_bid(shipper_id, transporter_id)->(bool,str):
+    async def allowed_to_bid(self,shipper_id: str, transporter_id: str)->(bool,str):
         session=Session()
         
         try:
-            
+            log("INSIDE ALLOWED TO BID","OK")
             transporter_details = session.query(MapShipperTransporter).filter(MapShipperTransporter.mst_shipper_id==shipper_id, MapShipperTransporter.mst_transporter_id==transporter_id).first()
-            
+            log("TRANSPORTER DETAILS", transporter_details)
             if not transporter_details:
                 return(False, "transporter not tagged with the specific shipper")
             

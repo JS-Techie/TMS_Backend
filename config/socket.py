@@ -1,12 +1,20 @@
-from fastapi_socketio import SocketManager
+# from fastapi_socketio import SocketManager
 
-socket = {} 
+# # socket = None 
 
-def setup_socket(app):
+# # def setup_socket(app):
 
-    global socket
+# #     global socket
 
-    socket_manager = SocketManager(app=app)
-    socket = socket_manager
+# #     socket = SocketManager(app=app)
     
-    return socket_manager
+# #     return socket
+
+
+# import socketio
+
+# def setup_socket():
+#     sio: any = socketio.AsyncServer(async_mode="asgi")
+#     socket_app = socketio.ASGIApp(sio)
+    
+#     return (sio,socket_app)
