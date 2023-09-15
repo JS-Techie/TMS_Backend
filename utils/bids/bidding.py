@@ -1,19 +1,14 @@
-
-from sqlalchemy import update
 from sqlalchemy.sql.functions import func
 import datetime,os
 
-
-
-
 from utils.response import ErrorResponse
 from config.db_config import Session
-from models.models import BiddingLoad, MapLoadSrcDestPair, LoadAssigned, TransporterModel, LkpReason, BidTransaction, MapLoadMaterial,LkpMaterial, PriceMatchRequest
-from schemas.bidding import TransporterAssignReq
+from models.models import BiddingLoad, MapLoadSrcDestPair, LoadAssigned, TransporterModel, LkpReason, BidTransaction, MapLoadMaterial, LkpMaterial, PriceMatchRequest
 from utils.utilities import log, convert_date_to_string
 from config.scheduler import Scheduler
 
 sched = Scheduler()
+
 
 class Bid:
 
@@ -41,10 +36,9 @@ class Bid:
             session.commit()
 
             scheduler = sched.new_scheduler()
-            scheduler.add_job(func=self.close,trigger="interval",id="close-bid",minutes=1)
+            scheduler.add_job(
+                func=self.close, trigger="interval", id="close-bid", minutes=1)
             sched.start(scheduler=scheduler)
-
-            
 
             log("BIDS ARE IN PROGRESS", bids)
             return
@@ -64,37 +58,30 @@ class Bid:
         try:
 
             all_bid_details = (session
-                    .query(BiddingLoad,func.array_agg(MapLoadMaterial.mlm_material_id),func.array_agg(LkpMaterial.name),func.array_agg(MapLoadSrcDestPair),func.array_agg(PriceMatchRequest),func.array_agg(LoadAssigned))
-                    .outerjoin(MapLoadMaterial,MapLoadMaterial.mlm_bidding_load_id == BiddingLoad.bl_id)
-                    .outerjoin(LkpMaterial,MapLoadMaterial.mlm_material_id == LkpMaterial.id)
-                    .outerjoin(MapLoadSrcDestPair,MapLoadSrcDestPair.mlsdp_bidding_load_id == BiddingLoad.bl_id)
-                    .outerjoin(PriceMatchRequest,PriceMatchRequest.pmr_bidding_load_id == BiddingLoad.bl_id)
-                    .outerjoin(LoadAssigned,LoadAssigned.la_bidding_load_id == BiddingLoad.bl_id)
-                    .filter
-                        (BiddingLoad.is_active == True,BiddingLoad.load_status == status,
-                        MapLoadMaterial.is_active ==True,
-                        MapLoadSrcDestPair.is_active == True,
-                        PriceMatchRequest.is_active == True,
-                        LoadAssigned.is_active == True)
-                    .group_by(BiddingLoad.bl_id)
-                    .all())
-            
-            # subquery = session.query(MapLoadMaterial).filter(
-            #         MapLoadMaterial.mlm_bidding_load_id == BiddingLoad.bl_id
-            #         ).subquery()
-            
-            bid_array = []
-            
-            for detail in all_bid_details:
-                bids,load_material,lkp_material, MapLoadSrcDestPair,PriceMatchRequest,LoadAssigned = detail
-                bid_array.append({"bid" : bids,"load_material" : load_material,"lkp_material":lkp_material,"Map_load_src_dest_pair":MapLoadSrcDestPair,"PriceMatchRequest":PriceMatchRequest,"LoadAssigned":LoadAssigned})
-            
+                               .query(BiddingLoad, func.array_agg(MapLoadMaterial.mlm_material_id), func.array_agg(LkpMaterial.name), func.array_agg(MapLoadSrcDestPair), func.array_agg(PriceMatchRequest), func.array_agg(LoadAssigned))
+                               .outerjoin(MapLoadMaterial, MapLoadMaterial.mlm_bidding_load_id == BiddingLoad.bl_id)
+                               .outerjoin(LkpMaterial, MapLoadMaterial.mlm_material_id == LkpMaterial.id)
+                               .outerjoin(MapLoadSrcDestPair, MapLoadSrcDestPair.mlsdp_bidding_load_id == BiddingLoad.bl_id)
+                               .outerjoin(PriceMatchRequest, PriceMatchRequest.pmr_bidding_load_id == BiddingLoad.bl_id)
+                               .outerjoin(LoadAssigned, LoadAssigned.la_bidding_load_id == BiddingLoad.bl_id)
+                               .filter
+                               (BiddingLoad.is_active == True, BiddingLoad.load_status == status,
+                                MapLoadMaterial.is_active == True,
+                                MapLoadSrcDestPair.is_active == True,
+                                PriceMatchRequest.is_active == True,
+                                LoadAssigned.is_active == True)
+                               .group_by(BiddingLoad.bl_id)
+                               .all())
 
-                
-            
-            
-            log("BIDS",bid_array)
-            # log("SOURCE AND DEST",source_dest)
+            bid_array = []
+
+            for detail in all_bid_details:
+                bid_details, material_ids, material_details, source_dest, price_match_req, assigned_loads = detail
+                bid_array.append({"bid": bid_details, "load_material": material_ids, "lkp_material": material_details,
+                                 "Map_load_src_dest_pair": source_dest, "PriceMatchRequest": price_match_req, "LoadAssigned": assigned_loads})
+
+            log("BIDS", bid_array)
+    
 
             return (bid_array, "")
 
@@ -303,47 +290,50 @@ class Bid:
 
         finally:
             session.close()
-      
 
-    async def assign(bid_id: str, transporters: list) ->(list, str):
-        
+    async def assign(bid_id: str, transporters: list) -> (list, str):
+
         session = Session()
         user_id = os.getenv("USER_ID")
         # user["id"]
-        
+
         try:
-            
+
             transporter_ids = []
             assigned_transporters = []
             for transporter in transporters:
-                transporter_ids.append(getattr(transporter,"la_transporter_id"))
+                transporter_ids.append(
+                    getattr(transporter, "la_transporter_id"))
                 assign_detail = LoadAssigned(
-                                        la_bidding_load_id = getattr(transporter,"la_bidding_load_id "),
-                                        la_transporter_id = getattr(transporter,"la_transporter_id "),
-                                        trans_pos_in_bid = getattr(transporter,"trans_pos_in_bid "),
-                                        price = getattr(transporter,"price "),
-                                        price_difference_percent = getattr(transporter,"price_difference_percent "),
-                                        no_of_fleets_assigned = getattr(transporter,"no_of_fleets_assigned "),
-                                        created_by = user_id
-                                        )
+                    la_bidding_load_id=getattr(
+                        transporter, "la_bidding_load_id "),
+                    la_transporter_id=getattr(
+                        transporter, "la_transporter_id "),
+                    trans_pos_in_bid=getattr(transporter, "trans_pos_in_bid "),
+                    price=getattr(transporter, "price "),
+                    price_difference_percent=getattr(
+                        transporter, "price_difference_percent "),
+                    no_of_fleets_assigned=getattr(
+                        transporter, "no_of_fleets_assigned "),
+                    created_by=user_id
+                )
                 assigned_transporters.append(assign_detail)
-            
-            
+
             transporter_details = session.query(LoadAssigned).filter(
                 LoadAssigned.la_bidding_load_id == bid_id, LoadAssigned.la_transporter_id.in_(transporter_ids)).all()
-            
+
             if transporter_details:
-                return("", "Bid already assigned to same Transporter")
-            
+                return ("", "Bid already assigned to same Transporter")
+
             session.bulk_save_objects(assigned_transporters)
             session.commit()
 
             return (assigned_transporters, None)
-        
+
         except Exception as e:
             session.rollback()
             return (False, str(e))
-        
+
         finally:
             session.close()
-            
+
