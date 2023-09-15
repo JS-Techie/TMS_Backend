@@ -9,6 +9,7 @@ from utils.bids.transporters import Transporter
 from utils.redis import Redis
 from schemas.bidding import HistoricalRatesReq,TransporterBidReq, TransporterAssignReq
 from config.socket import socket
+from utils.utilities import log
 
 
 
@@ -67,18 +68,32 @@ async def provide_new_rate_for_bid(bid_id: str, bid_req: TransporterBidReq):
     try:
 
         (valid_bid_id, error) = await bid.is_valid(bid_id)
+        
+        log("BID IS VALID",bid_id)
 
         if not valid_bid_id:
             return ErrorResponse(data=bid_id, client_msg=os.getenv("NOT_FOUND_ERROR"), dev_msg=error)
 
-        (bid_details, error) = await bid.details(bid_id)
+        (error, bid_details) = await bid.details(bid_id)
+        
 
-        if error:
+        if not bid_details:
             return ErrorResponse(data=[], client_msg=os.getenv("BID_RATE_ERROR"), dev_msg=error)
 
         if bid_details.load_status != "live":
             return ErrorResponse(data=[], client_msg=f"This Load is not Accepting Bids yet, start time is {bid_details.bid_time}", dev_msg="Tried bidding, but bid is not live yet")
-
+        
+        log("BID DETAILS FOUND",bid_id)
+        
+        if bid_details.bid_mode == "private_pool":
+            (allowed_transporter_to_bid, error) = await transporter.is_transporter_allowed_to_bid(shipper_id= bid_details.bl_shipper_id, transporter_id= bid_req.transporter_id)
+            
+            if allowed_transporter_to_bid:
+                return ErrorResponse(data=[], client_msg="Transporter Not Allowed to participate in the private Bid",dev_msg="bid is private, transporter not allowed")
+        
+        log("TRANSPORTER ALLOWED TO BID",bid_id)
+            
+            
         (transporter_attempts, error) = await transporter.attempts(
             bid_id=bid_id, transporter_id=bid_req.transporter_id)
 
@@ -87,8 +102,10 @@ async def provide_new_rate_for_bid(bid_id: str, bid_req: TransporterBidReq):
 
         if transporter_attempts >= bid_details.no_of_tries:
             return ErrorResponse(data=[], client_msg="You have exceeded the number of tries for this bid!", dev_msg=f"Number of tries for Bid-{bid_id} exceeded!")
+        
+        log("BID TRIES OK",bid_id)
 
-        (rate, error) = transporter.is_valid_bid_rate(bid_id, bid_details.show_current_lowest_rate_transporter,
+        (rate, error) = await transporter.is_valid_bid_rate(bid_id, bid_details.show_current_lowest_rate_transporter,
                                                       bid_req.rate, bid_req.transporter_id, bid_details.bid_price_decrement)
 
         if error:
@@ -96,23 +113,33 @@ async def provide_new_rate_for_bid(bid_id: str, bid_req: TransporterBidReq):
 
         if not rate.valid:
             return ErrorResponse(data=[], client_msg=f"You entered an incorrect bid rate! Decrement is {bid_details.bid_price_decrement}", dev_msg="Incorrect bid price entered")
+        
+        log("VALID RATE",bid_id)
 
         (new_record, error) = bid.new_bid(
             bid_id, bid_req.transporter_id, bid_req.rate, bid_req.comment)
+        
+        log("NEW BID INSERTED",bid_id)
 
         if error:
             return ErrorResponse(data=[], dev_msg=error, client_msg=os.getenv("BID_RATE_ERROR"))
 
         (transporter_name, error) = transporter.name(
             transporter_id=bid_req.transporter_id)
+        
+        log("TRANSPORTER NAME",transporter_name)
 
         if error:
             return ErrorResponse(data=[], client_msg=os.getenv("BID_RATE_ERROR"), dev_msg=error)
 
         (sorted_bid_details, error) = redis.update(sorted_set=bid_id,
                                                    transporter_id=bid_req.transporter_id,comment=bid_req.rate ,transporter_name=transporter_name,rate=bid_req.rate,attempts = transporter_attempts + 1)
+        
+        log("BID DETAILS",sorted_bid_details)
 
         await socket.emit("bid",sorted_bid_details)
+        
+        log("SOCKET EVENT SENT",bid_id)
 
         return SuccessResponse(data=new_record, dev_msg="Bid submitted successfully", client_msg=f"Bid for Bid-{bid_id} submitted!")
 
@@ -129,7 +156,7 @@ async def get_lowest_price_of_current_bid(bid_id: str):
 
         if error:
 
-            (lowest_price, error) = bid.lowest_price(bid_id)
+            (lowest_price, error) = await bid.lowest_price(bid_id)
 
             if error:
                 return ErrorResponse(data=[], client_msg="Something went wrong while fetching the lowest price for this bid", dev_msg=error)

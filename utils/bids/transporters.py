@@ -1,6 +1,6 @@
 from config.db_config import Session
 from utils.response import ServerError,SuccessResponse
-from models.models import BidTransaction,TransporterModel
+from models.models import BidTransaction,TransporterModel, MapShipperTransporter
 from utils.bids.bidding import Bid
 from utils.utilities import log
 
@@ -41,9 +41,9 @@ class Transporter:
         try:
             
             if show_rate_to_transporter:
-                return bid.decrement_on_lowest_price(bid_id,rate,decrement)
+                return await bid.decrement_on_lowest_price(bid_id,rate,decrement)
             
-            return bid.decrement_on_transporter_lowest_price(bid_id,transporter_id,rate,decrement)
+            return await bid.decrement_on_transporter_lowest_price(bid_id,transporter_id,rate,decrement)
 
 
         except Exception as e:
@@ -110,3 +110,22 @@ class Transporter:
         finally:
             session.close()
         
+        
+
+    async def is_transporter_allowed_to_bid(shipper_id, transporter_id)->(bool,str):
+        session=Session()
+        
+        try:
+            
+            transporter_details = session.query(MapShipperTransporter).filter(MapShipperTransporter.mst_shipper_id==shipper_id, MapShipperTransporter.mst_transporter_id==transporter_id).first()
+            
+            if not transporter_details:
+                return(False, "transporter not tagged with the specific shipper")
+            
+            return (True,"")
+            
+        except Exception as e:
+            session.rollback()
+            return (False, str(e))
+        finally:
+            session.close()

@@ -54,6 +54,13 @@ class MapShipperRegionCluster(Base, Persistance):
     region_cluster_id = Column(UUID(as_uuid=True), ForeignKey('t_lkp_region_cluster.id'), nullable=True)
     
     
+class MapShipperTransporter(Base, Persistance):
+    __tablename__ = "t_map_shipper_transporter"
+    
+    mst_id = Column(UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()"), nullable=False)
+    mst_shipper_id = Column(UUID(as_uuid=True), ForeignKey('t_shipper.shpr_id'), nullable=False)
+    mst_transporter_id = Column(UUID(as_uuid=True), ForeignKey('t_transporter.trnsp_id'),nullable= False)
+    
 class Branch(Base, Persistance):
     __tablename__ = "t_branch"
 

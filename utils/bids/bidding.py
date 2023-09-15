@@ -1,9 +1,10 @@
 from sqlalchemy.sql.functions import func
-import datetime,os
+import datetime
+import os
 
 from utils.response import ErrorResponse
 from config.db_config import Session
-from models.models import BiddingLoad, MapLoadSrcDestPair, LoadAssigned, TransporterModel, LkpReason, BidTransaction, MapLoadMaterial, LkpMaterial, PriceMatchRequest
+from models.models import BiddingLoad, MapLoadSrcDestPair, LoadAssigned, TransporterModel, LkpReason, BidTransaction, MapLoadMaterial, LkpMaterial, PriceMatchRequest, WorkflowApprovals, Tracking, TrackingFleet, MapShipperTransporter
 from utils.utilities import log, convert_date_to_string
 from config.scheduler import Scheduler
 
@@ -58,7 +59,15 @@ class Bid:
         try:
 
             all_bid_details = (session
-                               .query(BiddingLoad, func.array_agg(MapLoadMaterial.mlm_material_id), func.array_agg(LkpMaterial.name), func.array_agg(MapLoadSrcDestPair), func.array_agg(PriceMatchRequest), func.array_agg(LoadAssigned))
+                               .query(BiddingLoad, 
+                                      func.array_agg(MapLoadMaterial.mlm_material_id), 
+                                      func.array_agg(LkpMaterial.name), 
+                                      func.array_agg(MapLoadSrcDestPair.src_city, MapLoadSrcDestPair.dest_city), 
+                                      func.array_agg(TransporterModel.name, TransporterModel.trnsp_id, TransporterModel.contact_name, TransporterModel.contact_no),
+                                      func.array_agg(Tracking.trck_id),
+                                      func.array_agg(TrackingFleet.tf_id),
+                                      func.array_agg(PriceMatchRequest), 
+                                      func.array_agg(LoadAssigned))
                                .outerjoin(MapLoadMaterial, MapLoadMaterial.mlm_bidding_load_id == BiddingLoad.bl_id)
                                .outerjoin(LkpMaterial, MapLoadMaterial.mlm_material_id == LkpMaterial.id)
                                .outerjoin(MapLoadSrcDestPair, MapLoadSrcDestPair.mlsdp_bidding_load_id == BiddingLoad.bl_id)
@@ -81,7 +90,6 @@ class Bid:
                                  "Map_load_src_dest_pair": source_dest, "PriceMatchRequest": price_match_req, "LoadAssigned": assigned_loads})
 
             log("BIDS", bid_array)
-    
 
             return (bid_array, "")
 
@@ -148,7 +156,7 @@ class Bid:
 
         try:
 
-            bid_details = await session.query(BiddingLoad).filter(BiddingLoad.bl_id == bid_id).first()
+            bid_details = session.query(BiddingLoad).filter(BiddingLoad.bl_id == bid_id).first()
 
             if not bid_details:
                 return False, ""
@@ -200,7 +208,7 @@ class Bid:
         session = Session()
 
         try:
-            (lowest_price, error) = self.lowest_price(bid_id=bid_id)
+            (lowest_price, error) =await self.lowest_price(bid_id=bid_id)
 
             if error:
                 return ErrorResponse(data=[], dev_msg=str(error), client_msg=os.getenv("BID_SUBMIT_ERROR"))
@@ -336,4 +344,3 @@ class Bid:
 
         finally:
             session.close()
-
