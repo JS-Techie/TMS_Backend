@@ -4,7 +4,7 @@ import os
 
 from utils.response import ErrorResponse
 from config.db_config import Session
-from models.models import BiddingLoad, MapLoadSrcDestPair, LoadAssigned, TransporterModel, LkpReason, BidTransaction, MapLoadMaterial, LkpMaterial, PriceMatchRequest, WorkflowApprovals, Tracking, TrackingFleet, MapShipperTransporter
+from models.models import BiddingLoad, MapLoadSrcDestPair, LoadAssigned, TransporterModel, LkpReason, BidTransaction, MapLoadMaterial, LkpMaterial, PriceMatchRequest, WorkflowApprovals, Tracking, TrackingFleet, MapShipperTransporter, BidSettings
 from utils.utilities import log, convert_date_to_string
 from config.scheduler import Scheduler
 
@@ -13,7 +13,7 @@ sched = Scheduler()
 
 class Bid:
 
-    async def initiate(self):
+    def initiate(self):
 
         session = Session()
         current_time = convert_date_to_string(datetime.datetime.now())
@@ -59,14 +59,17 @@ class Bid:
         try:
 
             all_bid_details = (session
-                               .query(BiddingLoad, 
-                                      func.array_agg(MapLoadMaterial.mlm_material_id), 
-                                      func.array_agg(LkpMaterial.name), 
-                                      func.array_agg(MapLoadSrcDestPair.src_city, MapLoadSrcDestPair.dest_city), 
-                                      func.array_agg(TransporterModel.name, TransporterModel.trnsp_id, TransporterModel.contact_name, TransporterModel.contact_no),
+                               .query(BiddingLoad,
+                                      func.array_agg(
+                                          MapLoadMaterial.mlm_material_id),
+                                      func.array_agg(LkpMaterial.name),
+                                      func.array_agg(
+                                          MapLoadSrcDestPair.src_city, MapLoadSrcDestPair.dest_city),
+                                      func.array_agg(TransporterModel.name, TransporterModel.trnsp_id,
+                                                     TransporterModel.contact_name, TransporterModel.contact_no),
                                       func.array_agg(Tracking.trck_id),
                                       func.array_agg(TrackingFleet.tf_id),
-                                      func.array_agg(PriceMatchRequest), 
+                                      func.array_agg(PriceMatchRequest),
                                       func.array_agg(LoadAssigned))
                                .outerjoin(MapLoadMaterial, MapLoadMaterial.mlm_bidding_load_id == BiddingLoad.bl_id)
                                .outerjoin(LkpMaterial, MapLoadMaterial.mlm_material_id == LkpMaterial.id)
@@ -100,6 +103,39 @@ class Bid:
         finally:
             session.close()
 
+
+
+    async def get_filter_wise(status: str, shipper_id: str, regioncluster_id: str, branch_id: str, from_date: datetime, to_date: datetime) -> (any, str):
+        session = Session()
+
+        try:
+
+            filterCriteria_1 = BiddingLoad.load_status == status
+            filterCriteria_2 = BiddingLoad.is_active == True
+            filterCriteria_3 = BiddingLoad.bl_shipper_id == shipper_id if shipper_id else BiddingLoad.is_active == True
+            filterCriteria_4 = BiddingLoad.bl_region_cluster_id == regioncluster_id if regioncluster_id else BiddingLoad.is_active == True
+            filterCriteria_5 = BiddingLoad.bl_branch_id == branch_id if branch_id else BiddingLoad.is_active == True
+            filterCriteria_6 = BiddingLoad.created_at >= from_date if from_date else BiddingLoad.is_active == True
+            filterCriteria_7 = BiddingLoad.created_at <= to_date if to_date else BiddingLoad.is_active == True
+
+            bid_array = session.query(BiddingLoad).filter(filterCriteria_1, filterCriteria_2, filterCriteria_3,
+                                                        filterCriteria_4, filterCriteria_5, filterCriteria_6, filterCriteria_7).all()
+
+            if not bid_array:
+                return ("", "Error While Fetching Data according to filter criterias !")
+
+            return (bid_array, "")
+
+        except Exception as e:
+            session.rollback()
+            return ({}, str(e))
+
+        finally:
+            session.close()
+
+
+
+
     async def is_valid(self, bid_id: str) -> (bool, str):
 
         session = Session()
@@ -122,6 +158,8 @@ class Bid:
 
         finally:
             session.close()
+
+
 
     async def update_status(self, bid_id: str, status: str) -> (bool, str):
 
@@ -150,13 +188,17 @@ class Bid:
         finally:
             session.close()
 
+
+
+
     async def details(self, bid_id: str) -> (bool, str):
 
         session = Session()
 
         try:
 
-            bid_details = session.query(BiddingLoad).filter(BiddingLoad.bl_id == bid_id).first()
+            bid_details = session.query(BiddingLoad).filter(
+                BiddingLoad.bl_id == bid_id).first()
 
             if not bid_details:
                 return False, ""
@@ -169,6 +211,8 @@ class Bid:
 
         finally:
             session.close()
+
+
 
     async def new_bid(self, bid_id: str, transporter_id: str, rate: float, comment: str) -> (any, str):
 
@@ -210,12 +254,12 @@ class Bid:
         session = Session()
 
         try:
-            (lowest_price, error) =await self.lowest_price(bid_id=bid_id)
+            (lowest_price, error) = await self.lowest_price(bid_id=bid_id)
 
             if error:
                 return ErrorResponse(data=[], dev_msg=str(error), client_msg=os.getenv("BID_SUBMIT_ERROR"))
-                
-            if (rate + decrement < lowest_price):
+
+            if (rate + decrement <= lowest_price):
                 log("BID RATE OK", rate)
                 return ({
                     "valid": True,
@@ -240,9 +284,9 @@ class Bid:
             bid = session.query(BidTransaction).filter(
                 BidTransaction.transporter_id == transporter_id, BidTransaction.bid_id == bid_id).order_by(BidTransaction.created_at).first()
             if not bid:
-                return ({"valid":True},"")
+                return ({"valid": True}, "")
             log("TRANSPORTER BID RATE OK", bid)
-            if (bid.rate > rate + decrement):
+            if (bid.rate >= rate + decrement):
                 return ({
                     "valid": True,
                 }, "")
@@ -265,14 +309,11 @@ class Bid:
         try:
             bid = session.query(BidTransaction).filter(
                 BidTransaction.bid_id == bid_id).order_by(BidTransaction.rate.asc()).first()
-            
-            
+
             if not bid:
-                return (float("inf"),"")
+                return (float("inf"), "")
             log("BID DETAILS OK", bid)
             return (bid.rate, "")
-        
-            
 
         except Exception as e:
             session.rollback()
@@ -281,7 +322,7 @@ class Bid:
         finally:
             session.close()
 
-    async def close(self):
+    def close(self):
 
         session = Session()
         current_time = convert_date_to_string(datetime.datetime.now())
@@ -300,13 +341,37 @@ class Bid:
 
             for bid in bids_to_be_closed:
                 setattr(bid, "load_status", "pending")
-
+            ### EMERGENCY : REDIS FLUSH
             return
 
         except Exception as e:
             session.rollback()
             log("ERROR DURING CLOSE BID", str(e))
             return
+
+        finally:
+            session.close()
+
+    async def update_bid_status(bid_id: str) -> (bool, str):
+
+        session = Session()
+        try:
+            bid_details = session.query(BiddingLoad).filter(
+                BiddingLoad.bl_id == bid_id).first()
+
+            if not bid_details:
+                return False, "Error While Fetching Bid Details"
+
+            setattr(bid_details, "split", True)
+            setattr(bid_details, "load_status", "confirmed")
+
+            session.commit()
+
+            return (True, "")
+
+        except Exception as e:
+            session.rollback()
+            return (False, str(e))
 
         finally:
             session.close()
@@ -349,6 +414,51 @@ class Bid:
             session.commit()
 
             return (assigned_transporters, None)
+
+        except Exception as e:
+            session.rollback()
+            return (False, str(e))
+
+        finally:
+            session.close()
+
+    async def bid_setting_details(self, shipper_id: str) -> (bool, str):
+
+        session = Session()
+
+        try:
+
+            bid_setting_details = session.query(BidSettings).filter(
+                BidSettings.bdsttng_shipper_id == shipper_id).first()
+
+            if not bid_setting_details:
+                return False, ""
+
+            return (True, bid_setting_details)
+
+        except Exception as e:
+            session.rollback()
+            return (False, str(e))
+
+        finally:
+            session.close()
+
+    async def update_bid_end_time(self, bid_id: str, bid_end_time: datetime) -> (bool, str):
+
+        session = Session()
+
+        try:
+            bid_details = session.query(BiddingLoad).filter(
+                BiddingLoad.bl_id == bid_id).first()
+
+            if not bid_details:
+                return False, "Error While Fetching Bid Details"
+
+            setattr(bid_details, "bid_end_time", bid_end_time)
+
+            session.commit()
+
+            return (True, "")
 
         except Exception as e:
             session.rollback()
