@@ -1,20 +1,23 @@
-# from fastapi_socketio import SocketManager
+from fastapi import WebSocket
+from typing import List
 
-# # socket = None 
+class ConnectionManager:
+    def __init__(self):
+        self.active_connections: list[WebSocket] = []
 
-# # def setup_socket(app):
+    async def connect(self, websocket: WebSocket):
+        await websocket.accept()
+        self.active_connections.append(websocket)
 
-# #     global socket
+    def disconnect(self, websocket: WebSocket):
+        self.active_connections.remove(websocket)
 
-# #     socket = SocketManager(app=app)
-    
-# #     return socket
+    async def send_personal_message(self, message: str, websocket: WebSocket):
+        await websocket.send_text(message)
+
+    async def broadcast(self, message: str):
+        for connection in self.active_connections:
+            await connection.send_text(message)
 
 
-# import socketio
-
-# def setup_socket():
-#     sio: any = socketio.AsyncServer(async_mode="asgi")
-#     socket_app = socketio.ASGIApp(sio)
-    
-#     return (sio,socket_app)
+manager = ConnectionManager()

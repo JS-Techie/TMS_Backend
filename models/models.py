@@ -292,6 +292,7 @@ class BiddingLoad(Base, Persistance):
     unloading_contact_name = Column(String, nullable = False)
     unloading_contact_no = Column(String, nullable = False)
     bid_time = Column(DateTime, nullable = False)
+    bid_end_time = Column(DateTime, nullable= False)
     net_qty = Column(Double, default=1,nullable=False)
     fleet_type = Column(UUID(as_uuid=True), ForeignKey("t_lkp_fleet.id"))
     no_of_fleets = Column(Integer, default=1)
