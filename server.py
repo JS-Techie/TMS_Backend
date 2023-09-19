@@ -10,12 +10,8 @@ import json,datetime
 from routes.routes import setup_routes
 from config.socket import manager
 
-from utils.db import generate_tables
-
 app : FastAPI = FastAPI()
 
-
-app = FastAPI()
 
 setup_routes(app)
 
