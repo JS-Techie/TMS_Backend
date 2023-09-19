@@ -2,6 +2,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from fastapi import FastAPI,WebSocket,WebSocketDisconnect
+from fastapi.responses import HTMLResponse
+
 import json,datetime
 
 
@@ -15,29 +17,50 @@ app : FastAPI = FastAPI()
 
 app = FastAPI()
 
-
-
-
 setup_routes(app)
+
+
+
+html = """
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Chat</title>
+    </head>
+    <body>
+        <h1>WebSocket Chat</h1>
+        <ul id='messages'>
+        </ul>
+        <script>
+            var ws = new WebSocket("ws://localhost:8000/ws");
+            ws.onmessage = function(event) {
+                var messages = document.getElementById('messages')
+                var message = document.createElement('li')
+                var content = document.createTextNode(event.data)
+                message.appendChild(content)
+                messages.appendChild(message)
+            };
+        </script>
+    </body>
+</html>
+"""
+
+
+@app.get("/html")
+async def get():
+    return HTMLResponse(html)
+
 
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     await manager.connect(websocket)
-    now = datetime.datetime.now()
-    current_time = now.strftime("%H:%M")
     try:
         while True:
-            data = await websocket.receive_text()
-            if data == "check":
-                # Respond to the heartbeat message
-                await websocket.send_text("pong")
-            else:
-                # await manager.send_personal_message(f"You wrote: {data}", websocket)
-                message = {"time":current_time,"message":data}
-                await manager.broadcast(json.dumps(message))
+                data = await websocket.receive_text()
+                await manager.broadcast(f"Client says: {data}")
             
     except WebSocketDisconnect:
-        # manager.disconnect(websocket)
-        message = {"time":current_time,"message":"Offline"}
+        manager.disconnect(websocket)
+        message = {"message":"Offline"}
         await manager.broadcast(json.dumps(message))
 

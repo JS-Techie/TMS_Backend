@@ -3,7 +3,7 @@ from typing import List
 
 class ConnectionManager:
     def __init__(self):
-        self.active_connections: List[WebSocket] = []
+        self.active_connections: list[WebSocket] = []
 
     async def connect(self, websocket: WebSocket):
         await websocket.accept()
@@ -16,9 +16,8 @@ class ConnectionManager:
         await websocket.send_text(message)
 
     async def broadcast(self, message: str):
-        while True:
-            for connection in self.active_connections:
-                await connection.send_text(message)
+        for connection in self.active_connections:
+            await connection.send_text(message)
 
 
 manager = ConnectionManager()

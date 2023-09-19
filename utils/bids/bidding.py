@@ -6,10 +6,12 @@ from utils.response import ErrorResponse
 from config.db_config import Session
 from models.models import BiddingLoad, MapLoadSrcDestPair, LoadAssigned, TransporterModel, LkpReason, BidTransaction, MapLoadMaterial, LkpMaterial, PriceMatchRequest, WorkflowApprovals, Tracking, TrackingFleet, MapShipperTransporter, BidSettings
 from utils.utilities import log, convert_date_to_string
+from config.redis import r as redis
+from utils.redis import Redis
 from config.scheduler import Scheduler
 
 sched = Scheduler()
-
+redis = Redis()
 
 class Bid:
 
@@ -334,14 +336,20 @@ class Bid:
             if error:
                 log("ERROR OCCURED DURING FETCH BIDS STATUSWISE", error)
                 return
-
+            ## MEHUL
             for bid in bids:
                 if convert_date_to_string(bid.bid_end_time) == current_time:
                     bids_to_be_closed.append(bid.bl_id)
 
             for bid in bids_to_be_closed:
                 setattr(bid, "load_status", "pending")
-            ### EMERGENCY : REDIS FLUSH
+                
+                transporter_ids = redis.get_all(sorted_set= bid)
+        
+                for transporter_id in transporter_ids:
+                    deleted_transporter_data = redis.hdel(transporter_id)
+                    
+                redis.zrem(bid) ##MEhul
             return
 
         except Exception as e:

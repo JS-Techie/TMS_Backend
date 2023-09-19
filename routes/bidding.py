@@ -1,5 +1,5 @@
 from fastapi import APIRouter, BackgroundTasks, WebSocket
-import os,asyncio
+import os,asyncio,json
 from typing import List
 from datetime import datetime
 
@@ -11,8 +11,7 @@ from utils.bids.shipper import Shipper
 from utils.redis import Redis
 from schemas.bidding import HistoricalRatesReq, TransporterBidReq, TransporterAssignReq
 from utils.utilities import log
-from utils.socket import send_event
-# from config.socket import socket_manager as socket
+from config.socket import manager
 
 
 bidding_router: APIRouter = APIRouter(prefix="/bid")
@@ -140,18 +139,11 @@ async def provide_new_rate_for_bid(bid_id: str, bid_req: TransporterBidReq):
             return ErrorResponse(data=[], client_msg=os.getenv("BID_RATE_ERROR"), dev_msg=error)
 
         (sorted_bid_details, error) = await redis.update(sorted_set=bid_id,
-                                                         transporter_id=str(bid_req.transporter_id), comment=bid_req.comment, transporter_name=transporter_name, rate=bid_req.rate, attempts=transporter_attempts + 1)
+                                                        transporter_id=str(bid_req.transporter_id), comment=bid_req.comment, transporter_name=transporter_name, rate=bid_req.rate, attempts=transporter_attempts + 1)
 
         log("BID DETAILS", sorted_bid_details)
-        # await socket.emit("bid",sorted_bid_details)
         
-        socket_successful, error = await send_event(sorted_bid_details=sorted_bid_details)
-        
-        # asyncio.run(send_event(sorted_bid_details=sorted_bid_details))
-        
-        if not socket_successful:
-            return ErrorResponse(data=[], client_msg="Something Went Wrong Please Try Again Later", dev_msg=error)
-        
+        socket_successful = await manager.broadcast(json.dumps(sorted_bid_details))
         log("SOCKET EVENT SENT", socket_successful)
 
         return SuccessResponse(data=sorted_bid_details, dev_msg="Bid submitted successfully", client_msg=f"Bid for Bid-{bid_id} submitted!")
