@@ -13,6 +13,7 @@ from config.scheduler import Scheduler
 sched = Scheduler()
 redis = Redis()
 
+
 class Bid:
 
     def initiate(self):
@@ -105,23 +106,21 @@ class Bid:
         finally:
             session.close()
 
-
-
-    async def get_filter_wise(status: str, shipper_id: str, regioncluster_id: str, branch_id: str, from_date: datetime, to_date: datetime) -> (any, str):
+    async def get_filter_wise(self, status: str, shipper_id: str, regioncluster_id: str, branch_id: str, from_date: datetime, to_date: datetime) -> (any, str):
         session = Session()
 
         try:
 
-            filterCriteria_1 = BiddingLoad.load_status == status
-            filterCriteria_2 = BiddingLoad.is_active == True
-            filterCriteria_3 = BiddingLoad.bl_shipper_id == shipper_id if shipper_id else BiddingLoad.is_active == True
-            filterCriteria_4 = BiddingLoad.bl_region_cluster_id == regioncluster_id if regioncluster_id else BiddingLoad.is_active == True
-            filterCriteria_5 = BiddingLoad.bl_branch_id == branch_id if branch_id else BiddingLoad.is_active == True
-            filterCriteria_6 = BiddingLoad.created_at >= from_date if from_date else BiddingLoad.is_active == True
-            filterCriteria_7 = BiddingLoad.created_at <= to_date if to_date else BiddingLoad.is_active == True
+            filter_criteria_1 = BiddingLoad.load_status == status
+            filter_criteria_2 = BiddingLoad.is_active == True
+            filter_criteria_3 = BiddingLoad.bl_shipper_id == shipper_id if shipper_id else BiddingLoad.is_active == True
+            filter_criteria_4 = BiddingLoad.bl_region_cluster_id == regioncluster_id if regioncluster_id else BiddingLoad.is_active == True
+            filter_criteria_5 = BiddingLoad.bl_branch_id == branch_id if branch_id else BiddingLoad.is_active == True
+            filter_criteria_6 = BiddingLoad.created_at >= from_date if from_date else BiddingLoad.is_active == True
+            filter_criteria_7 = BiddingLoad.created_at <= to_date if to_date else BiddingLoad.is_active == True
 
-            bid_array = session.query(BiddingLoad).filter(filterCriteria_1, filterCriteria_2, filterCriteria_3,
-                                                        filterCriteria_4, filterCriteria_5, filterCriteria_6, filterCriteria_7).all()
+            bid_array = session.query(BiddingLoad).filter(filter_criteria_1, filter_criteria_2, filter_criteria_3,
+                                                          filter_criteria_4, filter_criteria_5, filter_criteria_6, filter_criteria_7).all()
 
             if not bid_array:
                 return ("", "Error While Fetching Data according to filter criterias !")
@@ -134,9 +133,6 @@ class Bid:
 
         finally:
             session.close()
-
-
-
 
     async def is_valid(self, bid_id: str) -> (bool, str):
 
@@ -160,8 +156,6 @@ class Bid:
 
         finally:
             session.close()
-
-
 
     async def update_status(self, bid_id: str, status: str) -> (bool, str):
 
@@ -190,9 +184,6 @@ class Bid:
         finally:
             session.close()
 
-
-
-
     async def details(self, bid_id: str) -> (bool, str):
 
         session = Session()
@@ -213,8 +204,6 @@ class Bid:
 
         finally:
             session.close()
-
-
 
     async def new_bid(self, bid_id: str, transporter_id: str, rate: float, comment: str) -> (any, str):
 
@@ -336,20 +325,20 @@ class Bid:
             if error:
                 log("ERROR OCCURED DURING FETCH BIDS STATUSWISE", error)
                 return
-            ## MEHUL
+            # MEHUL
             for bid in bids:
                 if convert_date_to_string(bid.bid_end_time) == current_time:
                     bids_to_be_closed.append(bid.bl_id)
 
             for bid in bids_to_be_closed:
                 setattr(bid, "load_status", "pending")
-                
-                transporter_ids = redis.get_all(sorted_set= bid)
-        
+
+                transporter_ids = redis.get_all(sorted_set=bid)
+
                 for transporter_id in transporter_ids:
-                    deleted_transporter_data = redis.hdel(transporter_id)
-                    
-                redis.zrem(bid) ##MEhul
+                    redis.hdel(transporter_id)
+
+                redis.zrem(bid)  # MEhul
             return
 
         except Exception as e:
@@ -360,7 +349,7 @@ class Bid:
         finally:
             session.close()
 
-    async def update_bid_status(bid_id: str) -> (bool, str):
+    async def update_bid_status(self, bid_id: str) -> (bool, str):
 
         session = Session()
         try:
@@ -384,7 +373,7 @@ class Bid:
         finally:
             session.close()
 
-    async def assign(bid_id: str, transporters: list) -> (list, str):
+    async def assign(self, bid_id: str, transporters: list) -> (list, str):
 
         session = Session()
         user_id = os.getenv("USER_ID")

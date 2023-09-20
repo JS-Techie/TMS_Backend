@@ -1,5 +1,5 @@
-from fastapi import APIRouter, BackgroundTasks, WebSocket
-import os,asyncio,json
+from fastapi import APIRouter, BackgroundTasks
+import os,json
 from typing import List
 from datetime import datetime
 
@@ -139,10 +139,10 @@ async def provide_new_rate_for_bid(bid_id: str, bid_req: TransporterBidReq):
             return ErrorResponse(data=[], client_msg=os.getenv("BID_RATE_ERROR"), dev_msg=error)
 
         (sorted_bid_details, error) = await redis.update(sorted_set=bid_id,
-                                                        transporter_id=str(bid_req.transporter_id), comment=bid_req.comment, transporter_name=transporter_name, rate=bid_req.rate, attempts=transporter_attempts + 1)
+                                                         transporter_id=str(bid_req.transporter_id), comment=bid_req.comment, transporter_name=transporter_name, rate=bid_req.rate, attempts=transporter_attempts + 1)
 
         log("BID DETAILS", sorted_bid_details)
-        
+
         socket_successful = await manager.broadcast(json.dumps(sorted_bid_details))
         log("SOCKET EVENT SENT", socket_successful)
 
@@ -170,7 +170,6 @@ async def get_lowest_price_of_current_bid(bid_id: str):
 
     except Exception as err:
         return ServerError(err=err, errMsg=str(err))
-
 
 
 @bidding_router.post("/history/{bid_id}")
@@ -211,7 +210,6 @@ async def rebid(bid_id: str):
         return ServerError(err=err, errMsg=str(err))
 
 
-
 @bidding_router.put("/cancel/{bid_id}")
 async def cancel_bid(bid_id: str):
 
@@ -240,7 +238,6 @@ async def cancel_bid(bid_id: str):
         return ServerError(err=err, errMsg=str(err))
 
 
-
 @bidding_router.post("/assign/{bid_id}")
 async def assign(bid_id: str, transporters: List[TransporterAssignReq]):
 
@@ -257,12 +254,12 @@ async def assign(bid_id: str, transporters: List[TransporterAssignReq]):
 
         if bid_details.load_status not in valid_assignment_status:
             return ErrorResponse(data=[], client_msg="Transporter cannot be assigned to this bid", dev_msg=f"transporter cannot be assigned to bid with status- {bid_details.load_status}")
-        
-        if len(transporters)>=0:
+
+        if len(transporters) > 0:
             (update_successful_bid_status, error) = await bid.update_bid_status(bid_id=bid_id)
-            
+
             if not update_successful_bid_status:
-                return ErrorResponse(data=[],client_msg="Something Went Wrong while Assigning Transporters", dev_msg=error)
+                return ErrorResponse(data=[], client_msg="Something Went Wrong while Assigning Transporters", dev_msg=error)
 
         (assigned_loads, error) = await bid.assign(bid_id=bid_id, transporters=transporters)
 
@@ -273,8 +270,6 @@ async def assign(bid_id: str, transporters: List[TransporterAssignReq]):
 
     except Exception as err:
         return ServerError(err=err, errMsg=str(err))
-    
-
 
 
 @bidding_router.post("/increment/{bid_id}")
@@ -310,10 +305,8 @@ async def increment_time(bid_id: str, current_time: datetime):
         return ServerError(err=err, errMsg=str(err))
 
 
-
-
 @bidding_router.get("/{status}")
-async def get_bids_according_to_filter_criteria(status: str, shipper_id:str, regioncluster_id:str, branch_id:str, from_date:datetime, to_date:datetime):
+async def get_bids_according_to_filter_criteria(status: str, shipper_id: str, regioncluster_id: str, branch_id: str, from_date: datetime, to_date: datetime):
 
     try:
         if status not in valid_load_status:
