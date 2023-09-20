@@ -143,7 +143,7 @@ async def provide_new_rate_for_bid(bid_id: str, bid_req: TransporterBidReq):
 
         log("BID DETAILS", sorted_bid_details)
 
-        socket_successful = await manager.broadcast(json.dumps(sorted_bid_details))
+        socket_successful = await manager.broadcast(bid_id=bid_id,message=json.dumps(sorted_bid_details))
         log("SOCKET EVENT SENT", socket_successful)
 
         return SuccessResponse(data=sorted_bid_details, dev_msg="Bid submitted successfully", client_msg=f"Bid for Bid-{bid_id} submitted!")
