@@ -5,10 +5,9 @@ from config.scheduler import Scheduler
 bid = Bid()
 sched = Scheduler()
 
+
 def schedule_jobs():
     scheduler = sched.new_scheduler()
-    scheduler.add_job(func=bid.initiate,trigger="interval",id="initiate-bid",minutes=1)
+    scheduler.add_job(func=bid.initiate, trigger="interval",
+                      id="initiate-bid", minutes=1)
     sched.start(scheduler=scheduler)
-
-
-

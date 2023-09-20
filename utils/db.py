@@ -19,9 +19,8 @@ def generate_tables():
 def append_model_to_file(model_code):
     with open('models/models.py', 'a') as model_file:
         model_file.write(model_code)
-    
+
     log("WRITTEN TO MODELS.PY")
-    
 
 
 def get_table_and_model(table_name: str):
