@@ -1,7 +1,8 @@
-from fastapi import APIRouter, BackgroundTasks
+
+from fastapi import APIRouter, BackgroundTasks, WebSocket
 import os,json
 from typing import List
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from utils.response import ErrorResponse, SuccessResponse, SuccessNoContentResponse, ServerError
 from data.bidding import valid_load_status, valid_rebid_status, valid_cancel_status, valid_assignment_status
@@ -29,7 +30,7 @@ async def get_bids_according_to_status(status: str):
         if status not in valid_load_status:
             return ErrorResponse(data=[], dev_msg=os.getenv("STATUS_ERROR"), client_msg=os.getenv("GENERIC_ERROR"))
 
-        (bids, error) = await bid.get_status_wise(status)
+        (bids, error) =await bid.get_status_wise(status)
 
         if error:
             return ErrorResponse(data=[], dev_msg=error, client_msg=os.getenv("GENERIC_ERROR"))
@@ -143,7 +144,9 @@ async def provide_new_rate_for_bid(bid_id: str, bid_req: TransporterBidReq):
 
         log("BID DETAILS", sorted_bid_details)
 
+
         socket_successful = await manager.broadcast(bid_id=bid_id,message=json.dumps(sorted_bid_details))
+
         log("SOCKET EVENT SENT", socket_successful)
 
         return SuccessResponse(data=sorted_bid_details, dev_msg="Bid submitted successfully", client_msg=f"Bid for Bid-{bid_id} submitted!")
@@ -255,7 +258,9 @@ async def assign(bid_id: str, transporters: List[TransporterAssignReq]):
         if bid_details.load_status not in valid_assignment_status:
             return ErrorResponse(data=[], client_msg="Transporter cannot be assigned to this bid", dev_msg=f"transporter cannot be assigned to bid with status- {bid_details.load_status}")
 
+
         if len(transporters) > 0:
+
             (update_successful_bid_status, error) = await bid.update_bid_status(bid_id=bid_id)
 
             if not update_successful_bid_status:
@@ -272,29 +277,28 @@ async def assign(bid_id: str, transporters: List[TransporterAssignReq]):
         return ServerError(err=err, errMsg=str(err))
 
 
-@bidding_router.post("/increment/{bid_id}")
-async def increment_time(bid_id: str, current_time: datetime):
+@bidding_router.get("/increment/{bid_id}/{current_time}")
+async def increment_time(bid_id: str, current_time: str):
 
     try:
         (valid_bid_id, error) = await bid.is_valid(bid_id=bid_id)
 
         if not valid_bid_id:
             return ErrorResponse(data=[], client_msg=os.getenv("INVALID_BID_ERROR"), dev_msg=error)
-
-        (bid_details, error) = await bid.details(bid_id=bid_id)
-
-        if error:
+        (error, bid_details) = await bid.details(bid_id=bid_id)
+        if not error:
+            return ErrorResponse(data=[], client_msg="Something went wrong while trying to increment Bid Time", dev_msg=error)
+        (error, bid_setting_details) = await bid.bid_setting_details(shipper_id=bid_details.bl_shipper_id)
+        if not error:
             return ErrorResponse(data=[], client_msg="Something went wrong while trying to increment Bid Time", dev_msg=error)
 
-        (bid_setting_details, error) = await bid.bid_setting_details(shipper_id=bid_details.bl_shipper_id)
+        current_time_object = datetime.strptime(
+            current_time, '%Y-%m-%d %H:%M:%S.%f')
 
-        if error:
-            return ErrorResponse(data=[], client_msg="Something went wrong while trying to increment Bid Time", dev_msg=error)
-
-        if int((current_time - bid_details.bid_end_time).total_seconds()/60) > bid_setting_details.bid_increment_time:
+        if (bid_details.bid_end_time-current_time_object).total_seconds()/60 > bid_setting_details.bid_increment_time:
             return SuccessNoContentResponse(dev_msg="No Increment Needed", client_msg="No Increment Needed.")
 
-        (bid_end_time_update, error) = await bid.update_bid_end_time(bid_id=bid_id, bid_end_time=(bid_details.bid_end_time+bid_setting_details.bid_increment_duration))
+        (bid_end_time_update, error) = await bid.update_bid_end_time(bid_id=bid_id, bid_end_time=(bid_details.bid_end_time+timedelta(minutes=bid_setting_details.bid_increment_duration)))
 
         if not bid_end_time_update:
             return ErrorResponse(data=bid_id, client_msg="Something Went Wrong While Incrementing Bid Time", dev_msg=error)
@@ -319,5 +323,16 @@ async def get_bids_according_to_filter_criteria(status: str, shipper_id: str, re
 
         return SuccessResponse(data=bids, dev_msg="Correct status, data fetched", client_msg=f"Fetched all {status} bids successfully!")
 
+    except Exception as err:
+        return ServerError(err=err, errMsg=str(err))
+
+
+@bidding_router.get("/exists/redis/{sorted_set}")
+async def if_exists_endpoint(sorted_set: str):
+    try:
+        exist_flag = await redis.if_exists(sorted_set=sorted_set)
+        if exist_flag:
+            return SuccessResponse(data=exist_flag, client_msg="Data Present in Redis", dev_msg="data present in redis")
+        return ErrorResponse(data=[], dev_msg="No data regarding the given key found in redis")
     except Exception as err:
         return ServerError(err=err, errMsg=str(err))

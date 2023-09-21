@@ -65,7 +65,28 @@ class Redis:
         return redis.zrange(sorted_set, 0, -1)
 
     async def exists(self, sorted_set: str, key: str) -> bool:
-
         if not redis.zscore(sorted_set, key):
             return False
         return True
+
+
+    async def delete(self, sorted_set: str):
+
+        if self.if_exists(sorted_set=sorted_set):
+
+            contained_ids = await self.get_all(sorted_set=sorted_set)
+
+            if contained_ids:
+                for contained_id in contained_ids:
+                    keys_of_contained_ids = redis.hkeys(contained_id)
+                    for field in keys_of_contained_ids:
+                        redis.hdel(contained_id, field)
+
+                    redis.zrem(sorted_set, contained_id)
+
+
+    async def if_exists(self, sorted_set: str) -> bool:
+        key_exists = redis.exists(sorted_set)
+        if key_exists:
+            return True
+        return False
