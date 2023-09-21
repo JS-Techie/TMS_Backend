@@ -1,11 +1,13 @@
 from sqlalchemy.sql.functions import func
-import datetime
+from datetime import datetime,timedelta
 import os
+from sqlalchemy import text
+import json
 
 from utils.response import ErrorResponse
 from config.db_config import Session
 from models.models import BiddingLoad, MapLoadSrcDestPair, LoadAssigned, TransporterModel, LkpReason, BidTransaction, MapLoadMaterial, LkpMaterial, PriceMatchRequest, WorkflowApprovals, Tracking, TrackingFleet, MapShipperTransporter, BidSettings
-from utils.utilities import log, convert_date_to_string
+from utils.utilities import log, convert_date_to_string, structurize
 from config.redis import r as redis
 from utils.redis import Redis
 from config.scheduler import Scheduler
@@ -18,23 +20,22 @@ class Bid:
     def initiate(self):
 
         session = Session()
-        current_time = convert_date_to_string(datetime.datetime.now())
+        current_time = convert_date_to_string(datetime.now()+timedelta(minutes=1))
         bids_to_be_initiated = []
 
         try:
 
-            (bids, error) = self.get_status_wise(status="not_started")
-
-            if error:
-                log("ERROR OCCURED DURING FETCH BIDS STATUSWISE", error)
+            bids=(session.query(BiddingLoad).filter(BiddingLoad.is_active == True, BiddingLoad.load_status == "not_started").all())
+            log("THE BIDS TO INITIATE:", bids)
+            if not bids:
+                log("ERROR OCCURED DURING FETCH BIDS STATUSWISE")
                 return
 
             for bid in bids:
-                if convert_date_to_string(bid.bid_time) == current_time:
-                    bids_to_be_initiated.append(bid.bl_id)
-
-            for bid in bids_to_be_initiated:
-                setattr(bid, "load_status", "live")
+                log("THE BID TIME",convert_date_to_string(bid.bid_time))
+                log("THE CURRENT TIME", current_time)
+                if convert_date_to_string(bid.bid_time) == current_time:                    
+                    setattr(bid, "load_status", "live")
 
             session.commit()
 
@@ -53,51 +54,86 @@ class Bid:
 
         finally:
             session.close()
+            
+
+    def close(self):
+
+        session = Session()
+        current_time = convert_date_to_string(datetime.now()+timedelta(minutes=1))
+
+        try:
+
+            bids=(session.query(BiddingLoad).filter(BiddingLoad.is_active == True, BiddingLoad.load_status == "live").all())
+            log("THE BIDS TO CLOSE:", bids)
+
+            if not bids:
+                log("ERROR OCCURED DURING FETCH BIDS STATUSWISE TO CLOSE", bids)
+                return
+
+            for bid in bids:
+                if convert_date_to_string(bid.bid_end_time) == current_time:
+                    setattr(bid, "load_status", "pending")
+                    redis.delete(sorted_set=bid) ##MEHUL : No checks here because if there is no sorted set then it will return false too, so how to catch exception ?
+            
+            session.commit()
+            
+            return
+
+        except Exception as e:
+            session.rollback()
+            log("ERROR DURING CLOSE BID", str(e))
+            return
+
+        finally:
+            session.close()
 
     async def get_status_wise(self, status: str) -> (any, str):
 
         session = Session()
 
         try:
+            
+            bid_array = session.execute(text("""
+            SELECT
+                t_bidding_load.bl_id,
+                t_bidding_load.bid_time,
+                t_bidding_load.reporting_from_time,
+                t_bidding_load.reporting_to_time,
+                t_bidding_load.load_type,
+                t_bidding_load.bl_cancellation_reason,
+                t_map_load_src_dest_pair.src_city,
+                t_map_load_src_dest_pair.dest_city,
+                t_load_assigned.la_transporter_id,
+                t_load_assigned.trans_pos_in_bid,
+                t_load_assigned.price,
+                t_load_assigned.price_difference_percent,
+                t_load_assigned.no_of_fleets_assigned,
+                t_transporter.name,
+                t_transporter.contact_name,
+                t_transporter.contact_no,
+                t_tracking_fleet.tf_id,
+                t_tracking_fleet.fleet_no,
+                t_tracking_fleet.src_addrs,
+                t_tracking_fleet.dest_addrs
+            FROM t_bidding_load
+            LEFT JOIN t_load_assigned ON t_load_assigned.la_bidding_load_id = t_bidding_load.bl_id
+            LEFT JOIN t_transporter ON t_transporter.trnsp_id = t_load_assigned.la_transporter_id
+            LEFT JOIN t_map_load_src_dest_pair ON t_map_load_src_dest_pair.mlsdp_bidding_load_id = t_bidding_load.bl_id
+            LEFT JOIN t_tracking_fleet ON t_tracking_fleet.tf_transporter_id = t_load_assigned.la_transporter_id
+            WHERE
+                t_bidding_load.is_active = true
+                AND t_bidding_load.load_status = :load_status;"""), params={"load_status": status})
+            
+            rows=bid_array.fetchall()
 
-            all_bid_details = (session
-                               .query(BiddingLoad,
-                                      func.array_agg(
-                                          MapLoadMaterial.mlm_material_id),
-                                      func.array_agg(LkpMaterial.name),
-                                      func.array_agg(
-                                          MapLoadSrcDestPair.src_city, MapLoadSrcDestPair.dest_city),
-                                      func.array_agg(TransporterModel.name, TransporterModel.trnsp_id,
-                                                     TransporterModel.contact_name, TransporterModel.contact_no),
-                                      func.array_agg(Tracking.trck_id),
-                                      func.array_agg(TrackingFleet.tf_id),
-                                      func.array_agg(PriceMatchRequest),
-                                      func.array_agg(LoadAssigned))
-                               .outerjoin(MapLoadMaterial, MapLoadMaterial.mlm_bidding_load_id == BiddingLoad.bl_id)
-                               .outerjoin(LkpMaterial, MapLoadMaterial.mlm_material_id == LkpMaterial.id)
-                               .outerjoin(MapLoadSrcDestPair, MapLoadSrcDestPair.mlsdp_bidding_load_id == BiddingLoad.bl_id)
-                               .outerjoin(PriceMatchRequest, PriceMatchRequest.pmr_bidding_load_id == BiddingLoad.bl_id)
-                               .outerjoin(LoadAssigned, LoadAssigned.la_bidding_load_id == BiddingLoad.bl_id)
-                               .filter
-                               (BiddingLoad.is_active == True, BiddingLoad.load_status == status,
-                                MapLoadMaterial.is_active == True,
-                                MapLoadSrcDestPair.is_active == True,
-                                PriceMatchRequest.is_active == True,
-                                LoadAssigned.is_active == True)
-                               .group_by(BiddingLoad.bl_id)
-                               .all())
-
-            bid_array = []
-
-            for detail in all_bid_details:
-                bid_details, material_ids, material_details, source_dest, price_match_req, assigned_loads = detail
-                bid_array.append({"bid": bid_details, "load_material": material_ids, "lkp_material": material_details,
-                                 "Map_load_src_dest_pair": source_dest, "PriceMatchRequest": price_match_req, "LoadAssigned": assigned_loads})
-
-            log("BIDS", bid_array)
-
-            return (bid_array, "")
-
+            log("BIDS", rows)
+            b_arr = []
+            for row in rows:
+                log("ROW",row.bl_id)
+                b_arr.append(row._mapping)
+                
+            return (structurize(b_arr), "")
+        
         except Exception as e:
             session.rollback()
             return ({}, str(e))
@@ -112,21 +148,46 @@ class Bid:
 
         try:
 
-            filterCriteria_1 = BiddingLoad.load_status == status
-            filterCriteria_2 = BiddingLoad.is_active == True
-            filterCriteria_3 = BiddingLoad.bl_shipper_id == shipper_id if shipper_id else BiddingLoad.is_active == True
-            filterCriteria_4 = BiddingLoad.bl_region_cluster_id == regioncluster_id if regioncluster_id else BiddingLoad.is_active == True
-            filterCriteria_5 = BiddingLoad.bl_branch_id == branch_id if branch_id else BiddingLoad.is_active == True
-            filterCriteria_6 = BiddingLoad.created_at >= from_date if from_date else BiddingLoad.is_active == True
-            filterCriteria_7 = BiddingLoad.created_at <= to_date if to_date else BiddingLoad.is_active == True
+            bid_array = session.execute(text("""
+            SELECT
+                t_bidding_load.bl_id,
+                t_bidding_load.bid_time,
+                t_bidding_load.reporting_from_time,
+                t_bidding_load.reporting_to_time,
+                t_bidding_load.load_type,
+                t_bidding_load.bl_cancellation_reason,
+                t_map_load_src_dest_pair.src_city,
+                t_map_load_src_dest_pair.dest_city,
+                t_load_assigned.la_transporter_id,
+                t_load_assigned.trans_pos_in_bid,
+                t_load_assigned.price,
+                t_load_assigned.price_difference_percent,
+                t_load_assigned.no_of_fleets_assigned,
+                t_transporter.name,
+                t_transporter.contact_name,
+                t_transporter.contact_no,
+                t_tracking_fleet.tf_id,
+                t_tracking_fleet.fleet_no,
+                t_tracking_fleet.src_addrs,
+                t_tracking_fleet.dest_addrs
+            FROM t_bidding_load
+            LEFT JOIN t_load_assigned ON t_load_assigned.la_bidding_load_id = t_bidding_load.bl_id
+            LEFT JOIN t_transporter ON t_transporter.trnsp_id = t_load_assigned.la_transporter_id
+            LEFT JOIN t_map_load_src_dest_pair ON t_map_load_src_dest_pair.mlsdp_bidding_load_id = t_bidding_load.bl_id
+            LEFT JOIN t_tracking_fleet ON t_tracking_fleet.tf_transporter_id = t_load_assigned.la_transporter_id
+            WHERE
+                t_bidding_load.is_active = true
+                AND t_bidding_load.load_status = :load_status;"""), params={"load_status": status})
+            
+            rows=bid_array.fetchall()
 
-            bid_array = session.query(BiddingLoad).filter(filterCriteria_1, filterCriteria_2, filterCriteria_3,
-                                                        filterCriteria_4, filterCriteria_5, filterCriteria_6, filterCriteria_7).all()
-
-            if not bid_array:
-                return ("", "Error While Fetching Data according to filter criterias !")
-
-            return (bid_array, "")
+            log("BIDS", rows)
+            b_arr = []
+            for row in rows:
+                log("ROW",row.bl_id)
+                b_arr.append(row._mapping)
+                
+            return (structurize(b_arr), "")
 
         except Exception as e:
             session.rollback()
@@ -201,7 +262,7 @@ class Bid:
 
             bid_details = session.query(BiddingLoad).filter(
                 BiddingLoad.bl_id == bid_id).first()
-
+            log("BID DETIALS >>", bid_details)
             if not bid_details:
                 return False, ""
 
@@ -324,41 +385,6 @@ class Bid:
         finally:
             session.close()
 
-    def close(self):
-
-        session = Session()
-        current_time = convert_date_to_string(datetime.datetime.now())
-        bids_to_be_closed = []
-
-        try:
-            (bids, error) = self.get_status_wise(status="live")
-
-            if error:
-                log("ERROR OCCURED DURING FETCH BIDS STATUSWISE", error)
-                return
-            ## MEHUL
-            for bid in bids:
-                if convert_date_to_string(bid.bid_end_time) == current_time:
-                    bids_to_be_closed.append(bid.bl_id)
-
-            for bid in bids_to_be_closed:
-                setattr(bid, "load_status", "pending")
-                
-                transporter_ids = redis.get_all(sorted_set= bid)
-        
-                for transporter_id in transporter_ids:
-                    deleted_transporter_data = redis.hdel(transporter_id)
-                    
-                redis.zrem(bid) ##MEhul
-            return
-
-        except Exception as e:
-            session.rollback()
-            log("ERROR DURING CLOSE BID", str(e))
-            return
-
-        finally:
-            session.close()
 
     async def update_bid_status(bid_id: str) -> (bool, str):
 

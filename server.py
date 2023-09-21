@@ -9,12 +9,13 @@ import json,datetime
 
 from routes.routes import setup_routes
 from config.socket import manager
+from utils.background_jobs import schedule_jobs
 
 app : FastAPI = FastAPI()
 
 
 setup_routes(app)
-
+# schedule_jobs()
 
 
 html = """
@@ -59,4 +60,3 @@ async def websocket_endpoint(websocket: WebSocket):
         manager.disconnect(websocket)
         message = {"message":"Offline"}
         await manager.broadcast(json.dumps(message))
-
