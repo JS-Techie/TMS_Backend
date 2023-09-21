@@ -2,6 +2,7 @@ from sqlalchemy.sql.functions import func
 from datetime import datetime, timedelta
 import os
 from sqlalchemy import text
+from string import Template
 import json
 
 from utils.response import ErrorResponse
@@ -10,12 +11,13 @@ from models.models import BiddingLoad, MapLoadSrcDestPair, LoadAssigned, Transpo
 from utils.utilities import log, convert_date_to_string, structurize
 from config.redis import r as redis
 from utils.redis import Redis
+from data.bidding import status_wise_fetch_query, filter_wise_fetch_query
+from schemas.bidding import FilterBidsRequest
 from config.scheduler import Scheduler
 
 sched = Scheduler()
 redis = Redis()
 
-#Order functions according to flow : JUNED
 
 class Bid:
 
@@ -42,11 +44,6 @@ class Bid:
 
             session.commit()
 
-            scheduler = sched.new_scheduler()
-            scheduler.add_job(
-                func=self.close, trigger="interval", id="close-bid", minutes=1)
-            sched.start(scheduler=scheduler)
-
             log("BIDS ARE IN PROGRESS", bids)
             return
 
@@ -58,75 +55,13 @@ class Bid:
         finally:
             session.close()
 
-    def close(self):
-
-        session = Session()
-        current_time = convert_date_to_string(
-            datetime.now()+timedelta(minutes=1))
-
-        try:
-
-            bids = (session.query(BiddingLoad).filter(
-                BiddingLoad.is_active == True, BiddingLoad.load_status == "live").all())
-            log("THE BIDS TO CLOSE:", bids)
-
-            if not bids:
-                log("ERROR OCCURED DURING FETCH BIDS STATUSWISE TO CLOSE", bids)
-                return
-
-            for bid in bids:
-                if convert_date_to_string(bid.bid_end_time) == current_time:
-                    setattr(bid, "load_status", "pending")
-                    # MEHUL : No checks here because if there is no sorted set then it will return false too, so how to catch exception ?
-                    redis.delete(sorted_set=bid)
-
-            session.commit()
-
-            return
-
-        except Exception as e:
-            session.rollback()
-            log("ERROR DURING CLOSE BID", str(e))
-            return
-
-        finally:
-            session.close()
-
     async def get_status_wise(self, status: str) -> (any, str):
         session = Session()
 
         try:
 
-            bid_array = session.execute(text("""
-            SELECT
-                t_bidding_load.bl_id,
-                t_bidding_load.bid_time,
-                t_bidding_load.reporting_from_time,
-                t_bidding_load.reporting_to_time,
-                t_bidding_load.load_type,
-                t_bidding_load.bl_cancellation_reason,
-                t_map_load_src_dest_pair.src_city,
-                t_map_load_src_dest_pair.dest_city,
-                t_load_assigned.la_transporter_id,
-                t_load_assigned.trans_pos_in_bid,
-                t_load_assigned.price,
-                t_load_assigned.price_difference_percent,
-                t_load_assigned.no_of_fleets_assigned,
-                t_transporter.name,
-                t_transporter.contact_name,
-                t_transporter.contact_no,
-                t_tracking_fleet.tf_id,
-                t_tracking_fleet.fleet_no,
-                t_tracking_fleet.src_addrs,
-                t_tracking_fleet.dest_addrs
-            FROM t_bidding_load
-            LEFT JOIN t_load_assigned ON t_load_assigned.la_bidding_load_id = t_bidding_load.bl_id
-            LEFT JOIN t_transporter ON t_transporter.trnsp_id = t_load_assigned.la_transporter_id
-            LEFT JOIN t_map_load_src_dest_pair ON t_map_load_src_dest_pair.mlsdp_bidding_load_id = t_bidding_load.bl_id
-            LEFT JOIN t_tracking_fleet ON t_tracking_fleet.tf_transporter_id = t_load_assigned.la_transporter_id
-            WHERE
-                t_bidding_load.is_active = true
-                AND t_bidding_load.load_status = :load_status;"""), params={"load_status": status})
+            bid_array = session.execute(text(status_wise_fetch_query), params={
+                                        "load_status": status})
 
             rows = bid_array.fetchall()
 
@@ -135,6 +70,7 @@ class Bid:
             for row in rows:
                 log("ROW", row.bl_id)
                 b_arr.append(row._mapping)
+                
 
             return (structurize(b_arr), "")
 
@@ -145,42 +81,35 @@ class Bid:
         finally:
             session.close()
 
-    async def get_filter_wise(self,status: str) -> (any, str):
+    async def get_filter_wise(self, status: str, filter_criteria: FilterBidsRequest) -> (any, str):
         session = Session()
 
         try:
-            
-            ## Put raw SQL queries in data/bidding.py : JUNED
-            bid_array = session.execute(text("""
-            SELECT
-                t_bidding_load.bl_id,
-                t_bidding_load.bid_time,
-                t_bidding_load.reporting_from_time,
-                t_bidding_load.reporting_to_time,
-                t_bidding_load.load_type,
-                t_bidding_load.bl_cancellation_reason,
-                t_map_load_src_dest_pair.src_city,
-                t_map_load_src_dest_pair.dest_city,
-                t_load_assigned.la_transporter_id,
-                t_load_assigned.trans_pos_in_bid,
-                t_load_assigned.price,
-                t_load_assigned.price_difference_percent,
-                t_load_assigned.no_of_fleets_assigned,
-                t_transporter.name,
-                t_transporter.contact_name,
-                t_transporter.contact_no,
-                t_tracking_fleet.tf_id,
-                t_tracking_fleet.fleet_no,
-                t_tracking_fleet.src_addrs,
-                t_tracking_fleet.dest_addrs
-            FROM t_bidding_load
-            LEFT JOIN t_load_assigned ON t_load_assigned.la_bidding_load_id = t_bidding_load.bl_id
-            LEFT JOIN t_transporter ON t_transporter.trnsp_id = t_load_assigned.la_transporter_id
-            LEFT JOIN t_map_load_src_dest_pair ON t_map_load_src_dest_pair.mlsdp_bidding_load_id = t_bidding_load.bl_id
-            LEFT JOIN t_tracking_fleet ON t_tracking_fleet.tf_transporter_id = t_load_assigned.la_transporter_id
-            WHERE
-                t_bidding_load.is_active = true
-                AND t_bidding_load.load_status = :load_status;"""), params={"load_status": status})
+
+            filter_values = {
+                'shipper_id_filter': ' AND t_bidding_load.bl_shipper_id = \'$shipper_id\'',
+                'regioncluster_id_filter': ' AND t_bidding_load.bl_region_cluster_id = \'$region_cluster_id\'',
+                'branch_id_filter': ' AND t_bidding_load.bl_branch_id = \'$branch_id\'',
+                'from_date_filter': ' AND t_bidding_load.created_at > \'$from_date\'',
+                'to_date_filter': ' AND t_bidding_load.created_at <= \'$to_date\''
+            }
+
+            filter_values["shipper_id_filter"] = Template(filter_values['shipper_id_filter']).safe_substitute(
+                shipper_id=filter_criteria.shipper_id) if filter_criteria.shipper_id else ""
+            filter_values["regioncluster_id_filter"] = Template(filter_values["regioncluster_id_filter"]).safe_substitute(
+                region_cluster_id=filter_criteria.rc_id) if filter_criteria.rc_id else ""
+            filter_values["branch_id_filter"] = Template(filter_values["branch_id_filter"]).safe_substitute(
+                branch_id=filter_criteria.branch_id) if filter_criteria.branch_id else ""
+            filter_values["from_date_filter"] = Template(filter_values["from_date_filter"]).safe_substitute(
+                from_date=filter_criteria.from_date) if filter_criteria.from_date else ""
+            filter_values["to_date_filter"] = Template(filter_values["to_date_filter"]).safe_substitute(
+                to_date=filter_criteria.to_date) if filter_criteria.to_date else ""
+
+            filter_wise_query = Template(
+                filter_wise_fetch_query).safe_substitute(filter_values)
+            log("QUERY >>>>", filter_wise_query)
+            bid_array = session.execute(text(filter_wise_query), params={
+                                        "load_status": status})
 
             rows = bid_array.fetchall()
 
@@ -249,7 +178,7 @@ class Bid:
         finally:
             session.close()
 
-    async def details(self, bid_id: str) -> (bool, str):
+    async def details(self, bid_id: str) -> (bool, any):
 
         session = Session()
 
@@ -259,7 +188,7 @@ class Bid:
                 BiddingLoad.bl_id == bid_id).first()
             log("BID DETIALS >>", bid_details)
             if not bid_details:
-                return False, ""
+                return (False, {})
 
             return (True, bid_details)
 
@@ -270,7 +199,7 @@ class Bid:
         finally:
             session.close()
 
-    async def new_bid(self, bid_id: str, transporter_id: str, rate: float, comment: str) -> (any, str):
+    async def new(self, bid_id: str, transporter_id: str, rate: float, comment: str) -> (any, str):
 
         session = Session()
         user_id = os.getenv("USER_ID")
@@ -359,7 +288,7 @@ class Bid:
             session.close()
 
     async def lowest_price(self, bid_id: str) -> (float, str):
-
+        log("FETCHING LOWEST PRICE FROM DB")
         session = Session()
 
         try:
@@ -378,9 +307,7 @@ class Bid:
         finally:
             session.close()
 
-## Change signature : JUNED
-
-    async def update_bid_status(self, bid_id: str) -> (bool, str):
+    async def status_update(self, bid_id: str) -> (bool, str):
 
         session = Session()
         try:
@@ -450,21 +377,53 @@ class Bid:
         finally:
             session.close()
 
-## Change signature : JUNED
+    def close(self):
 
-    async def bid_setting_details(self, shipper_id: str) -> (bool, str):
+        session = Session()
+        current_time = convert_date_to_string(
+            datetime.now()+timedelta(minutes=1))
+
+        try:
+
+            bids = (session.query(BiddingLoad).filter(
+                BiddingLoad.is_active == True, BiddingLoad.load_status == "live").all())
+            log("THE BIDS TO CLOSE:", bids)
+
+            if not bids:
+                log("ERROR OCCURED DURING FETCH BIDS STATUSWISE TO CLOSE", bids)
+                return
+
+            for bid in bids:
+                if convert_date_to_string(bid.bid_end_time) == current_time:
+                    setattr(bid, "load_status", "pending")
+                    # MEHUL : No checks here because if there is no sorted set then it will return false too, so how to catch exception ?
+                    redis.delete(sorted_set=bid)
+
+            session.commit()
+
+            return
+
+        except Exception as e:
+            session.rollback()
+            log("ERROR DURING CLOSE BID", str(e))
+            return
+
+        finally:
+            session.close()
+
+    async def setting_details(self, shipper_id: str) -> (bool, str):
 
         session = Session()
 
         try:
 
-            bid_setting_details = session.query(BidSettings).filter(
+            setting_details = session.query(BidSettings).filter(
                 BidSettings.bdsttng_shipper_id == shipper_id).first()
 
-            if not bid_setting_details:
+            if not setting_details:
                 return False, ""
 
-            return (True, bid_setting_details)
+            return (True, setting_details)
 
         except Exception as e:
             session.rollback()

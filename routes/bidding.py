@@ -11,7 +11,7 @@ from utils.bids.bidding import Bid
 from utils.bids.transporters import Transporter
 from utils.bids.shipper import Shipper
 from utils.redis import Redis
-from schemas.bidding import HistoricalRatesReq, TransporterBidReq, TransporterAssignReq
+from schemas.bidding import HistoricalRatesReq, TransporterBidReq, TransporterAssignReq, FilterBidsRequest
 from utils.utilities import log
 from config.socket import manager
 
@@ -23,8 +23,6 @@ bid = Bid()
 shipper = Shipper()
 redis = Redis()
 
-# Order APIs according to flow : JUNED
-
 
 @bidding_router.get("/status/{status}")
 async def get_bids_according_to_status(status: str):
@@ -34,6 +32,24 @@ async def get_bids_according_to_status(status: str):
             return ErrorResponse(data=[], dev_msg=os.getenv("STATUS_ERROR"), client_msg=os.getenv("GENERIC_ERROR"))
 
         (bids, error) = await bid.get_status_wise(status)
+
+        if error:
+            return ErrorResponse(data=[], dev_msg=error, client_msg=os.getenv("GENERIC_ERROR"))
+
+        return SuccessResponse(data=bids, dev_msg="Correct status, data fetched", client_msg=f"Fetched all {status} bids successfully!")
+
+    except Exception as err:
+        return ServerError(err=err, errMsg=str(err))
+
+
+@bidding_router.post("/filter/{status}")
+async def get_bids_according_to_filter_criteria(status: str, filter_criteria: FilterBidsRequest):
+
+    try:
+        if status not in valid_load_status:
+            return ErrorResponse(data=[], dev_msg=os.getenv("STATUS_ERROR"), client_msg=os.getenv("GENERIC_ERROR"))
+
+        (bids, error) = await bid.get_filter_wise(status=status, filter_criteria=filter_criteria)
 
         if error:
             return ErrorResponse(data=[], dev_msg=error, client_msg=os.getenv("GENERIC_ERROR"))
@@ -126,7 +142,7 @@ async def provide_new_rate_for_bid(bid_id: str, bid_req: TransporterBidReq):
 
         log("VALID RATE", bid_id)
 
-        (new_record, error) = await bid.new_bid(
+        (new_record, error) = await bid.new(
             bid_id, bid_req.transporter_id, bid_req.rate, bid_req.comment)
 
         log("NEW BID INSERTED", bid_id)
@@ -157,12 +173,44 @@ async def provide_new_rate_for_bid(bid_id: str, bid_req: TransporterBidReq):
         return ServerError(err=err, errMsg=str(err))
 
 
+@bidding_router.get("/increment/{bid_id}/{current_time}")
+async def increment_time(bid_id: str, current_time: str):
+
+    try:
+        (valid_bid_id, error) = await bid.is_valid(bid_id=bid_id)
+
+        if not valid_bid_id:
+            return ErrorResponse(data=[], client_msg=os.getenv("INVALID_BID_ERROR"), dev_msg=error)
+        (error, bid_details) = await bid.details(bid_id=bid_id)
+        if not error:
+            return ErrorResponse(data=[], client_msg="Something went wrong while trying to increment Bid Time", dev_msg=error)
+        (error, setting_details) = await bid.setting_details(shipper_id=bid_details.bl_shipper_id)
+        if not error:
+            return ErrorResponse(data=[], client_msg="Something went wrong while trying to increment Bid Time", dev_msg=error)
+
+        current_time_object = datetime.strptime(
+            current_time, '%Y-%m-%d %H:%M:%S.%f')
+
+        if (bid_details.bid_end_time-current_time_object).total_seconds()/60 > setting_details.bid_increment_time:
+            return SuccessNoContentResponse(dev_msg="No Increment Needed", client_msg="No Increment Needed.")
+
+        (bid_end_time_update, error) = await bid.update_bid_end_time(bid_id=bid_id, bid_end_time=(bid_details.bid_end_time+timedelta(minutes=setting_details.bid_increment_duration)))
+
+        if not bid_end_time_update:
+            return ErrorResponse(data=bid_id, client_msg="Something Went Wrong While Incrementing Bid Time", dev_msg=error)
+
+        return SuccessResponse(data=bid_id, client_msg="Bid End Time Updated Successfully!", dev_msg="Bid end time was updated successfully!")
+
+    except Exception as err:
+        return ServerError(err=err, errMsg=str(err))
+
+
 @bidding_router.get("/lowest/{bid_id}")
 async def get_lowest_price_of_current_bid(bid_id: str):
 
     try:
 
-        (lowest_price, error) = redis.get_first(bid_id)
+        (lowest_price, error) =await redis.get_first(bid_id)
 
         if error:
 
@@ -186,7 +234,7 @@ async def fetch_all_rates_given_by_transporter(bid_id: str, req: HistoricalRates
         if not valid_bid_id:
             return ErrorResponse(data=bid_id, client_msg=os.getenv("INVALID_BID_ERROR"), dev_msg=error)
 
-        return transporter.historical_rates(transporter_id=req.transporter_id, bid_id=bid_id)
+        return await transporter.historical_rates(transporter_id=req.transporter_id, bid_id=bid_id)
 
     except Exception as err:
         return ServerError(err=err, errMsg=str(err))
@@ -215,7 +263,7 @@ async def rebid(bid_id: str):
         return ServerError(err=err, errMsg=str(err))
 
 
-@bidding_router.put("/cancel/{bid_id}")
+@bidding_router.delete("/cancel/{bid_id}")
 async def cancel_bid(bid_id: str):
 
     try:
@@ -223,20 +271,24 @@ async def cancel_bid(bid_id: str):
 
         if not valid_bid_id:
             return ErrorResponse(data=[], client_msg=os.getenv("INVALID_BID_ERROR"), dev_msg=error)
+        log("BID ID IS VALID")
+        (details_fetch_successful, bid_details) = await bid.details(bid_id=bid_id)
+        
+        if not details_fetch_successful:
+            return ErrorResponse(data=[], client_msg="Something went wrong while trying to cancel", dev_msg=bid_details)
+        
+        log("BID DETAILS FETCHED")
+        
+        if bid_details.load_status not in valid_cancel_status:
 
-        (bid_details, error) = await bid.details(bid_id=bid_id)
-
-        if error:
-            return ErrorResponse(data=[], client_msg="Something went wrong while trying to cancel", dev_msg=error)
-
-        if bid_details.status not in valid_cancel_status:
-
-            return ErrorResponse(data=[], client_msg="This bid is not valid and cannot be cancelled!", dev_msg=f"Bid-{bid_id} is {bid_details.status}, cannot be cancelled!")
+            return ErrorResponse(data=[], client_msg="This bid is not valid and cannot be cancelled!", dev_msg=f"Bid-{bid_id} is {bid_details.load_status}, cannot be cancelled!")
+        
+        log("BID STATUS IS VALID")
         (update_successful, error) = await bid.update_status(bid_id=bid_id, status="cancelled")
 
         if not update_successful:
-            return ErrorResponse(data=bid_id, client_msg=os.getenv("BID_CANCEL_ERROR"), dev_msg=error)
-
+            return ErrorResponse(data=[], client_msg=os.getenv("BID_CANCEL_ERROR"), dev_msg=error)
+        log("BID STATUS IS NOW CANCELLED")
         return SuccessNoContentResponse(dev_msg="Bid cancelled successfully", client_msg="Your Bid is Successfully Cancelled")
 
     except Exception as err:
@@ -262,7 +314,7 @@ async def assign(bid_id: str, transporters: List[TransporterAssignReq]):
 
         if len(transporters) > 0:
 
-            (update_successful_bid_status, error) = await bid.update_bid_status(bid_id=bid_id)
+            (update_successful_bid_status, error) = await bid.status_update(bid_id=bid_id)
 
             if not update_successful_bid_status:
                 return ErrorResponse(data=[], client_msg="Something Went Wrong while Assigning Transporters", dev_msg=error)
@@ -277,65 +329,3 @@ async def assign(bid_id: str, transporters: List[TransporterAssignReq]):
     except Exception as err:
         return ServerError(err=err, errMsg=str(err))
 
-
-@bidding_router.get("/increment/{bid_id}/{current_time}")
-async def increment_time(bid_id: str, current_time: str):
-
-    try:
-        (valid_bid_id, error) = await bid.is_valid(bid_id=bid_id)
-
-        if not valid_bid_id:
-            return ErrorResponse(data=[], client_msg=os.getenv("INVALID_BID_ERROR"), dev_msg=error)
-        (error, bid_details) = await bid.details(bid_id=bid_id)
-        if not error:
-            return ErrorResponse(data=[], client_msg="Something went wrong while trying to increment Bid Time", dev_msg=error)
-        (error, bid_setting_details) = await bid.bid_setting_details(shipper_id=bid_details.bl_shipper_id)
-        if not error:
-            return ErrorResponse(data=[], client_msg="Something went wrong while trying to increment Bid Time", dev_msg=error)
-
-        current_time_object = datetime.strptime(
-            current_time, '%Y-%m-%d %H:%M:%S.%f')
-
-        if (bid_details.bid_end_time-current_time_object).total_seconds()/60 > bid_setting_details.bid_increment_time:
-            return SuccessNoContentResponse(dev_msg="No Increment Needed", client_msg="No Increment Needed.")
-
-        (bid_end_time_update, error) = await bid.update_bid_end_time(bid_id=bid_id, bid_end_time=(bid_details.bid_end_time+timedelta(minutes=bid_setting_details.bid_increment_duration)))
-
-        if not bid_end_time_update:
-            return ErrorResponse(data=bid_id, client_msg="Something Went Wrong While Incrementing Bid Time", dev_msg=error)
-
-        return SuccessResponse(data=bid_id, client_msg="Bid End Time Updated Successfully!", dev_msg="Bid end time was updated successfully!")
-
-    except Exception as err:
-        return ServerError(err=err, errMsg=str(err))
-
-# Change params to req body : JUNED
-
-
-@bidding_router.get("filter/{status}")
-async def get_bids_according_to_filter_criteria(status: str, shipper_id: str, regioncluster_id: str, branch_id: str, from_date: datetime, to_date: datetime):
-
-    try:
-        if status not in valid_load_status:
-            return ErrorResponse(data=[], dev_msg=os.getenv("STATUS_ERROR"), client_msg=os.getenv("GENERIC_ERROR"))
-
-        (bids, error) = await bid.get_filter_wise(status=status)
-
-        if error:
-            return ErrorResponse(data=[], dev_msg=error, client_msg=os.getenv("GENERIC_ERROR"))
-
-        return SuccessResponse(data=bids, dev_msg="Correct status, data fetched", client_msg=f"Fetched all {status} bids successfully!")
-
-    except Exception as err:
-        return ServerError(err=err, errMsg=str(err))
-
-
-@bidding_router.get("/exists/redis/{sorted_set}")
-async def if_exists_endpoint(sorted_set: str):
-    try:
-        exist_flag = await redis.if_exists(sorted_set=sorted_set)
-        if exist_flag:
-            return SuccessResponse(data=exist_flag, client_msg="Data Present in Redis", dev_msg="data present in redis")
-        return ErrorResponse(data=[], dev_msg="No data regarding the given key found in redis")
-    except Exception as err:
-        return ServerError(err=err, errMsg=str(err))
