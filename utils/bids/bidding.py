@@ -15,6 +15,7 @@ from config.scheduler import Scheduler
 sched = Scheduler()
 redis = Redis()
 
+
 class Bid:
 
     def initiate(self):
@@ -87,8 +88,8 @@ class Bid:
         finally:
             session.close()
 
-    async def get_status_wise(self, status: str) -> (any, str):
 
+    async def get_status_wise(self, status: str) -> (any, str):
         session = Session()
 
         try:
@@ -196,9 +197,6 @@ class Bid:
         finally:
             session.close()
 
-
-
-
     async def is_valid(self, bid_id: str) -> (bool, str):
 
         session = Session()
@@ -221,8 +219,6 @@ class Bid:
 
         finally:
             session.close()
-
-
 
     async def update_status(self, bid_id: str, status: str) -> (bool, str):
 
@@ -251,9 +247,6 @@ class Bid:
         finally:
             session.close()
 
-
-
-
     async def details(self, bid_id: str) -> (bool, str):
 
         session = Session()
@@ -274,8 +267,6 @@ class Bid:
 
         finally:
             session.close()
-
-
 
     async def new_bid(self, bid_id: str, transporter_id: str, rate: float, comment: str) -> (any, str):
 
@@ -385,8 +376,7 @@ class Bid:
         finally:
             session.close()
 
-
-    async def update_bid_status(bid_id: str) -> (bool, str):
+    async def update_bid_status(self, bid_id: str) -> (bool, str):
 
         session = Session()
         try:
@@ -410,7 +400,7 @@ class Bid:
         finally:
             session.close()
 
-    async def assign(bid_id: str, transporters: list) -> (list, str):
+    async def assign(self, bid_id: str, transporters: list) -> (list, str):
 
         session = Session()
         user_id = os.getenv("USER_ID")

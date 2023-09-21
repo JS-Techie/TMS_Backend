@@ -12,8 +12,7 @@ sched = Scheduler()
 
 
 class Shipper:
-    
-    
+
     async def is_valid(self, shipper_id: str) -> (bool, str):
 
         session = Session()
@@ -36,5 +35,3 @@ class Shipper:
 
         finally:
             session.close()
-
-

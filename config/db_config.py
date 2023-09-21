@@ -7,9 +7,3 @@ import os
 engine = create_engine(os.getenv("DB_URL"), echo=True, future=True)
 Session = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
-
-
-
-
-
-
