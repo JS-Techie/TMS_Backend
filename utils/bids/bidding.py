@@ -1,5 +1,5 @@
 from sqlalchemy.sql.functions import func
-from datetime import datetime,timedelta
+from datetime import datetime, timedelta
 import os
 from sqlalchemy import text
 import json
@@ -15,27 +15,29 @@ from config.scheduler import Scheduler
 sched = Scheduler()
 redis = Redis()
 
+#Order functions according to flow : JUNED
 
 class Bid:
 
     def initiate(self):
 
         session = Session()
-        current_time = convert_date_to_string(datetime.now()+timedelta(minutes=1))
-        bids_to_be_initiated = []
+        current_time = convert_date_to_string(
+            datetime.now()+timedelta(minutes=1))
 
         try:
 
-            bids=(session.query(BiddingLoad).filter(BiddingLoad.is_active == True, BiddingLoad.load_status == "not_started").all())
+            bids = (session.query(BiddingLoad).filter(
+                BiddingLoad.is_active == True, BiddingLoad.load_status == "not_started").all())
             log("THE BIDS TO INITIATE:", bids)
             if not bids:
                 log("ERROR OCCURED DURING FETCH BIDS STATUSWISE")
                 return
 
             for bid in bids:
-                log("THE BID TIME",convert_date_to_string(bid.bid_time))
+                log("THE BID TIME", convert_date_to_string(bid.bid_time))
                 log("THE CURRENT TIME", current_time)
-                if convert_date_to_string(bid.bid_time) == current_time:                    
+                if convert_date_to_string(bid.bid_time) == current_time:
                     setattr(bid, "load_status", "live")
 
             session.commit()
@@ -55,16 +57,17 @@ class Bid:
 
         finally:
             session.close()
-            
 
     def close(self):
 
         session = Session()
-        current_time = convert_date_to_string(datetime.now()+timedelta(minutes=1))
+        current_time = convert_date_to_string(
+            datetime.now()+timedelta(minutes=1))
 
         try:
 
-            bids=(session.query(BiddingLoad).filter(BiddingLoad.is_active == True, BiddingLoad.load_status == "live").all())
+            bids = (session.query(BiddingLoad).filter(
+                BiddingLoad.is_active == True, BiddingLoad.load_status == "live").all())
             log("THE BIDS TO CLOSE:", bids)
 
             if not bids:
@@ -74,10 +77,11 @@ class Bid:
             for bid in bids:
                 if convert_date_to_string(bid.bid_end_time) == current_time:
                     setattr(bid, "load_status", "pending")
-                    redis.delete(sorted_set=bid) ##MEHUL : No checks here because if there is no sorted set then it will return false too, so how to catch exception ?
-            
+                    # MEHUL : No checks here because if there is no sorted set then it will return false too, so how to catch exception ?
+                    redis.delete(sorted_set=bid)
+
             session.commit()
-            
+
             return
 
         except Exception as e:
@@ -88,12 +92,11 @@ class Bid:
         finally:
             session.close()
 
-
     async def get_status_wise(self, status: str) -> (any, str):
         session = Session()
 
         try:
-            
+
             bid_array = session.execute(text("""
             SELECT
                 t_bidding_load.bl_id,
@@ -124,17 +127,17 @@ class Bid:
             WHERE
                 t_bidding_load.is_active = true
                 AND t_bidding_load.load_status = :load_status;"""), params={"load_status": status})
-            
-            rows=bid_array.fetchall()
+
+            rows = bid_array.fetchall()
 
             log("BIDS", rows)
             b_arr = []
             for row in rows:
-                log("ROW",row.bl_id)
+                log("ROW", row.bl_id)
                 b_arr.append(row._mapping)
-                
+
             return (structurize(b_arr), "")
-        
+
         except Exception as e:
             session.rollback()
             return ({}, str(e))
@@ -142,13 +145,12 @@ class Bid:
         finally:
             session.close()
 
-
-
-    async def get_filter_wise(status: str, shipper_id: str, regioncluster_id: str, branch_id: str, from_date: datetime, to_date: datetime) -> (any, str):
+    async def get_filter_wise(self,status: str) -> (any, str):
         session = Session()
 
         try:
-
+            
+            ## Put raw SQL queries in data/bidding.py : JUNED
             bid_array = session.execute(text("""
             SELECT
                 t_bidding_load.bl_id,
@@ -179,15 +181,15 @@ class Bid:
             WHERE
                 t_bidding_load.is_active = true
                 AND t_bidding_load.load_status = :load_status;"""), params={"load_status": status})
-            
-            rows=bid_array.fetchall()
+
+            rows = bid_array.fetchall()
 
             log("BIDS", rows)
             b_arr = []
             for row in rows:
-                log("ROW",row.bl_id)
+                log("ROW", row.bl_id)
                 b_arr.append(row._mapping)
-                
+
             return (structurize(b_arr), "")
 
         except Exception as e:
@@ -376,6 +378,8 @@ class Bid:
         finally:
             session.close()
 
+## Change signature : JUNED
+
     async def update_bid_status(self, bid_id: str) -> (bool, str):
 
         session = Session()
@@ -445,6 +449,8 @@ class Bid:
 
         finally:
             session.close()
+
+## Change signature : JUNED
 
     async def bid_setting_details(self, shipper_id: str) -> (bool, str):
 

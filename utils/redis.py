@@ -25,6 +25,9 @@ class Redis:
 
         log("SORTED SET APPEND IN REDIS", "OK")
 
+        # Transform this into another function : JUNED
+        # return self.bid_details()
+
         transporter_data_with_rates = []
 
         transporter_ids = await self.get_all(sorted_set=sorted_set)
@@ -69,7 +72,6 @@ class Redis:
             return False
         return True
 
-
     async def delete(self, sorted_set: str):
 
         if self.if_exists(sorted_set=sorted_set):
@@ -84,7 +86,7 @@ class Redis:
 
                     redis.zrem(sorted_set, contained_id)
 
-
+# Change and remove this : JUNED
     async def if_exists(self, sorted_set: str) -> bool:
         key_exists = redis.exists(sorted_set)
         if key_exists:

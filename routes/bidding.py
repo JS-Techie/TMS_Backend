@@ -1,6 +1,7 @@
 
 from fastapi import APIRouter, BackgroundTasks, WebSocket
-import os,json
+import os
+import json
 from typing import List
 from datetime import datetime, timedelta
 
@@ -22,6 +23,8 @@ bid = Bid()
 shipper = Shipper()
 redis = Redis()
 
+# Order APIs according to flow : JUNED
+
 
 @bidding_router.get("/status/{status}")
 async def get_bids_according_to_status(status: str):
@@ -30,7 +33,7 @@ async def get_bids_according_to_status(status: str):
         if status not in valid_load_status:
             return ErrorResponse(data=[], dev_msg=os.getenv("STATUS_ERROR"), client_msg=os.getenv("GENERIC_ERROR"))
 
-        (bids, error) =await bid.get_status_wise(status)
+        (bids, error) = await bid.get_status_wise(status)
 
         if error:
             return ErrorResponse(data=[], dev_msg=error, client_msg=os.getenv("GENERIC_ERROR"))
@@ -144,8 +147,7 @@ async def provide_new_rate_for_bid(bid_id: str, bid_req: TransporterBidReq):
 
         log("BID DETAILS", sorted_bid_details)
 
-
-        socket_successful = await manager.broadcast(bid_id=bid_id,message=json.dumps(sorted_bid_details))
+        socket_successful = await manager.broadcast(bid_id=bid_id, message=json.dumps(sorted_bid_details))
 
         log("SOCKET EVENT SENT", socket_successful)
 
@@ -258,7 +260,6 @@ async def assign(bid_id: str, transporters: List[TransporterAssignReq]):
         if bid_details.load_status not in valid_assignment_status:
             return ErrorResponse(data=[], client_msg="Transporter cannot be assigned to this bid", dev_msg=f"transporter cannot be assigned to bid with status- {bid_details.load_status}")
 
-
         if len(transporters) > 0:
 
             (update_successful_bid_status, error) = await bid.update_bid_status(bid_id=bid_id)
@@ -308,15 +309,17 @@ async def increment_time(bid_id: str, current_time: str):
     except Exception as err:
         return ServerError(err=err, errMsg=str(err))
 
+# Change params to req body : JUNED
 
-@bidding_router.get("/{status}")
+
+@bidding_router.get("filter/{status}")
 async def get_bids_according_to_filter_criteria(status: str, shipper_id: str, regioncluster_id: str, branch_id: str, from_date: datetime, to_date: datetime):
 
     try:
         if status not in valid_load_status:
             return ErrorResponse(data=[], dev_msg=os.getenv("STATUS_ERROR"), client_msg=os.getenv("GENERIC_ERROR"))
 
-        (bids, error) = await bid.get_filter_wise(status=status, shipper_id=shipper_id, regioncluster_id=regioncluster_id, branch_id=branch_id, from_date=from_date, to_date=to_date)
+        (bids, error) = await bid.get_filter_wise(status=status)
 
         if error:
             return ErrorResponse(data=[], dev_msg=error, client_msg=os.getenv("GENERIC_ERROR"))
