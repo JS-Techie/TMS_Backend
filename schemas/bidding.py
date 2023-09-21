@@ -26,3 +26,4 @@ class TransporterAssignReq(BaseModel):
     price_difference_percent : float
     no_of_fleets_assigned : int
     
+    

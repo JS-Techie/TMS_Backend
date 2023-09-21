@@ -25,12 +25,12 @@ class Redis:
 
         log("SORTED SET APPEND IN REDIS", "OK")
 
-        # Transform this into another function : JUNED
-        # return self.bid_details()
+        return await self.bid_details(sorted_set=sorted_set)
 
+    async def bid_details(self, sorted_set: str):
         transporter_data_with_rates = []
 
-        transporter_ids = await self.get_all(sorted_set=sorted_set)
+        transporter_ids = self.get_all(sorted_set=sorted_set)
 
         log("TRANSPORTER IDS", transporter_ids)
 
@@ -52,7 +52,9 @@ class Redis:
         return (transporter_data_with_rates, "")
 
     async def get_first(self, sorted_set: str):
-        return redis.zrange(sorted_set, 0, 0)
+        log("FETCHING LOWEST PRICE FROM REDIS")
+        transporter_id = redis.zrange(sorted_set, 0, 0)[0]
+        return (redis.zscore(sorted_set, transporter_id), "")
 
     async def get_last(self, sorted_set: str):
         return redis.zrevrange(sorted_set, 0, 0)
@@ -63,7 +65,7 @@ class Redis:
     async def get_last_n(self, sorted_set: str, n: int):
         return redis.zrevrange(sorted_set, 0, n)
 
-    async def get_all(self, sorted_set: str):
+    def get_all(self, sorted_set: str):
         log("ALL RECORDS IN SORTED SET")
         return redis.zrange(sorted_set, 0, -1)
 
@@ -72,23 +74,13 @@ class Redis:
             return False
         return True
 
-    async def delete(self, sorted_set: str):
+    def delete(self, sorted_set: str):
+        contained_ids = self.get_all(sorted_set=sorted_set)
 
-        if self.if_exists(sorted_set=sorted_set):
+        if contained_ids:
+            for contained_id in contained_ids:
+                keys_of_contained_ids = redis.hkeys(contained_id)
+                for field in keys_of_contained_ids:
+                    redis.hdel(contained_id, field)
 
-            contained_ids = await self.get_all(sorted_set=sorted_set)
-
-            if contained_ids:
-                for contained_id in contained_ids:
-                    keys_of_contained_ids = redis.hkeys(contained_id)
-                    for field in keys_of_contained_ids:
-                        redis.hdel(contained_id, field)
-
-                    redis.zrem(sorted_set, contained_id)
-
-# Change and remove this : JUNED
-    async def if_exists(self, sorted_set: str) -> bool:
-        key_exists = redis.exists(sorted_set)
-        if key_exists:
-            return True
-        return False
+                redis.zrem(sorted_set, contained_id)

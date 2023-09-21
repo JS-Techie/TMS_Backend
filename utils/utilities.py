@@ -66,12 +66,14 @@ def structurize(input_array):
         if existing_transporters:
             # If transporter exists, append the fleet to its fleets list
             existing_transporter = existing_transporters[0]
-            if not fleet_item in existing_transporter["fleets"] :
+            if not fleet_item in existing_transporter["fleets"] and item["trf_active"]:
                 existing_transporter["fleets"].append(fleet_item)
         else:
             # If transporter doesn't exist, add it along with the fleet
-            bid_item["fleets"].append(fleet_item)
-            result_dict[bl_id]["transporters"].append(bid_item)
+            if item["trf_active"]:
+                bid_item["fleets"].append(fleet_item)
+            if item["tr_active"] and item["la_active"]:
+                result_dict[bl_id]["transporters"].append(bid_item)
 
  
 
