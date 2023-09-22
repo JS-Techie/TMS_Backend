@@ -1,5 +1,5 @@
 
-from fastapi import APIRouter, BackgroundTasks, WebSocket
+from fastapi import APIRouter, BackgroundTasks
 import os
 import json
 from typing import List
@@ -103,7 +103,7 @@ async def provide_new_rate_for_bid(bid_id: str, bid_req: TransporterBidReq):
         if not bid_details:
             return ErrorResponse(data=[], client_msg=os.getenv("BID_RATE_ERROR"), dev_msg=error)
 
-        if bid_details.load_status != "live":
+        if bid_details.load_status != "live" or bid_details.load_status!="not_started":
             return ErrorResponse(data=[], client_msg=f"This Load is not Accepting Bids yet, start time is {bid_details.bid_time}", dev_msg="Tried bidding, but bid is not live yet")
 
         log("BID DETAILS FOUND", bid_id)
@@ -130,7 +130,7 @@ async def provide_new_rate_for_bid(bid_id: str, bid_req: TransporterBidReq):
         log("BID TRIES OK", bid_id)
 
         (rate, error) = await transporter.is_valid_bid_rate(bid_id, bid_details.show_current_lowest_rate_transporter,
-                                                            bid_req.rate, bid_req.transporter_id, bid_details.bid_price_decrement)
+                                                            bid_req.rate, bid_req.transporter_id, bid_details.bid_price_decrement,bid_details.load_status)
 
         log("RATE OBJECT", rate)
 
@@ -210,7 +210,7 @@ async def get_lowest_price_of_current_bid(bid_id: str):
 
     try:
 
-        (lowest_price, error) =await redis.get_first(bid_id)
+        (lowest_price, error) = await redis.get_first(bid_id)
 
         if error:
 
@@ -273,16 +273,16 @@ async def cancel_bid(bid_id: str):
             return ErrorResponse(data=[], client_msg=os.getenv("INVALID_BID_ERROR"), dev_msg=error)
         log("BID ID IS VALID")
         (details_fetch_successful, bid_details) = await bid.details(bid_id=bid_id)
-        
+
         if not details_fetch_successful:
             return ErrorResponse(data=[], client_msg="Something went wrong while trying to cancel", dev_msg=bid_details)
-        
+
         log("BID DETAILS FETCHED")
-        
+
         if bid_details.load_status not in valid_cancel_status:
 
             return ErrorResponse(data=[], client_msg="This bid is not valid and cannot be cancelled!", dev_msg=f"Bid-{bid_id} is {bid_details.load_status}, cannot be cancelled!")
-        
+
         log("BID STATUS IS VALID")
         (update_successful, error) = await bid.update_status(bid_id=bid_id, status="cancelled")
 
@@ -349,7 +349,6 @@ async def assign(bid_id: str, transporters: List[TransporterAssignReq]):
     except Exception as err:
         return ServerError(err=err, errMsg=str(err))
 
-
 @bidding_router.get("/details/{bid_id}")
 async def  bid_details(bid_id : str):
     
@@ -391,3 +390,4 @@ async def live_bid_details(bid_id:str):
         
     except Exception as err:
         return ServerError(err=err,errMsg=str(err))
+

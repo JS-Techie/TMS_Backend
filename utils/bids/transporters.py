@@ -35,17 +35,17 @@ class Transporter:
         finally:
             session.close()
 
-    async def is_valid_bid_rate(self, bid_id: str, show_rate_to_transporter: bool, rate: float, transporter_id: str, decrement: float) -> (any, str):
+    async def is_valid_bid_rate(self, bid_id: str, show_rate_to_transporter: bool, rate: float, transporter_id: str, decrement: float,status : str) -> (any, str):
 
         session = Session()
 
         try:
 
-            if show_rate_to_transporter:
+            if show_rate_to_transporter and status == "live":
                 return await bid.decrement_on_lowest_price(bid_id, rate, decrement)
-
+            # elif (not show_rate_to_transporter and status == "live") or status == "not_started":
             return await bid.decrement_on_transporter_lowest_price(bid_id, transporter_id, rate, decrement)
-
+         
         except Exception as e:
             session.rollback()
             return ({}, str(e))
@@ -115,7 +115,7 @@ class Transporter:
         try:
             log("INSIDE ALLOWED TO BID", "OK")
             transporter_details = session.query(MapShipperTransporter).filter(
-                MapShipperTransporter.mst_shipper_id == shipper_id, MapShipperTransporter.mst_transporter_id == transporter_id).first()
+                MapShipperTransporter.mst_shipper_id == shipper_id, MapShipperTransporter.mst_transporter_id == transporter_id,MapShipperTransporter.is_active == True).first()
             log("TRANSPORTER DETAILS", transporter_details)
             if not transporter_details:
                 return (False, "transporter not tagged with the specific shipper")
