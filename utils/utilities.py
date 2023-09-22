@@ -87,7 +87,8 @@ def structurize_assignment_data(data):
                 "pmr_price": None,
                 "lowest_price": float('inf'),
                 "lowest_price_comment": None,
-                "rates": []
+                "rates": [],
+                "fleet_assigned":None
             }
         
         transporter_entry = transporter_data[transporter_id]
@@ -106,7 +107,10 @@ def structurize_assignment_data(data):
         
         # Add rate and comment to the rates array
         transporter_entry["rates"].append({"rate": rate, "comment": comment})
-    
+
+        if transporter_id == entry["load_assigned"].la_transporter_id:
+            transporter_entry["fleet_assigned"] = entry["load_assigned"].no_of_fleets_assigned
+        
     # Sort the rates array for each transporter by rate
     for transporter_entry in transporter_data.values():
         transporter_entry["rates"].sort(key=lambda x: x["rate"])
@@ -114,7 +118,9 @@ def structurize_assignment_data(data):
     # Sort the final array by lowest_price
     sorted_transporter_data=[]
     for transporter_entry in transporter_data.values():
-        sorted_transporter_data.append(sorted(transporter_data.values(), key=lambda x: x["lowest_price"]))
+        sorted_data_for_transporter = sorted(transporter_data.values(), key=lambda x: x["lowest_price"])
+        if sorted_data_for_transporter not in sorted_transporter_data:
+            sorted_transporter_data.append(sorted_data_for_transporter)
     
     return sorted_transporter_data
 

@@ -1,7 +1,7 @@
 from sqlalchemy.sql.functions import func
 from datetime import datetime, timedelta
-import os
-import itertools
+import os, math
+
 from sqlalchemy import text
 from string import Template
 import json
@@ -251,7 +251,7 @@ class Bid:
             if error:
                 return ErrorResponse(data=[], dev_msg=str(error), client_msg=os.getenv("BID_SUBMIT_ERROR"))
 
-            if (rate + decrement <= lowest_price):
+            if (rate + math.ceil(decrement*lowest_price*0.01) <= lowest_price):
                 log("BID RATE OK", rate)
                 return ({
                     "valid": True,
@@ -278,7 +278,7 @@ class Bid:
             if not bid:
                 return ({"valid": True}, "")
             log("TRANSPORTER BID RATE OK", bid)
-            if (bid.rate >= rate + decrement):
+            if (bid.rate >= rate + math.ceil(decrement*bid.rate*0.01)):
                 return ({
                     "valid": True,
                 }, "")
@@ -324,25 +324,28 @@ class Bid:
 
             details = (
                 session.query(BidTransaction, TransporterModel.name,
-                              PriceMatchRequest.pmr_price)
+                            PriceMatchRequest.pmr_price, LoadAssigned)
                 .join(TransporterModel, TransporterModel.trnsp_id == BidTransaction.transporter_id)
                 .outerjoin(PriceMatchRequest, PriceMatchRequest.pmr_bidding_load_id == BidTransaction.bid_id)
+                .outerjoin(LoadAssigned,LoadAssigned.la_bidding_load_id == BidTransaction.bid_id)
                 .filter(BidTransaction.bid_id == bid_id)
                 .all()
             )
 
             for bid in details:
-                bid_details, transporter_name, price_match_rate = bid
+                bid_details, transporter_name, price_match_rate, load_assigned = bid
 
                 obj = {
                     "bid_details": bid_details,
                     "transporter_name": transporter_name,
-                    "price_match_rate": price_match_rate
+                    "price_match_rate": price_match_rate,
+                    "load_assigned":load_assigned
                 }
 
                 bid_detail_arr.append(obj)
 
-            return structurize_assignment_data(bid_detail_arr)
+            return (True, structurize_assignment_data(bid_detail_arr))
+            return(True, bid_detail_arr)
 
         except Exception as e:
             session.rollback()
