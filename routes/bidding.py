@@ -297,24 +297,44 @@ async def cancel_bid(bid_id: str):
 
 @bidding_router.post("/assign/{bid_id}")
 async def assign(bid_id: str, transporters: List[TransporterAssignReq]):
+    
+    
+
 
     try:
-        (valid_bid_id, error) = await bid.is_valid(bid)
+        (valid_bid_id, error) = await bid.is_valid(bid_id=bid_id)
 
         if not valid_bid_id:
             return ErrorResponse(data=[], client_msg=os.getenv("INVALID_BID_ERROR"), dev_msg=error)
+        
+        total_fleets = 0
+        load_status = ""
+        
+        for transporter in transporters:
+            total_fleets+=getattr(transporter,"no_of_fleets_assigned")
+        
+        
 
-        (bid_details, error) = await bid.details(bid_id=bid_id)
+        (error, bid_details) = await bid.details(bid_id=bid_id)
 
-        if error:
+        if not bid_details:
             return ErrorResponse(data=[], client_msg="Something went wrong while trying to Assign Transporter", dev_msg=error)
 
         if bid_details.load_status not in valid_assignment_status:
             return ErrorResponse(data=[], client_msg="Transporter cannot be assigned to this bid", dev_msg=f"transporter cannot be assigned to bid with status- {bid_details.load_status}")
+        print(":::::::::::::::::::;")
+        if total_fleets < bid_details.no_of_fleets:
+            load_status = "partially_confirmed"
+        elif total_fleets == bid_details.no_of_fleets:
+            load_status = "confirmed"
+        else:
+            return ErrorResponse(data=[],client_msg="Assigned number of fleets greater than requested number of fleets",dev_msg="Mismatch of assigned and requested fleets")
 
-        if len(transporters) > 0:
+        if len(transporters) > 1:
 
-            (update_successful_bid_status, error) = await bid.status_update(bid_id=bid_id)
+            (update_successful_bid_status, error) = await bid.status_update(bid_id=bid_id,split=True,status=load_status)
+        elif len(transporters) == 1 :
+            (update_successful_bid_status, error) = await bid.status_update(bid_id=bid_id,split=False,status = load_status)
 
             if not update_successful_bid_status:
                 return ErrorResponse(data=[], client_msg="Something Went Wrong while Assigning Transporters", dev_msg=error)
@@ -329,3 +349,45 @@ async def assign(bid_id: str, transporters: List[TransporterAssignReq]):
     except Exception as err:
         return ServerError(err=err, errMsg=str(err))
 
+
+@bidding_router.get("/details/{bid_id}")
+async def  bid_details(bid_id : str):
+    
+    try:
+        (valid_bid_id, error) = await bid.is_valid(bid_id=bid_id)
+
+        if not valid_bid_id:
+            return ErrorResponse(data=[], client_msg=os.getenv("INVALID_BID_ERROR"), dev_msg=error)
+        
+        
+        (bid_details_found,details) = await bid.details_for_assignment(bid_id = bid_id)
+        
+        if not bid_details_found:
+            return ErrorResponse(data=[],client_msg="Bid details were not found",dev_msg="Bid details for assignment could not be found")
+
+        return SuccessResponse(data=details,client_msg="Bid details found for assignment",dev_msg="Bid details found for assignment")
+    
+    except Exception as err:
+        return ServerError(err=err,errMsg=str(err))
+    
+    
+@bidding_router.get("/live/{bid_id}")
+async def live_bid_details(bid_id:str):
+    
+    try:
+        (valid_bid_id, error) = await bid.is_valid(bid_id=bid_id)
+
+        if not valid_bid_id:
+            return ErrorResponse(data=[], client_msg=os.getenv("INVALID_BID_ERROR"), dev_msg=error)
+        
+        
+        (bid_details,error) = await redis.bid_details(sorted_set= bid_id)
+        
+        if error:
+            return ErrorResponse(data=[],client_msg=os.getenv("GENERIC_ERROR"),dev_msg=error)
+        
+        return SuccessResponse(data=bid_details, client_msg="Live Bid Details fetched Successfully", dev_msg="ive Bid Details fetched Successfully")
+        
+        
+    except Exception as err:
+        return ServerError(err=err,errMsg=str(err))

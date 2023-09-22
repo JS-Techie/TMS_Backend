@@ -19,7 +19,6 @@ class TransporterBidReq(BaseModel):
 
 
 class TransporterAssignReq(BaseModel):
-    la_bidding_load_id : UUID
     la_transporter_id : UUID
     trans_pos_in_bid : str
     price : float

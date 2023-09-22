@@ -78,3 +78,53 @@ def structurize(input_array):
  
 
     return list(result_dict.values())
+
+
+def structurize_assignment_data(data):
+    # Initialize a dictionary to organize data by transporter_id
+    transporter_data = {}
+    for entry in data:
+        bid_details = entry["bid_details"]
+        transporter_id = bid_details.transporter_id
+        rate = bid_details.rate
+        comment = bid_details.comment
+        pmr_price = entry["price_match_rate"]
+        # Create or update the transporter entry
+        if transporter_id not in transporter_data:
+            transporter_data[transporter_id] = {
+                "name": entry["transporter_name"],
+                "id":transporter_id,
+                "total_number_attempts": 0,
+                "pmr_price": None,
+                "lowest_price": float('inf'),
+                "lowest_price_comment": None,
+                "rates": []
+            }
+        
+        transporter_entry = transporter_data[transporter_id]
+        
+        # Update total_number_attempts
+        transporter_entry["total_number_attempts"] += 1
+        
+        # Update pmr_price
+        if pmr_price is not None:
+            transporter_entry["pmr_price"] = pmr_price
+        
+        # Update lowest_price and lowest_price_comment if needed
+        if rate < transporter_entry["lowest_price"]:
+            transporter_entry["lowest_price"] = rate
+            transporter_entry["lowest_price_comment"] = comment
+        
+        # Add rate and comment to the rates array
+        transporter_entry["rates"].append({"rate": rate, "comment": comment})
+    
+    # Sort the rates array for each transporter by rate
+    for transporter_entry in transporter_data.values():
+        transporter_entry["rates"].sort(key=lambda x: x["rate"])
+    
+    # Sort the final array by lowest_price
+    sorted_transporter_data=[]
+    for transporter_entry in transporter_data.values():
+        sorted_transporter_data.append(sorted(transporter_data.values(), key=lambda x: x["lowest_price"]))
+    
+    return sorted_transporter_data
