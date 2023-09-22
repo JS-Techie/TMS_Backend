@@ -10,7 +10,7 @@ from config.socket import manager
 
 app: FastAPI = FastAPI()
 setup_routes(app)
-schedule_jobs()
+# schedule_jobs()
 
 
 @app.websocket("/ws/{bid_id}")

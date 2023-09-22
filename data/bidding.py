@@ -62,7 +62,10 @@ filter_wise_fetch_query="""
                 t_tracking_fleet.tf_id,
                 t_tracking_fleet.fleet_no,
                 t_tracking_fleet.src_addrs,
-                t_tracking_fleet.dest_addrs
+                t_tracking_fleet.dest_addrs,
+                t_load_assigned.is_active as la_active,
+                t_transporter.is_active as tr_active,
+                t_tracking_fleet.is_active as trf_active
             FROM t_bidding_load
             LEFT JOIN t_load_assigned ON t_load_assigned.la_bidding_load_id = t_bidding_load.bl_id
             LEFT JOIN t_transporter ON t_transporter.trnsp_id = t_load_assigned.la_transporter_id
