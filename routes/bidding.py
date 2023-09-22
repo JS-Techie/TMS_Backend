@@ -103,7 +103,7 @@ async def provide_new_rate_for_bid(bid_id: str, bid_req: TransporterBidReq):
         if not bid_details:
             return ErrorResponse(data=[], client_msg=os.getenv("BID_RATE_ERROR"), dev_msg=error)
 
-        if bid_details.load_status != "live":
+        if bid_details.load_status != "live" or bid_details.load_status!="not_started":
             return ErrorResponse(data=[], client_msg=f"This Load is not Accepting Bids yet, start time is {bid_details.bid_time}", dev_msg="Tried bidding, but bid is not live yet")
 
         log("BID DETAILS FOUND", bid_id)
