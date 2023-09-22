@@ -16,8 +16,6 @@ def convert_date_to_string(date: datetime):
 def structurize(input_array):
     result_dict = {}
 
- 
-
     for item in input_array:
         bl_id = item["bl_id"]
         if bl_id not in result_dict:
@@ -31,8 +29,6 @@ def structurize(input_array):
                 "transporters": []  # Rename bid_items to transporters
             }
 
- 
-
         bid_item = {
             "la_transporter_id": item["la_transporter_id"],
             "trans_pos_in_bid": item["trans_pos_in_bid"],
@@ -45,7 +41,6 @@ def structurize(input_array):
             "fleets": []  # Initialize an empty list for fleets
         }
 
- 
         fleet_item = {
             "tf_id": item["tf_id"],
             "fleet_no": item["fleet_no"],
@@ -53,15 +48,11 @@ def structurize(input_array):
             "dest_addrs": item["dest_addrs"]
         }
 
- 
-
         # Check if a transporter with the same la_transporter_id already exists
         existing_transporters = [
             transporter for transporter in result_dict[bl_id]["transporters"]
             if transporter["la_transporter_id"] == bid_item["la_transporter_id"]
         ]
-
- 
 
         if existing_transporters:
             # If transporter exists, append the fleet to its fleets list
@@ -74,7 +65,5 @@ def structurize(input_array):
                 bid_item["fleets"].append(fleet_item)
             if item["tr_active"] and item["la_active"]:
                 result_dict[bl_id]["transporters"].append(bid_item)
-
- 
 
     return list(result_dict.values())

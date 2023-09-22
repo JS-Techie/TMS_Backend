@@ -70,7 +70,6 @@ class Bid:
             for row in rows:
                 log("ROW", row.bl_id)
                 b_arr.append(row._mapping)
-                
 
             return (structurize(b_arr), "")
 
