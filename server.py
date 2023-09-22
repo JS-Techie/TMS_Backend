@@ -3,12 +3,22 @@ load_dotenv()
 
 import json
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi.middleware.cors import CORSMiddleware
 
 from routes.routes import setup_routes
 from utils.background_jobs import schedule_jobs
 from config.socket import manager
 
 app: FastAPI = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials= True,
+    allow_methods= ['*'],
+    allow_headers= ['*']
+)
+
 setup_routes(app)
 # schedule_jobs()
 
