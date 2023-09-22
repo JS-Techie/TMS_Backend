@@ -6,6 +6,8 @@ valid_cancel_status = ['draft', 'not_started',
                        'pending', 'partially_confirmed', 'confirmed']
 valid_assignment_status = ['pending', 'partially_confirmed']
 
+valid_bid_status = ['live','not_started']
+
 status_wise_fetch_query="""
             SELECT
                 t_bidding_load.bl_id,

@@ -6,7 +6,7 @@ from typing import List
 from datetime import datetime, timedelta
 
 from utils.response import ErrorResponse, SuccessResponse, SuccessNoContentResponse, ServerError
-from data.bidding import valid_load_status, valid_rebid_status, valid_cancel_status, valid_assignment_status
+from data.bidding import valid_load_status, valid_rebid_status, valid_cancel_status, valid_assignment_status, valid_bid_status
 from utils.bids.bidding import Bid
 from utils.bids.transporters import Transporter
 from utils.bids.shipper import Shipper
@@ -102,8 +102,9 @@ async def provide_new_rate_for_bid(bid_id: str, bid_req: TransporterBidReq):
 
         if not bid_details:
             return ErrorResponse(data=[], client_msg=os.getenv("BID_RATE_ERROR"), dev_msg=error)
-
-        if bid_details.load_status != "live" or bid_details.load_status!="not_started":
+        log("BID DETAILS LOAD STATUS", bid_details.load_status)
+        
+        if bid_details.load_status not in valid_bid_status:
             return ErrorResponse(data=[], client_msg=f"This Load is not Accepting Bids yet, start time is {bid_details.bid_time}", dev_msg="Tried bidding, but bid is not live yet")
 
         log("BID DETAILS FOUND", bid_id)
@@ -173,9 +174,11 @@ async def provide_new_rate_for_bid(bid_id: str, bid_req: TransporterBidReq):
         return ServerError(err=err, errMsg=str(err))
 
 
-@bidding_router.get("/increment/{bid_id}/{current_time}")
-async def increment_time(bid_id: str, current_time: str):
+@bidding_router.get("/increment/{bid_id}")
+async def increment_time(bid_id: str):
 
+    
+    current_time = datetime.now()
     try:
         (valid_bid_id, error) = await bid.is_valid(bid_id=bid_id)
 
