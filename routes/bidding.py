@@ -130,7 +130,7 @@ async def provide_new_rate_for_bid(bid_id: str, bid_req: TransporterBidReq):
         log("BID TRIES OK", bid_id)
 
         (rate, error) = await transporter.is_valid_bid_rate(bid_id, bid_details.show_current_lowest_rate_transporter,
-                                                            bid_req.rate, bid_req.transporter_id, bid_details.bid_price_decrement)
+                                                            bid_req.rate, bid_req.transporter_id, bid_details.bid_price_decrement,bid_details.load_status)
 
         log("RATE OBJECT", rate)
 
