@@ -25,7 +25,7 @@ def structurize(input_array):
                 "reporting_from_time": item["reporting_from_time"],
                 "reporting_to_time": item["reporting_to_time"],
                 "bl_cancellation_reason": item["bl_cancellation_reason"],
-                "load_type": item["load_type"],
+                "load_type": item["bid_mode"],
                 "src_city" : item["src_city"],
                 "dest_city" : item["dest_city"],
                 "transporters": []  # Rename bid_items to transporters
