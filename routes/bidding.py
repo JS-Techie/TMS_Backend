@@ -178,7 +178,7 @@ async def provide_new_rate_for_bid(bid_id: str, bid_req: TransporterBidReq):
 
 
 @bidding_router.get("/increment/{bid_id}")
-async def increment_time(bid_id: str):
+async def increment_time_of_bid(bid_id: str):
 
     
     current_time = datetime.now()
@@ -302,7 +302,7 @@ async def cancel_bid(bid_id: str):
 
 
 @bidding_router.post("/assign/{bid_id}")
-async def assign(bid_id: str, transporters: List[TransporterAssignReq]):
+async def assign_to_transporter(bid_id: str, transporters: List[TransporterAssignReq]):
     
     
 
@@ -356,7 +356,7 @@ async def assign(bid_id: str, transporters: List[TransporterAssignReq]):
         return ServerError(err=err, errMsg=str(err))
 
 @bidding_router.get("/details/{bid_id}")
-async def  bid_details(bid_id : str):
+async def  bid_details_for_assignment_to_transporter(bid_id : str):
     
     try:
         (valid_bid_id, error) = await bid.is_valid(bid_id=bid_id)
