@@ -35,6 +35,9 @@ async def get_bids_according_to_status(status: str):
 
         if error:
             return ErrorResponse(data=[], dev_msg=error, client_msg=os.getenv("GENERIC_ERROR"))
+        
+        if len(bids) == 0:
+            return SuccessResponse(data=[],dev_msg="Correct status, data fetched",client_msg=f"There are no {status} bids to show right now!")
 
         return SuccessResponse(data=bids, dev_msg="Correct status, data fetched", client_msg=f"Fetched all {status} bids successfully!")
 
@@ -70,7 +73,7 @@ async def publish_new_bid(bid_id: str, bg_tasks: BackgroundTasks):
         if not valid_bid_id:
             return ErrorResponse(data=[], client_msg=os.getenv("NOT_FOUND_ERROR"), dev_msg=error)
 
-        (update_successful, error) = await bid.update_status(bid_id=bid_id, status="pending")
+        (update_successful, error) = await bid.update_status(bid_id=bid_id, status="not_started")
 
         if not update_successful:
             return ErrorResponse(data=bid_id, client_msg=os.getenv("BID_PUBLISH_ERROR"), dev_msg=error)

@@ -300,7 +300,7 @@ class BiddingLoad(Base, Persistance):
     reporting_to_time = Column(DateTime, nullable = False)
     comments = Column(String, nullable = True) 
     requirements_from_transporter = Column(String, nullable = True) 
-    load_status = Column(Enum('draft','not_started','live','pending','partially_confirmed','confirmed', 'completed','cancelled' , name = 'load_status_type'), default = 'not_started')
+    load_status = Column(Enum('draft','not_started','live','pending','partially_confirmed','confirmed', 'completed','cancelled' , name = 'load_status_type'), default = 'draft')
     epod_type = Column(Enum('load_wise', 'item_wise', 'invoice_wise', 'none' , name = 'epod_type'), default = 'none')
     reassign = Column(Integer, default=0)
     rebid = Column(Boolean, default=False)

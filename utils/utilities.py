@@ -26,6 +26,8 @@ def structurize(input_array):
                 "reporting_to_time": item["reporting_to_time"],
                 "bl_cancellation_reason": item["bl_cancellation_reason"],
                 "load_type": item["load_type"],
+                "src_city" : item["src_city"],
+                "dest_city" : item["dest_city"],
                 "transporters": []  # Rename bid_items to transporters
             }
 
@@ -35,8 +37,8 @@ def structurize(input_array):
             "price": item["price"],
             "price_difference_percent": item["price_difference_percent"],
             "no_of_fleets_assigned": item["no_of_fleets_assigned"],
-            "name": item["name"],
-            "contact_name": item["contact_name"],
+            "contact_name": item["name"],
+            # "contact_name": item["contact_name"],
             "contact_no": item["contact_no"],
             "fleets": []  # Initialize an empty list for fleets
         }
