@@ -42,8 +42,7 @@ class Transporter:
         try:
 
             if show_rate_to_transporter and status == "live":
-                return await bid.decrement_on_lowest_price(bid_id, rate, decrement)
-            # elif (not show_rate_to_transporter and status == "live") or status == "not_started":
+                return await bid.decrement_on_lowest_price(bid_id=bid_id, rate=rate, decrement=decrement)
             return await bid.decrement_on_transporter_lowest_price(bid_id, transporter_id, rate, decrement)
          
         except Exception as e:

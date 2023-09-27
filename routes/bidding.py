@@ -93,6 +93,8 @@ async def provide_new_rate_for_bid(bid_id: str, bid_req: TransporterBidReq):
 
         if bid_req.rate <= 0:
             return ErrorResponse(data=bid_req.rate, client_msg="Invalid Rate Entered, Rate Entered Must be Greater Than Zero", dev_msg="Rate must be greater than zero")
+        
+        log("BID REQUEST DETAILS",bid_req)
 
         (valid_bid_id, error) = await bid.is_valid(bid_id)
 
@@ -133,8 +135,8 @@ async def provide_new_rate_for_bid(bid_id: str, bid_req: TransporterBidReq):
 
         log("BID TRIES OK", bid_id)
 
-        (rate, error) = await transporter.is_valid_bid_rate(bid_id, bid_details.show_current_lowest_rate_transporter,
-                                                            bid_req.rate, bid_req.transporter_id, bid_details.bid_price_decrement,bid_details.load_status)
+        (rate, error) = await transporter.is_valid_bid_rate(bid_id = bid_id, show_rate_to_transporter=bid_details.show_current_lowest_rate_transporter,
+                                                            rate=bid_req.rate, transporter_id=bid_req.transporter_id, decrement=bid_details.bid_price_decrement,status=bid_details.load_status)
 
         log("RATE OBJECT", rate)
 

@@ -9,6 +9,7 @@ from routes.routes import setup_routes
 from utils.background_jobs import schedule_jobs
 from config.socket import manager
 
+
 app: FastAPI = FastAPI()
 
 app.add_middleware(
@@ -21,6 +22,8 @@ app.add_middleware(
 
 setup_routes(app)
 # schedule_jobs()
+
+
 
 
 @app.websocket("/ws/{bid_id}")

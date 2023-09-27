@@ -467,18 +467,15 @@ class TransporterModel(Base,Persistance):
     billing_state = Column(String,nullable=False)
     billing_postal_code = Column(String,nullable=False)
     billing_country = Column(String,nullable=False)
-    contact_name = Column(String,nullable=False)
+    contact_person = Column(String,nullable=False)
     contact_no = Column(String,nullable=False)
     email = Column(String,nullable=False)
     communicate_by = Column( Enum("sms", "email", "whatsapp","sms_email","sms_whatsapp","email_whatsapp","all", name = 'communication_medium'), default = 'whatsapp',nullable=False)
     pan = Column(String,nullable=False)
     tan = Column(String,nullable=True)
     gstin = Column(String,nullable=False)
-    no_of_vehicles = Column(Integer,nullable=True)
-    leased_vehicles = Column(Integer,nullable=True)
     carriage_act_cert = Column(String,nullable=True)
     iba_approved = Column(Boolean,default=False, nullable=True)
-    iba_cert = Column(String,nullable=True)
 
 
 

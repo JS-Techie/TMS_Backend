@@ -16,6 +16,7 @@ from utils.redis import Redis
 from data.bidding import status_wise_fetch_query, filter_wise_fetch_query
 from schemas.bidding import FilterBidsRequest
 from config.scheduler import Scheduler
+from utils.utilities import log
 
 sched = Scheduler()
 redis = Redis()
@@ -244,14 +245,35 @@ class Bid:
     async def decrement_on_lowest_price(self, bid_id: str, rate: float, decrement: float) -> (any, str):
 
         session = Session()
-
+        log("DECREMENTING ON CURRENT LOWEST PRICE")
         try:
             (lowest_price, error) = await self.lowest_price(bid_id=bid_id)
 
+            log("LOWEST PRICE BEFORE CONVERT",lowest_price)
+
             if error:
                 return ErrorResponse(data=[], dev_msg=str(error), client_msg=os.getenv("BID_SUBMIT_ERROR"))
+            
+            if lowest_price == float("inf"):
+                log("LOWEST PRICE INFINITY")
+                return ({
+                    "valid": True,
+                }, "") 
+            
+            lowest_price = int(lowest_price)
+            decrement = int(decrement)
+            rate = int(rate)
+
+            log("LOWEST PRICE",lowest_price)
+            log("DECREMENT",decrement)
+            log("RATE",rate)
+
+
 
             if (rate + math.ceil(decrement*lowest_price*0.01) <= lowest_price):
+
+                log("NEW RATE",rate + math.ceil(decrement * lowest_price * 0.01))
+
                 log("BID RATE OK", rate)
                 return ({
                     "valid": True,
@@ -304,6 +326,7 @@ class Bid:
 
             if not bid:
                 return (float("inf"), "")
+            
             log("BID DETAILS OK", bid)
             return (bid.rate, "")
 
