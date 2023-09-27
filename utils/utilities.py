@@ -16,6 +16,11 @@ def convert_date_to_string(date: datetime):
 def structurize(input_array):
     result_dict = {}
 
+    load_type_dict = {
+        "private_pool" : "Private Pool",
+        "open_market" : "Open Market"
+    }
+
     for item in input_array:
         bl_id = item["bl_id"]
         if bl_id not in result_dict:
@@ -25,7 +30,7 @@ def structurize(input_array):
                 "reporting_from_time": item["reporting_from_time"],
                 "reporting_to_time": item["reporting_to_time"],
                 "bl_cancellation_reason": item["bl_cancellation_reason"],
-                "load_type": item["bid_mode"],
+                "load_type": load_type_dict[item["bid_mode"]],
                 "src_city" : item["src_city"],
                 "dest_city" : item["dest_city"],
                 "transporters": []  # Rename bid_items to transporters
