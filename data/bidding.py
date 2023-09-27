@@ -86,9 +86,9 @@ live_bid_details = '''
 SELECT
     t_transporter.name AS transporter_name,
     t_bid_transaction.transporter_id,
-    MIN(t_bid_transaction.rate) AS lowest_rate,
+    MIN(t_bid_transaction.rate) AS rate,
     t_bid_transaction.comment AS comment,
-    MAX(t_bid_transaction.attempt_number) AS attempt_number
+    MAX(t_bid_transaction.attempt_number) AS attempts
 FROM
     t_bid_transaction
 JOIN

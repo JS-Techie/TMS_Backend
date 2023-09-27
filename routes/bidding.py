@@ -390,6 +390,8 @@ async def live_bid_details(bid_id: str):
         
         if not bid_details:
         
+            log("FETCHING LIVE BID FROM DATABASE")
+            
             (bid_details, error) = await bid.live_details(bid_id)
 
             if error:
@@ -404,7 +406,7 @@ async def live_bid_details(bid_id: str):
                 res_array.append(transporter_rate_details)
 
                 await redis.update(sorted_set=bid_id, transporter_name=transporter_rate_details["transporter_name"], transporter_id=str(transporter_rate_details["transporter_id"]),
-                            comment=transporter_rate_details["comment"], rate=transporter_rate_details["lowest_rate"], attempts=transporter_rate_details["attempt_number"])
+                            comment=transporter_rate_details["comment"], rate=transporter_rate_details["rate"], attempts=transporter_rate_details["attempts"])
 
 
             return SuccessResponse(data=res_array, client_msg="Live Bid Details fetched Successfully", dev_msg="Live Bid Details fetched Successfully")
