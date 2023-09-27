@@ -115,7 +115,9 @@ def structurize_assignment_data(data):
         # Add rate and comment to the rates array
         transporter_entry["rates"].append({"rate": rate, "comment": comment})
 
-        if transporter_id == entry["load_assigned"].la_transporter_id:
+        if not entry["load_assigned"]:
+            transporter_entry["fleet_assigned"] = None
+        elif transporter_id == entry["load_assigned"].la_transporter_id:
             transporter_entry["fleet_assigned"] = entry["load_assigned"].no_of_fleets_assigned
         
     # Sort the rates array for each transporter by rate

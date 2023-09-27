@@ -82,6 +82,25 @@ filter_wise_fetch_query="""
                 ;"""
 
 
+live_bid_details = '''
+SELECT
+    t_transporter.name AS transporter_name,
+    t_bid_transaction.transporter_id,
+    MIN(t_bid_transaction.rate) AS lowest_rate,
+    t_bid_transaction.comment AS comment,
+    MAX(t_bid_transaction.attempt_number) AS attempt_number
+FROM
+    t_bid_transaction
+JOIN
+    t_transporter ON t_bid_transaction.transporter_id = t_transporter.trnsp_id
+where 
+	t_bid_transaction.bid_id = :bid_id
+GROUP BY
+    t_transporter.name,
+    t_bid_transaction.transporter_id,
+    t_bid_transaction.comment;
+'''
+
 # load id
 # multiple src and dest
 # reporting date time

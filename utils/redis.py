@@ -27,29 +27,38 @@ class Redis:
 
         return await self.bid_details(sorted_set=sorted_set)
 
-    async def bid_details(self, sorted_set: str):
-        transporter_data_with_rates = []
+    async def bid_details(self, sorted_set: str) -> (any,str):
 
-        transporter_ids = self.get_all(sorted_set=sorted_set)
+        log("FETCHING BID DETAILS FROM REDIS")
 
-        log("TRANSPORTER IDS", transporter_ids)
+        try:
+            
+            transporter_data_with_rates = []
 
-        for transporter_id in transporter_ids:
-            rate = redis.zscore(sorted_set, transporter_id)
-            log("TRANSPORTER DETAILS", {
-                "TRANSPORTER_ID": transporter_id, "RATE": rate})
-            transporter_data = redis.hgetall(transporter_id)
+            transporter_ids = self.get_all(sorted_set=sorted_set)
 
-            log("TRANSPORTER DETAILS BEFORE RATE", transporter_data)
+            log("TRANSPORTER IDS", transporter_ids)
 
-            transporter_data['rate'] = rate
-            log("TRANSPORTER DETAILS AFTER RATE", transporter_data)
+            for transporter_id in transporter_ids:
+                rate = redis.zscore(sorted_set, transporter_id)
+                log("TRANSPORTER DETAILS", {
+                    "TRANSPORTER_ID": transporter_id, "RATE": rate})
+                transporter_data = redis.hgetall(transporter_id)
 
-            transporter_data_with_rates.append(transporter_data)
+                log("TRANSPORTER DETAILS BEFORE RATE", transporter_data)
 
-        log("LIVE BID RESULTS", transporter_data_with_rates)
+                transporter_data['rate'] = rate
+                log("TRANSPORTER DETAILS AFTER RATE", transporter_data)
 
-        return (transporter_data_with_rates, "")
+                transporter_data_with_rates.append(transporter_data)
+
+            log("LIVE BID RESULTS", transporter_data_with_rates)
+
+            return (transporter_data_with_rates, "")
+        
+        except Exception as e:
+            return([],str(e))
+    
 
     async def get_first(self, sorted_set: str):
         log("FETCHING LOWEST PRICE FROM REDIS")

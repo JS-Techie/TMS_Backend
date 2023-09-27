@@ -13,7 +13,7 @@ from models.models import BiddingLoad, MapLoadSrcDestPair, LoadAssigned, Transpo
 from utils.utilities import log, convert_date_to_string, structurize, structurize_assignment_data
 from config.redis import r as redis
 from utils.redis import Redis
-from data.bidding import status_wise_fetch_query, filter_wise_fetch_query
+from data.bidding import status_wise_fetch_query, filter_wise_fetch_query,live_bid_details
 from schemas.bidding import FilterBidsRequest
 from config.scheduler import Scheduler
 from utils.utilities import log
@@ -300,7 +300,11 @@ class Bid:
             if not bid:
                 return ({"valid": True}, "")
             log("TRANSPORTER BID RATE OK", bid)
-            if (bid.rate >= rate + math.ceil(decrement*bid.rate*0.01)):
+
+            decrement = int(decrement)
+            rate = int(rate)
+            
+            if (int(bid.rate) >= rate + math.ceil(decrement*int(bid.rate)*0.01)):
                 return ({
                     "valid": True,
                 }, "")
@@ -346,8 +350,11 @@ class Bid:
             bid_detail_arr = []
 
             details = (
-                session.query(BidTransaction, TransporterModel.name,
-                            PriceMatchRequest.pmr_price, LoadAssigned)
+                session.query(BidTransaction,
+                              TransporterModel.name,
+                            PriceMatchRequest.pmr_price,
+                            LoadAssigned
+                            )
                 .join(TransporterModel, TransporterModel.trnsp_id == BidTransaction.transporter_id)
                 .outerjoin(PriceMatchRequest, PriceMatchRequest.pmr_bidding_load_id == BidTransaction.bid_id)
                 .outerjoin(LoadAssigned,LoadAssigned.la_bidding_load_id == BidTransaction.bid_id)
@@ -355,8 +362,11 @@ class Bid:
                 .all()
             )
 
+            # log("DETAILS",details)
+
             for bid in details:
-                bid_details, transporter_name, price_match_rate, load_assigned = bid
+                bid_details, transporter_name,price_match_rate,load_assigned = bid
+                # price_match_rate, load_assigned 
 
                 obj = {
                     "bid_details": bid_details,
@@ -368,7 +378,8 @@ class Bid:
                 bid_detail_arr.append(obj)
 
             return (True, structurize_assignment_data(bid_detail_arr))
-            return(True, bid_detail_arr)
+
+            # return(True,bid_detail_arr)
 
         except Exception as e:
             session.rollback()
@@ -503,7 +514,7 @@ class Bid:
         finally:
             session.close()
 
-    async def update_bid_end_time(self, bid_id: str, bid_end_time: datetime) -> (bool, str):
+    async def update_bid_end_time(self, bid_id: str, bid_end_time: datetime) -> (any, str):
 
         session = Session()
 
@@ -519,6 +530,27 @@ class Bid:
             session.commit()
 
             return (True, "")
+
+        except Exception as e:
+            session.rollback()
+            return (False, str(e))
+
+        finally:
+            session.close()
+
+    async def live_details(self,bid_id : str) -> (bool,any):
+
+        session = Session()
+
+        try:
+            
+            bid_details = session.execute(text(live_bid_details), params={
+                                        "bid_id": bid_id})
+
+            if not bid_details:
+                return ({}, "Error While Fetching Bid Details")
+
+            return (bid_details, "")
 
         except Exception as e:
             session.rollback()

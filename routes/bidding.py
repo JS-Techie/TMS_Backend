@@ -35,9 +35,9 @@ async def get_bids_according_to_status(status: str):
 
         if error:
             return ErrorResponse(data=[], dev_msg=error, client_msg=os.getenv("GENERIC_ERROR"))
-        
+
         if len(bids) == 0:
-            return SuccessResponse(data=[],dev_msg="Correct status, data fetched",client_msg=f"There are no {status} bids to show right now!")
+            return SuccessResponse(data=[], dev_msg="Correct status, data fetched", client_msg=f"There are no {status} bids to show right now!")
 
         return SuccessResponse(data=bids, dev_msg="Correct status, data fetched", client_msg=f"Fetched all {status} bids successfully!")
 
@@ -93,8 +93,8 @@ async def provide_new_rate_for_bid(bid_id: str, bid_req: TransporterBidReq):
 
         if bid_req.rate <= 0:
             return ErrorResponse(data=bid_req.rate, client_msg="Invalid Rate Entered, Rate Entered Must be Greater Than Zero", dev_msg="Rate must be greater than zero")
-        
-        log("BID REQUEST DETAILS",bid_req)
+
+        log("BID REQUEST DETAILS", bid_req)
 
         (valid_bid_id, error) = await bid.is_valid(bid_id)
 
@@ -108,7 +108,7 @@ async def provide_new_rate_for_bid(bid_id: str, bid_req: TransporterBidReq):
         if not bid_details:
             return ErrorResponse(data=[], client_msg=os.getenv("BID_RATE_ERROR"), dev_msg=error)
         log("BID DETAILS LOAD STATUS", bid_details.load_status)
-        
+
         if bid_details.load_status not in valid_bid_status:
             return ErrorResponse(data=[], client_msg=f"This Load is not Accepting Bids yet, start time is {bid_details.bid_time}", dev_msg="Tried bidding, but bid is not live yet")
 
@@ -135,8 +135,8 @@ async def provide_new_rate_for_bid(bid_id: str, bid_req: TransporterBidReq):
 
         log("BID TRIES OK", bid_id)
 
-        (rate, error) = await transporter.is_valid_bid_rate(bid_id = bid_id, show_rate_to_transporter=bid_details.show_current_lowest_rate_transporter,
-                                                            rate=bid_req.rate, transporter_id=bid_req.transporter_id, decrement=bid_details.bid_price_decrement,status=bid_details.load_status)
+        (rate, error) = await transporter.is_valid_bid_rate(bid_id=bid_id, show_rate_to_transporter=bid_details.show_current_lowest_rate_transporter,
+                                                            rate=bid_req.rate, transporter_id=bid_req.transporter_id, decrement=bid_details.bid_price_decrement, status=bid_details.load_status)
 
         log("RATE OBJECT", rate)
 
@@ -182,7 +182,6 @@ async def provide_new_rate_for_bid(bid_id: str, bid_req: TransporterBidReq):
 @bidding_router.get("/increment/{bid_id}")
 async def increment_time_of_bid(bid_id: str):
 
-    
     current_time = datetime.now()
     try:
         (valid_bid_id, error) = await bid.is_valid(bid_id=bid_id)
@@ -305,23 +304,18 @@ async def cancel_bid(bid_id: str):
 
 @bidding_router.post("/assign/{bid_id}")
 async def assign_to_transporter(bid_id: str, transporters: List[TransporterAssignReq]):
-    
-    
-
 
     try:
         (valid_bid_id, error) = await bid.is_valid(bid_id=bid_id)
 
         if not valid_bid_id:
             return ErrorResponse(data=[], client_msg=os.getenv("INVALID_BID_ERROR"), dev_msg=error)
-        
+
         total_fleets = 0
         load_status = ""
-        
+
         for transporter in transporters:
-            total_fleets+=getattr(transporter,"no_of_fleets_assigned")
-        
-        
+            total_fleets += getattr(transporter, "no_of_fleets_assigned")
 
         (error, bid_details) = await bid.details(bid_id=bid_id)
 
@@ -336,13 +330,13 @@ async def assign_to_transporter(bid_id: str, transporters: List[TransporterAssig
         elif total_fleets == bid_details.no_of_fleets:
             load_status = "confirmed"
         else:
-            return ErrorResponse(data=[],client_msg="Assigned number of fleets greater than requested number of fleets",dev_msg="Mismatch of assigned and requested fleets")
+            return ErrorResponse(data=[], client_msg="Assigned number of fleets greater than requested number of fleets", dev_msg="Mismatch of assigned and requested fleets")
 
         if len(transporters) > 1:
 
-            (update_successful_bid_status, error) = await bid.status_update(bid_id=bid_id,split=True,status=load_status)
-        elif len(transporters) == 1 :
-            (update_successful_bid_status, error) = await bid.status_update(bid_id=bid_id,split=False,status = load_status)
+            (update_successful_bid_status, error) = await bid.status_update(bid_id=bid_id, split=True, status=load_status)
+        elif len(transporters) == 1:
+            (update_successful_bid_status, error) = await bid.status_update(bid_id=bid_id, split=False, status=load_status)
 
             if not update_successful_bid_status:
                 return ErrorResponse(data=[], client_msg="Something Went Wrong while Assigning Transporters", dev_msg=error)
@@ -357,45 +351,65 @@ async def assign_to_transporter(bid_id: str, transporters: List[TransporterAssig
     except Exception as err:
         return ServerError(err=err, errMsg=str(err))
 
+
 @bidding_router.get("/details/{bid_id}")
-async def  bid_details_for_assignment_to_transporter(bid_id : str):
-    
+async def bid_details_for_assignment_to_transporter(bid_id: str):
+
     try:
         (valid_bid_id, error) = await bid.is_valid(bid_id=bid_id)
 
         if not valid_bid_id:
             return ErrorResponse(data=[], client_msg=os.getenv("INVALID_BID_ERROR"), dev_msg=error)
-        
-        
-        (bid_details_found,details) = await bid.details_for_assignment(bid_id = bid_id)
-        
+
+        (bid_details_found, details) = await bid.details_for_assignment(bid_id=bid_id)
+
         if not bid_details_found:
-            return ErrorResponse(data=[],client_msg="Bid details were not found",dev_msg="Bid details for assignment could not be found")
+            return ErrorResponse(data=[], client_msg="Bid details were not found", dev_msg="Bid details for assignment could not be found")
 
-        return SuccessResponse(data=details,client_msg="Bid details found for assignment",dev_msg="Bid details found for assignment")
-    
+        return SuccessResponse(data=details, client_msg="Bid details found for assignment", dev_msg="Bid details found for assignment")
+
     except Exception as err:
-        return ServerError(err=err,errMsg=str(err))
-    
-    
+        return ServerError(err=err, errMsg=str(err))
+
+
 @bidding_router.get("/live/{bid_id}")
-async def live_bid_details(bid_id:str):
-    
+async def live_bid_details(bid_id: str):
+
+    res_array = []
+
     try:
         (valid_bid_id, error) = await bid.is_valid(bid_id=bid_id)
 
         if not valid_bid_id:
             return ErrorResponse(data=[], client_msg=os.getenv("INVALID_BID_ERROR"), dev_msg=error)
-        
-        
-        (bid_details,error) = await redis.bid_details(sorted_set= bid_id)
-        
+
+        (bid_details, error) = await redis.bid_details(sorted_set=bid_id)
+
         if error:
-            return ErrorResponse(data=[],client_msg=os.getenv("GENERIC_ERROR"),dev_msg=error)
+            return ErrorResponse(data=[], client_msg=os.getenv("GENERIC_ERROR"), dev_msg=error)
+        
+        if not bid_details:
+        
+            (bid_details, error) = await bid.live_details(bid_id)
+
+            if error:
+                return ErrorResponse(data=[], client_msg=os.getenv("GENERIC_ERROR"), dev_msg=error)
+
+
+            for bid_detail in bid_details:
+
+                transporter_rate_details = bid_detail._mapping
+                log("TRANSPORTER DETAILS : ", transporter_rate_details)
+
+                res_array.append(transporter_rate_details)
+
+                await redis.update(sorted_set=bid_id, transporter_name=transporter_rate_details["transporter_name"], transporter_id=str(transporter_rate_details["transporter_id"]),
+                            comment=transporter_rate_details["comment"], rate=transporter_rate_details["lowest_rate"], attempts=transporter_rate_details["attempt_number"])
+
+
+            return SuccessResponse(data=res_array, client_msg="Live Bid Details fetched Successfully", dev_msg="Live Bid Details fetched Successfully")
         
         return SuccessResponse(data=bid_details, client_msg="Live Bid Details fetched Successfully", dev_msg="Live Bid Details fetched Successfully")
-        
-        
-    except Exception as err:
-        return ServerError(err=err,errMsg=str(err))
 
+    except Exception as err:
+        return ServerError(err=err, errMsg=str(err))
