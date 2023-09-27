@@ -393,7 +393,7 @@ async def live_bid_details(bid_id:str):
         if error:
             return ErrorResponse(data=[],client_msg=os.getenv("GENERIC_ERROR"),dev_msg=error)
         
-        return SuccessResponse(data=bid_details, client_msg="Live Bid Details fetched Successfully", dev_msg="ive Bid Details fetched Successfully")
+        return SuccessResponse(data=bid_details, client_msg="Live Bid Details fetched Successfully", dev_msg="Live Bid Details fetched Successfully")
         
         
     except Exception as err:
