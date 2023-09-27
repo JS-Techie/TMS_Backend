@@ -1,6 +1,5 @@
 import os
 from datetime import datetime
-from collections import defaultdict
 
 
 def log(key: str, value: str | None = None):
@@ -17,8 +16,8 @@ def structurize(input_array):
     result_dict = {}
 
     load_type_dict = {
-        "private_pool" : "Private Pool",
-        "open_market" : "Open Market"
+        "private_pool": "Private Pool",
+        "open_market": "Open Market"
     }
 
     for item in input_array:
@@ -31,8 +30,8 @@ def structurize(input_array):
                 "reporting_to_time": item["reporting_to_time"],
                 "bl_cancellation_reason": item["bl_cancellation_reason"],
                 "load_type": load_type_dict[item["bid_mode"]],
-                "src_city" : item["src_city"],
-                "dest_city" : item["dest_city"],
+                "src_city": item["src_city"],
+                "dest_city": item["dest_city"],
                 "transporters": []  # Rename bid_items to transporters
             }
 
@@ -71,10 +70,9 @@ def structurize(input_array):
             if item["trf_active"]:
                 bid_item["fleets"].append(fleet_item)
             if item["tr_active"] and item["la_active"]:
-                result_dict[bl_id]["transporters"].append(bid_item) 
+                result_dict[bl_id]["transporters"].append(bid_item)
     return list(result_dict.values())
 
-  
 
 def structurize_assignment_data(data):
     # Initialize a dictionary to organize data by transporter_id
@@ -89,29 +87,29 @@ def structurize_assignment_data(data):
         if transporter_id not in transporter_data:
             transporter_data[transporter_id] = {
                 "name": entry["transporter_name"],
-                "id":transporter_id,
+                "id": transporter_id,
                 "total_number_attempts": 0,
                 "pmr_price": None,
                 "lowest_price": float('inf'),
                 "lowest_price_comment": None,
                 "rates": [],
-                "fleet_assigned":None
+                "fleet_assigned": None
             }
-        
+
         transporter_entry = transporter_data[transporter_id]
-        
+
         # Update total_number_attempts
         transporter_entry["total_number_attempts"] += 1
-        
+
         # Update pmr_price
         if pmr_price is not None:
             transporter_entry["pmr_price"] = pmr_price
-        
+
         # Update lowest_price and lowest_price_comment if needed
         if rate < transporter_entry["lowest_price"]:
             transporter_entry["lowest_price"] = rate
             transporter_entry["lowest_price_comment"] = comment
-        
+
         # Add rate and comment to the rates array
         transporter_entry["rates"].append({"rate": rate, "comment": comment})
 
@@ -119,17 +117,17 @@ def structurize_assignment_data(data):
             transporter_entry["fleet_assigned"] = None
         elif transporter_id == entry["load_assigned"].la_transporter_id:
             transporter_entry["fleet_assigned"] = entry["load_assigned"].no_of_fleets_assigned
-        
+
     # Sort the rates array for each transporter by rate
     for transporter_entry in transporter_data.values():
         transporter_entry["rates"].sort(key=lambda x: x["rate"])
-    
+
     # Sort the final array by lowest_price
-    sorted_transporter_data=[]
+    sorted_transporter_data = []
     for transporter_entry in transporter_data.values():
-        sorted_data_for_transporter = sorted(transporter_data.values(), key=lambda x: x["lowest_price"])
+        sorted_data_for_transporter = sorted(
+            transporter_data.values(), key=lambda x: x["lowest_price"])
         if sorted_data_for_transporter not in sorted_transporter_data:
             sorted_transporter_data.append(sorted_data_for_transporter)
-    
-    return sorted_transporter_data
 
+    return sorted_transporter_data

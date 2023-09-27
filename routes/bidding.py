@@ -1,7 +1,6 @@
 
 from fastapi import APIRouter, BackgroundTasks
-import os
-import json
+import os,json
 from typing import List
 from datetime import datetime, timedelta
 
@@ -387,16 +386,15 @@ async def live_bid_details(bid_id: str):
 
         if error:
             return ErrorResponse(data=[], client_msg=os.getenv("GENERIC_ERROR"), dev_msg=error)
-        
+
         if not bid_details:
-        
+
             log("FETCHING LIVE BID FROM DATABASE")
-            
+
             (bid_details, error) = await bid.live_details(bid_id)
 
             if error:
                 return ErrorResponse(data=[], client_msg=os.getenv("GENERIC_ERROR"), dev_msg=error)
-
 
             for bid_detail in bid_details:
 
@@ -406,11 +404,10 @@ async def live_bid_details(bid_id: str):
                 res_array.append(transporter_rate_details)
 
                 await redis.update(sorted_set=bid_id, transporter_name=transporter_rate_details["transporter_name"], transporter_id=str(transporter_rate_details["transporter_id"]),
-                            comment=transporter_rate_details["comment"], rate=transporter_rate_details["rate"], attempts=transporter_rate_details["attempts"])
-
+                                   comment=transporter_rate_details["comment"], rate=transporter_rate_details["rate"], attempts=transporter_rate_details["attempts"])
 
             return SuccessResponse(data=res_array, client_msg="Live Bid Details fetched Successfully", dev_msg="Live Bid Details fetched Successfully")
-        
+
         return SuccessResponse(data=bid_details, client_msg="Live Bid Details fetched Successfully", dev_msg="Live Bid Details fetched Successfully")
 
     except Exception as err:
