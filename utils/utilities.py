@@ -63,7 +63,7 @@ def structurize(input_array):
         if existing_transporters:
             # If transporter exists, append the fleet to its fleets list
             existing_transporter = existing_transporters[0]
-            if not fleet_item in existing_transporter["fleets"] and item["trf_active"]:
+            if fleet_item not in existing_transporter["fleets"] and item["trf_active"]:
                 existing_transporter["fleets"].append(fleet_item)
         else:
             # If transporter doesn't exist, add it along with the fleet

@@ -27,12 +27,12 @@ class Redis:
 
         return await self.bid_details(sorted_set=sorted_set)
 
-    async def bid_details(self, sorted_set: str) -> (any,str):
+    async def bid_details(self, sorted_set: str) -> (any, str):
 
         log("FETCHING BID DETAILS FROM REDIS")
 
         try:
-            
+
             transporter_data_with_rates = []
 
             transporter_ids = self.get_all(sorted_set=sorted_set)
@@ -55,10 +55,9 @@ class Redis:
             log("LIVE BID RESULTS", transporter_data_with_rates)
 
             return (transporter_data_with_rates, "")
-        
+
         except Exception as e:
-            return([],str(e))
-    
+            return ([], str(e))
 
     async def get_first(self, sorted_set: str):
         log("FETCHING LOWEST PRICE FROM REDIS")

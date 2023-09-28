@@ -6,9 +6,9 @@ valid_cancel_status = ['draft', 'not_started',
                        'pending', 'partially_confirmed', 'confirmed']
 valid_assignment_status = ['pending', 'partially_confirmed']
 
-valid_bid_status = ['live','not_started']
+valid_bid_status = ['live', 'not_started']
 
-status_wise_fetch_query="""
+status_wise_fetch_query = """
             SELECT
                 t_bidding_load.bl_id,
                 t_bidding_load.bid_time,
@@ -42,7 +42,7 @@ status_wise_fetch_query="""
                 AND t_bidding_load.load_status = :load_status;"""
 
 
-filter_wise_fetch_query="""
+filter_wise_fetch_query = """
             SELECT
                 t_bidding_load.bl_id,
                 t_bidding_load.bid_time,

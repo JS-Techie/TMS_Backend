@@ -1,6 +1,7 @@
 
 from fastapi import APIRouter, BackgroundTasks
-import os,json
+import os
+import json
 from typing import List
 from datetime import datetime, timedelta
 
@@ -304,14 +305,19 @@ async def cancel_bid(bid_id: str):
 @bidding_router.post("/assign/{bid_id}")
 async def assign_to_transporter(bid_id: str, transporters: List[TransporterAssignReq]):
 
+    (update_successful_bid_status, error) = (False, "")
+    total_fleets = 0
+    load_status = ""
+
     try:
+
         (valid_bid_id, error) = await bid.is_valid(bid_id=bid_id)
 
         if not valid_bid_id:
             return ErrorResponse(data=[], client_msg=os.getenv("INVALID_BID_ERROR"), dev_msg=error)
 
-        total_fleets = 0
-        load_status = ""
+        if len(transporters) <= 0:
+            return ErrorResponse(data=[], client_msg="Please select at least one transporter to assign", dev_msg="Transporter assignment array empty/invalid")
 
         for transporter in transporters:
             total_fleets += getattr(transporter, "no_of_fleets_assigned")
@@ -322,8 +328,8 @@ async def assign_to_transporter(bid_id: str, transporters: List[TransporterAssig
             return ErrorResponse(data=[], client_msg="Something went wrong while trying to Assign Transporter", dev_msg=error)
 
         if bid_details.load_status not in valid_assignment_status:
-            return ErrorResponse(data=[], client_msg="Transporter cannot be assigned to this bid", dev_msg=f"transporter cannot be assigned to bid with status- {bid_details.load_status}")
-        print(":::::::::::::::::::;")
+            return ErrorResponse(data=[], client_msg=f"Transporter cannot be assigned to this bid as it is {bid_details.load_status}", dev_msg=f"transporter cannot be assigned to bid with status- {bid_details.load_status}")
+
         if total_fleets < bid_details.no_of_fleets:
             load_status = "partially_confirmed"
         elif total_fleets == bid_details.no_of_fleets:
@@ -332,13 +338,12 @@ async def assign_to_transporter(bid_id: str, transporters: List[TransporterAssig
             return ErrorResponse(data=[], client_msg="Assigned number of fleets greater than requested number of fleets", dev_msg="Mismatch of assigned and requested fleets")
 
         if len(transporters) > 1:
-
             (update_successful_bid_status, error) = await bid.status_update(bid_id=bid_id, split=True, status=load_status)
-        elif len(transporters) == 1:
+        else:
             (update_successful_bid_status, error) = await bid.status_update(bid_id=bid_id, split=False, status=load_status)
 
-            if not update_successful_bid_status:
-                return ErrorResponse(data=[], client_msg="Something Went Wrong while Assigning Transporters", dev_msg=error)
+        if not update_successful_bid_status:
+            return ErrorResponse(data=[], client_msg="Something Went Wrong while Assigning Transporters", dev_msg=error)
 
         (assigned_loads, error) = await bid.assign(bid_id=bid_id, transporters=transporters)
 

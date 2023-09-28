@@ -1,6 +1,7 @@
 from sqlalchemy.sql.functions import func
 from datetime import datetime, timedelta
-import os, math
+import os
+import math
 
 from sqlalchemy import text
 from string import Template
@@ -13,7 +14,7 @@ from models.models import BiddingLoad, MapLoadSrcDestPair, LoadAssigned, Transpo
 from utils.utilities import log, convert_date_to_string, structurize, structurize_assignment_data
 from config.redis import r as redis
 from utils.redis import Redis
-from data.bidding import status_wise_fetch_query, filter_wise_fetch_query,live_bid_details
+from data.bidding import status_wise_fetch_query, filter_wise_fetch_query, live_bid_details
 from schemas.bidding import FilterBidsRequest
 from config.scheduler import Scheduler
 from utils.utilities import log
@@ -249,30 +250,28 @@ class Bid:
         try:
             (lowest_price, error) = await self.lowest_price(bid_id=bid_id)
 
-            log("LOWEST PRICE BEFORE CONVERT",lowest_price)
+            log("LOWEST PRICE BEFORE CONVERT", lowest_price)
 
             if error:
                 return ErrorResponse(data=[], dev_msg=str(error), client_msg=os.getenv("BID_SUBMIT_ERROR"))
-            
+
             if lowest_price == float("inf"):
                 log("LOWEST PRICE INFINITY")
                 return ({
                     "valid": True,
-                }, "") 
-            
+                }, "")
+
             lowest_price = int(lowest_price)
             decrement = int(decrement)
             rate = int(rate)
 
-            log("LOWEST PRICE",lowest_price)
-            log("DECREMENT",decrement)
-            log("RATE",rate)
-
-
+            log("LOWEST PRICE", lowest_price)
+            log("DECREMENT", decrement)
+            log("RATE", rate)
 
             if (rate + math.ceil(decrement*lowest_price*0.01) <= lowest_price):
 
-                log("NEW RATE",rate + math.ceil(decrement * lowest_price * 0.01))
+                log("NEW RATE", rate + math.ceil(decrement * lowest_price * 0.01))
 
                 log("BID RATE OK", rate)
                 return ({
@@ -303,7 +302,7 @@ class Bid:
 
             decrement = int(decrement)
             rate = int(rate)
-            
+
             if (int(bid.rate) >= rate + math.ceil(decrement*int(bid.rate)*0.01)):
                 return ({
                     "valid": True,
@@ -330,7 +329,7 @@ class Bid:
 
             if not bid:
                 return (float("inf"), "")
-            
+
             log("BID DETAILS OK", bid)
             return (bid.rate, "")
 
@@ -352,12 +351,12 @@ class Bid:
             details = (
                 session.query(BidTransaction,
                               TransporterModel.name,
-                            PriceMatchRequest.pmr_price,
-                            LoadAssigned
-                            )
+                              PriceMatchRequest.pmr_price,
+                              LoadAssigned
+                              )
                 .join(TransporterModel, TransporterModel.trnsp_id == BidTransaction.transporter_id)
                 .outerjoin(PriceMatchRequest, PriceMatchRequest.pmr_bidding_load_id == BidTransaction.bid_id)
-                .outerjoin(LoadAssigned,LoadAssigned.la_bidding_load_id == BidTransaction.bid_id)
+                .outerjoin(LoadAssigned, LoadAssigned.la_bidding_load_id == BidTransaction.bid_id)
                 .filter(BidTransaction.bid_id == bid_id)
                 .all()
             )
@@ -365,21 +364,21 @@ class Bid:
             # log("DETAILS",details)
 
             for bid in details:
-                bid_details, transporter_name,price_match_rate,load_assigned = bid
-                # price_match_rate, load_assigned 
+                bid_details, transporter_name, price_match_rate, load_assigned = bid
+                # price_match_rate, load_assigned
 
                 obj = {
                     "bid_details": bid_details,
                     "transporter_name": transporter_name,
                     "price_match_rate": price_match_rate,
-                    "load_assigned":load_assigned
+                    "load_assigned": load_assigned
                 }
 
                 bid_detail_arr.append(obj)
 
             return (True, structurize_assignment_data(bid_detail_arr))
 
-            # return(True,bid_detail_arr)
+
 
         except Exception as e:
             session.rollback()
@@ -391,7 +390,7 @@ class Bid:
 
         session = Session()
         try:
-            
+
             bid_details = session.query(BiddingLoad).filter(
                 BiddingLoad.bl_id == bid_id).first()
 
@@ -416,14 +415,13 @@ class Bid:
 
         session = Session()
         user_id = os.getenv("USER_ID")
-        # user["id"]
 
         try:
-            
+
             transporter_ids = []
             assigned_transporters = []
             for transporter in transporters:
-            
+
                 transporter_ids.append(
                     getattr(transporter, "la_transporter_id"))
                 assign_detail = LoadAssigned(
@@ -445,16 +443,16 @@ class Bid:
                 LoadAssigned.la_bidding_load_id == bid_id, LoadAssigned.la_transporter_id.in_(transporter_ids)).all()
 
             if transporter_details:
-                return ("", "Bid already assigned to same Transporter")
+                return ([], "Bid already assigned to same Transporter")
 
             session.bulk_save_objects(assigned_transporters)
             session.commit()
 
-            return (assigned_transporters, None)
+            return (assigned_transporters, "")
 
         except Exception as e:
             session.rollback()
-            return (False, str(e))
+            return ([], str(e))
 
         finally:
             session.close()
@@ -538,14 +536,14 @@ class Bid:
         finally:
             session.close()
 
-    async def live_details(self,bid_id : str) -> (bool,any):
+    async def live_details(self, bid_id: str) -> (bool, any):
 
         session = Session()
 
         try:
-            
+
             bid_details = session.execute(text(live_bid_details), params={
-                                        "bid_id": bid_id})
+                "bid_id": bid_id})
 
             if not bid_details:
                 return ({}, "Error While Fetching Bid Details")
