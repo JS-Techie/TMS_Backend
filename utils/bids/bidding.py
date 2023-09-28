@@ -110,7 +110,7 @@ class Bid:
 
             filter_wise_query = Template(
                 filter_wise_fetch_query).safe_substitute(filter_values)
-            log("QUERY >>>>", filter_wise_query)
+
             bid_array = session.execute(text(filter_wise_query), params={
                                         "load_status": status})
 
@@ -373,10 +373,9 @@ class Bid:
                     "price_match_rate": price_match_rate,
                     "load_assigned": load_assigned
                 }
-
                 bid_detail_arr.append(obj)
 
-            return (True, structurize_assignment_data(bid_detail_arr))
+            return (True, structurize_assignment_data(bid_detail_arr)[0])
 
 
 

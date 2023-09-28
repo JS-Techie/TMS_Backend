@@ -10,6 +10,7 @@ server:
 	uvicorn server:app --reload
 
 dev:
-	docker build -t mehultuteck/tms-bidding:$(DATE) -t mehultuteck/tms-bidding:latest . --platform=linux/amd64
-	docker push mehultuteck/tms-bidding:$(DATE)
-	docker push mehultuteck/tms-bidding:latest
+	docker build -t tutecktechnologies/tms-bidding:$(DATE) -t tutecktechnologies/tms-bidding:latest . --platform=linux/amd64
+	docker push tutecktechnologies/tms-bidding:$(DATE)
+	docker push tutecktechnologies/tms-bidding:latest
+
