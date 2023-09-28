@@ -375,7 +375,12 @@ class Bid:
                 }
                 bid_detail_arr.append(obj)
 
-            return (True, structurize_assignment_data(bid_detail_arr)[0])
+            res = structurize_assignment_data(bid_detail_arr)
+
+            if len(res) == 0:
+                return (True,[])
+            
+            return (True, res[0])
 
 
 
