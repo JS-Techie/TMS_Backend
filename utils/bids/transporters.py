@@ -1,6 +1,6 @@
 from config.db_config import Session
 from utils.response import ServerError, SuccessResponse
-from models.models import BidTransaction, TransporterModel, MapShipperTransporter, LoadAssigned,BiddingLoad
+from models.models import BidTransaction, TransporterModel, MapShipperTransporter, LoadAssigned,BiddingLoad,User
 from utils.bids.bidding import Bid
 from utils.utilities import log
 import os
@@ -9,6 +9,31 @@ bid = Bid()
 
 
 class Transporter:
+
+    async def id(self,user_id : str) -> (str,str):
+
+        session = Session()
+
+        try:
+            if not user_id:
+                return (False, "The User ID provided is empty")
+            
+            transporter = (session
+                           .query(User)
+                           .filter(User.user_id == user_id,User.is_active == True)
+                            .first()
+                            )
+            
+            if not transporter:
+                return ("","Transporter ID could not be found")
+            
+            return (transporter.user_transporter_id,"")
+            
+        except Exception as e:
+            session.rollback()
+            return ("",str(e))
+        finally:
+            session.close()
 
     async def notify(self, bid_id: str):
         log(bid_id)

@@ -59,13 +59,13 @@ class Bid:
         finally:
             session.close()
 
-    async def get_status_wise(self, status: str) -> (any, str):
+    async def get_status_wise(self, status: str,shipper_id:str) -> (any, str):
         session = Session()
 
         try:
 
             bid_array = session.execute(text(status_wise_fetch_query), params={
-                                        "load_status": status})
+                                        "load_status": status,"shipper_id" : shipper_id})
 
             rows = bid_array.fetchall()
 
@@ -160,7 +160,7 @@ class Bid:
         finally:
             session.close()
 
-    async def update_status(self, bid_id: str, status: str) -> (bool, str):
+    async def update_status(self, bid_id: str, status: str,user_id : str) -> (bool, str):
 
         session = Session()
 
@@ -176,6 +176,7 @@ class Bid:
                 return (False, "Bid requested could not be found")
 
             setattr(bid_to_be_updated, "load_status", status)
+            setattr(bid_to_be_updated,"updated_by",user_id)
             session.commit()
 
             return (True, "")
@@ -208,10 +209,9 @@ class Bid:
         finally:
             session.close()
 
-    async def new(self, bid_id: str, transporter_id: str, rate: float, comment: str) -> (any, str):
+    async def new(self, bid_id: str, transporter_id: str, rate: float, comment: str,user_id : str) -> (any, str):
 
         session = Session()
-        user_id = os.getenv("USER_ID")
 
         try:
 
@@ -387,10 +387,10 @@ class Bid:
         finally:
             session.close()
 
-    async def assign(self, bid_id: str, transporters: list, split: bool, status: str) -> (list, str):
+    async def assign(self, bid_id: str, transporters: list, split: bool, status: str,user_id : str) -> (list, str):
 
         session = Session()
-        user_id = os.getenv("USER_ID")
+
 
         try:
 

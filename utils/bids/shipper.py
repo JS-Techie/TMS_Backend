@@ -4,7 +4,7 @@ import os
 
 from utils.response import ErrorResponse
 from config.db_config import Session
-from models.models import Shipper as ShipperModel
+from models.models import Shipper as ShipperModel, User
 from utils.utilities import log, convert_date_to_string
 from config.scheduler import Scheduler
 
@@ -12,6 +12,32 @@ sched = Scheduler()
 
 
 class Shipper:
+
+    async def id(self, user_id: str) -> (str, str):
+
+        session = Session()
+
+        try:
+            if not user_id:
+                return (False, "The User ID provided is empty")
+
+            shipper = (session
+                       .query(User)
+                       .filter(User.user_id == user_id, User.is_active == True)
+                       .first()
+                       )
+
+            if not shipper:
+                return ("", "Shipper ID not found!")
+
+            return (shipper.user_shipper_id,"")
+
+        except Exception as e:
+            session.rollback()
+            return ("", str(e))
+
+        finally:
+            session.close()
 
     async def is_valid(self, shipper_id: str) -> (bool, str):
 

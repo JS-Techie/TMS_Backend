@@ -1,5 +1,5 @@
 
-from fastapi import APIRouter, BackgroundTasks
+from fastapi import APIRouter, BackgroundTasks, Request
 import os
 import json
 from typing import List
@@ -7,11 +7,12 @@ from datetime import datetime, timedelta
 
 from utils.response import ErrorResponse, SuccessResponse, SuccessNoContentResponse, ServerError
 from data.bidding import valid_load_status, valid_rebid_status, valid_cancel_status, valid_assignment_status, valid_bid_status
+from data.users import user_types
 from utils.bids.bidding import Bid
 from utils.bids.transporters import Transporter
 from utils.bids.shipper import Shipper
 from utils.redis import Redis
-from schemas.bidding import HistoricalRatesReq, TransporterBidReq, TransporterAssignReq, FilterBidsRequest, TransporterBidMatchRequest,TransporterUnassignRequest
+from schemas.bidding import HistoricalRatesReq, TransporterBidReq, TransporterAssignReq, FilterBidsRequest, TransporterBidMatchRequest, TransporterUnassignRequest
 from utils.utilities import log
 from config.socket import manager
 
@@ -23,15 +24,28 @@ bid = Bid()
 shipper = Shipper()
 redis = Redis()
 
+shp,trns,acu = os.getenv("SHIPPER"),os.getenv("TRANSPORTER"),os.getenv("ACULEAD")
 
 @bidding_router.get("/status/{status}")
-async def get_bids_according_to_status(status: str):
+async def get_bids_according_to_status(request: Request, status: str):
+
+    user_type,user_id = request.state.current_user.user_type,request.state.current_user.user_type
+
 
     try:
+
+        if user_type != shp or not user_id:
+            return ErrorResponse(data=[],dev_msg=f"Only shippers have access to view bids. This user is a {user_type}",client_msg=os.getenv("GENERIC_ERROR"))
+
         if status not in valid_load_status:
             return ErrorResponse(data=[], dev_msg=os.getenv("STATUS_ERROR"), client_msg=os.getenv("GENERIC_ERROR"))
+        
+        (shipper_id,error) = await shipper.id(user_id = user_id)
 
-        (bids, error) = await bid.get_status_wise(status)
+        if error:
+            return ErrorResponse(data=[], dev_msg=error, client_msg=os.getenv("GENERIC_ERROR"))
+
+        (bids, error) = await bid.get_status_wise(status=status,shipper_id=shipper_id)
 
         if error:
             return ErrorResponse(data=[], dev_msg=error, client_msg=os.getenv("GENERIC_ERROR"))
@@ -46,7 +60,9 @@ async def get_bids_according_to_status(status: str):
 
 
 @bidding_router.post("/filter/{status}")
-async def get_bids_according_to_filter_criteria(status: str, filter_criteria: FilterBidsRequest):
+async def get_bids_according_to_filter_criteria(request: Request, status: str, filter_criteria: FilterBidsRequest):
+
+    user = request.state.current_user
 
     try:
         if status not in valid_load_status:
@@ -64,16 +80,22 @@ async def get_bids_according_to_filter_criteria(status: str, filter_criteria: Fi
 
 
 @bidding_router.patch("/publish/{bid_id}")
-async def publish_new_bid(bid_id: str, bg_tasks: BackgroundTasks):
+async def publish_new_bid(request: Request, bid_id: str, bg_tasks: BackgroundTasks):
+
+    user_type,user_id = request.state.current_user.user_type,request.state.current_user.user_type
+
 
     try:
+
+        if user_type != shp or not user_id:
+            return ErrorResponse(data=[],dev_msg=f"Only shippers have access to publish bids. This user is a {user_type}",client_msg=os.getenv("GENERIC_ERROR"))
 
         (valid_bid_id, error) = await bid.is_valid(bid_id)
 
         if not valid_bid_id:
             return ErrorResponse(data=[], client_msg=os.getenv("NOT_FOUND_ERROR"), dev_msg=error)
 
-        (update_successful, error) = await bid.update_status(bid_id=bid_id, status="not_started")
+        (update_successful, error) = await bid.update_status(bid_id=bid_id, status="not_started",user_id=user_id)
 
         if not update_successful:
             return ErrorResponse(data=bid_id, client_msg=os.getenv("BID_PUBLISH_ERROR"), dev_msg=error)
@@ -87,10 +109,20 @@ async def publish_new_bid(bid_id: str, bg_tasks: BackgroundTasks):
 
 
 @bidding_router.post("/rate/{bid_id}", response_model=None)
-async def provide_new_rate_for_bid(bid_id: str, bid_req: TransporterBidReq):
+async def provide_new_rate_for_bid(request: Request, bid_id: str, bid_req: TransporterBidReq):
+
+    user_type,user_id = request.state.current_user.user_type,request.state.current_user.user_type
 
     try:
 
+        if user_type != trns or not user_id:
+            return ErrorResponse(data=[],dev_msg=f"Only transporters have access to place bids. This user is a {user_type}",client_msg=os.getenv("GENERIC_ERROR"))
+        
+        (transporter_id,error) = await transporter.id(user_id = user_id)
+
+        if error:
+            return ErrorResponse(data=[],dev_msg=error,client_msg=os.getenv("GENERIC_ERROR"))
+        
         if bid_req.rate <= 0:
             return ErrorResponse(data=bid_req.rate, client_msg="Invalid Rate Entered, Rate Entered Must be Greater Than Zero", dev_msg="Rate must be greater than zero")
 
@@ -115,9 +147,9 @@ async def provide_new_rate_for_bid(bid_id: str, bid_req: TransporterBidReq):
         log("BID DETAILS FOUND", bid_id)
 
         if bid_details.bid_mode == "private_pool":
-            log("REQUEST TRANSPORTER ID:", bid_req.transporter_id)
+            log("REQUEST TRANSPORTER ID:", transporter_id)
             log("BID SHIPPER ID", bid_details.bl_shipper_id)
-            (allowed_transporter_to_bid, error) = await transporter.allowed_to_bid(shipper_id=bid_details.bl_shipper_id, transporter_id=bid_req.transporter_id)
+            (allowed_transporter_to_bid, error) = await transporter.allowed_to_bid(shipper_id=bid_details.bl_shipper_id, transporter_id=transporter_id)
 
             if not allowed_transporter_to_bid:
                 return ErrorResponse(data=[], client_msg="Transporter Not Allowed to participate in the private Bid", dev_msg="bid is private, transporter not allowed")
@@ -125,7 +157,7 @@ async def provide_new_rate_for_bid(bid_id: str, bid_req: TransporterBidReq):
         log("TRANSPORTER ALLOWED TO BID", bid_id)
 
         (transporter_attempts, error) = await transporter.attempts(
-            bid_id=bid_id, transporter_id=bid_req.transporter_id)
+            bid_id=bid_id, transporter_id=transporter_id)
 
         if error:
             return ErrorResponse(data=[], client_msg=os.getenv("BID_RATE_ERROR"), dev_msg=error)
@@ -136,7 +168,7 @@ async def provide_new_rate_for_bid(bid_id: str, bid_req: TransporterBidReq):
         log("BID TRIES OK", bid_id)
 
         (rate, error) = await transporter.is_valid_bid_rate(bid_id=bid_id, show_rate_to_transporter=bid_details.show_current_lowest_rate_transporter,
-                                                            rate=bid_req.rate, transporter_id=bid_req.transporter_id, decrement=bid_details.bid_price_decrement, status=bid_details.load_status)
+                                                            rate=bid_req.rate, transporter_id=transporter_id, decrement=bid_details.bid_price_decrement, status=bid_details.load_status)
 
         log("RATE OBJECT", rate)
 
@@ -149,7 +181,7 @@ async def provide_new_rate_for_bid(bid_id: str, bid_req: TransporterBidReq):
         log("VALID RATE", bid_id)
 
         (new_record, error) = await bid.new(
-            bid_id, bid_req.transporter_id, bid_req.rate, bid_req.comment)
+            bid_id, transporter_id, bid_req.rate, bid_req.comment,user_id=user_id)
 
         log("NEW BID INSERTED", bid_id)
 
@@ -157,7 +189,7 @@ async def provide_new_rate_for_bid(bid_id: str, bid_req: TransporterBidReq):
             return ErrorResponse(data=[], dev_msg=error, client_msg=os.getenv("BID_RATE_ERROR"))
 
         (transporter_name, error) = await transporter.name(
-            transporter_id=bid_req.transporter_id)
+            transporter_id=transporter_id)
 
         log("TRANSPORTER NAME", transporter_name)
 
@@ -165,7 +197,7 @@ async def provide_new_rate_for_bid(bid_id: str, bid_req: TransporterBidReq):
             return ErrorResponse(data=[], client_msg=os.getenv("BID_RATE_ERROR"), dev_msg=error)
 
         (sorted_bid_details, error) = await redis.update(sorted_set=bid_id,
-                                                         transporter_id=str(bid_req.transporter_id), comment=bid_req.comment, transporter_name=transporter_name, rate=bid_req.rate, attempts=transporter_attempts + 1)
+                                                         transporter_id=str(transporter_id), comment=bid_req.comment, transporter_name=transporter_name, rate=bid_req.rate, attempts=transporter_attempts + 1)
 
         log("BID DETAILS", sorted_bid_details)
 
@@ -180,9 +212,11 @@ async def provide_new_rate_for_bid(bid_id: str, bid_req: TransporterBidReq):
 
 
 @bidding_router.get("/increment/{bid_id}")
-async def increment_time_of_bid(bid_id: str):
+async def increment_time_of_bid(request: Request, bid_id: str):
 
+    user = request.state.current_user
     current_time = datetime.now()
+
     try:
         (valid_bid_id, error) = await bid.is_valid(bid_id=bid_id)
 
@@ -213,7 +247,9 @@ async def increment_time_of_bid(bid_id: str):
 
 
 @bidding_router.get("/lowest/{bid_id}")
-async def get_lowest_price_of_current_bid(bid_id: str):
+async def get_lowest_price_of_current_bid(request: Request, bid_id: str):
+
+    user = request.state.current_user
 
     try:
 
@@ -233,9 +269,15 @@ async def get_lowest_price_of_current_bid(bid_id: str):
 
 
 @bidding_router.post("/history/{bid_id}")
-async def fetch_all_rates_given_by_transporter(bid_id: str, req: HistoricalRatesReq):
+async def fetch_all_rates_given_by_transporter(request: Request, bid_id: str, req: HistoricalRatesReq):
+
+    user_type,user_id = request.state.current_user.user_type,request.state.current_user.user_type
 
     try:
+
+        if user_type != shp or not user_id:
+            return ErrorResponse(data=[],dev_msg=f"Only shippers have access to view all rates. This user is a {user_type}",client_msg=os.getenv("GENERIC_ERROR"))
+        
         (valid_bid_id, error) = await bid.is_valid(bid_id)
 
         if not valid_bid_id:
@@ -247,33 +289,16 @@ async def fetch_all_rates_given_by_transporter(bid_id: str, req: HistoricalRates
         return ServerError(err=err, errMsg=str(err))
 
 
-@bidding_router.put("/rebid/{bid_id}")
-async def rebid(bid_id: str):
-
-    try:
-        (valid_bid_id, error) = await bid.is_valid(bid_id)
-
-        if not valid_bid_id:
-            return ErrorResponse(data=[], client_msg=os.getenv("INVALID_BID_ERROR"), dev_msg=error)
-
-        (bid_details, error) = await bid.details(bid_id=bid_id)
-
-        if error:
-            return ErrorResponse(data=[], client_msg="Something went wrong while trying to rebid", dev_msg=error)
-
-        if bid_details.status not in valid_rebid_status:
-            return ErrorResponse(data=[], client_msg="This bid is not valid for rebid!", dev_msg=f"Bid-{bid_id} is {bid_details.status}, cannot be rebid!")
-
-        # call create load api
-
-    except Exception as err:
-        return ServerError(err=err, errMsg=str(err))
-
-
 @bidding_router.delete("/cancel/{bid_id}")
-async def cancel_bid(bid_id: str):
+async def cancel_bid(request: Request, bid_id: str):
+   
+    user_type,user_id = request.state.current_user.user_type,request.state.current_user.user_type
 
     try:
+
+        if user_type != shp or not user_id:
+            return ErrorResponse(data=[],dev_msg=f"Only shippers have access to cancel bids. This user is a {user_type}",client_msg=os.getenv("GENERIC_ERROR"))
+        
         (valid_bid_id, error) = await bid.is_valid(bid_id)
 
         if not valid_bid_id:
@@ -291,7 +316,7 @@ async def cancel_bid(bid_id: str):
             return ErrorResponse(data=[], client_msg="This bid is not valid and cannot be cancelled!", dev_msg=f"Bid-{bid_id} is {bid_details.load_status}, cannot be cancelled!")
 
         log("BID STATUS IS VALID")
-        (update_successful, error) = await bid.update_status(bid_id=bid_id, status="cancelled")
+        (update_successful, error) = await bid.update_status(bid_id=bid_id, status="cancelled",user_id=user_id)
 
         if not update_successful:
             return ErrorResponse(data=[], client_msg=os.getenv("BID_CANCEL_ERROR"), dev_msg=error)
@@ -303,13 +328,18 @@ async def cancel_bid(bid_id: str):
 
 
 @bidding_router.post("/assign/{bid_id}")
-async def assign_to_transporter(bid_id: str, transporters: List[TransporterAssignReq]):
+async def assign_to_transporter(request: Request, bid_id: str, transporters: List[TransporterAssignReq]):
+
+    user_type,user_id = request.state.current_user.user_type,request.state.current_user.user_type
 
     total_fleets = 0
     load_status = ""
     load_split = False
 
     try:
+
+        if user_type != shp or not user_id:
+            return ErrorResponse(data=[],dev_msg=f"Only shippers have access to assign bids. This user is a {user_type}",client_msg=os.getenv("GENERIC_ERROR"))
 
         (valid_bid_id, error) = await bid.is_valid(bid_id=bid_id)
 
@@ -329,8 +359,6 @@ async def assign_to_transporter(bid_id: str, transporters: List[TransporterAssig
 
         if bid_details.load_status not in valid_assignment_status:
             return ErrorResponse(data=[], client_msg=f"Transporter cannot be assigned to this bid as it is {bid_details.load_status}", dev_msg=f"transporter cannot be assigned to bid with status- {bid_details.load_status}")
-        
-        
 
         if total_fleets < bid_details.no_of_fleets:
             load_status = "partially_confirmed"
@@ -342,7 +370,7 @@ async def assign_to_transporter(bid_id: str, transporters: List[TransporterAssig
         if len(transporters) > 1:
             load_split = True
 
-        (assigned_loads, error) = await bid.assign(bid_id=bid_id, transporters=transporters, split=load_split, status=load_status)
+        (assigned_loads, error) = await bid.assign(bid_id=bid_id, transporters=transporters, split=load_split, status=load_status,user_id=user_id)
 
         if error:
             return ErrorResponse(data=[], client_msg="Something Went Wrong While Assigning Transporters", dev_msg=error)
@@ -354,9 +382,15 @@ async def assign_to_transporter(bid_id: str, transporters: List[TransporterAssig
 
 
 @bidding_router.get("/details/{bid_id}")
-async def bid_details_for_assignment_to_transporter(bid_id: str):
+async def bid_details_for_assignment_to_transporter(request: Request, bid_id: str):
+
+    user_type,user_id = request.state.current_user.user_type,request.state.current_user.user_type
 
     try:
+
+        if user_type != shp or not user_id:
+            return ErrorResponse(data=[],dev_msg=f"Only shippers have access to see details of bids. This user is a {user_type}",client_msg=os.getenv("GENERIC_ERROR"))
+        
         (valid_bid_id, error) = await bid.is_valid(bid_id=bid_id)
 
         if not valid_bid_id:
@@ -374,11 +408,17 @@ async def bid_details_for_assignment_to_transporter(bid_id: str):
 
 
 @bidding_router.get("/live/{bid_id}")
-async def live_bid_details(bid_id: str):
+async def live_bid_details(request: Request, bid_id: str):
+
+    user_type,user_id = request.state.current_user.user_type,request.state.current_user.user_type
 
     res_array = []
 
     try:
+
+        if user_type != shp or not user_id:
+            return ErrorResponse(data=[],dev_msg=f"Only shippers have access to view live details of bids. This user is a {user_type}",client_msg=os.getenv("GENERIC_ERROR"))
+        
         (valid_bid_id, error) = await bid.is_valid(bid_id=bid_id)
 
         if not valid_bid_id:
@@ -417,41 +457,52 @@ async def live_bid_details(bid_id: str):
 
 
 @bidding_router.post("/match/{bid_id}")
-async def bid_match_for_transporters(bid_id:str, transporters: List[TransporterBidMatchRequest]):
-    
+async def bid_match_for_transporters(request: Request, bid_id: str, transporters: List[TransporterBidMatchRequest]):
+
+    user_type,user_id = request.state.current_user.user_type,request.state.current_user.user_type
+
     try:
+        
+        if user_type != shp or not user_id:
+            return ErrorResponse(data=[],dev_msg=f"Only shippers have access to bid match. This user is a {user_type}",client_msg=os.getenv("GENERIC_ERROR"))
+        
         (valid_bid_id, error) = await bid.is_valid(bid_id=bid_id)
 
         if not valid_bid_id:
             return ErrorResponse(data=[], client_msg=os.getenv("INVALID_BID_ERROR"), dev_msg=error)
-        
+
         (assignment_details, error) = await transporter.bid_match(bid_id=bid_id, transporters=transporters)
-        
+
         if error:
             return ErrorResponse(data=[], client_msg=os.getenv("GENERIC_ERROR"), dev_msg=error)
-        
+
         return SuccessResponse(data=assignment_details, client_msg="Bid Match Successful", dev_msg="Bid Match Successful")
-        
+
     except Exception as err:
         return ServerError(err=err, errMsg=str(err))
 
 
 @bidding_router.delete("/unassign/{bid_id}")
-async def unassign_transporter_for_bid(bid_id : str,transporter_id : TransporterUnassignRequest):
+async def unassign_transporter_for_bid(request: Request, bid_id: str, transporter_id: TransporterUnassignRequest):
+
+    user_type,user_id = request.state.current_user.user_type,request.state.current_user.user_type
 
     try:
+
+        if user_type != shp or not user_id:
+            return ErrorResponse(data=[],dev_msg=f"Only shippers have access to unassign transporters. This user is a {user_type}",client_msg=os.getenv("GENERIC_ERROR"))
+        
         (valid_bid_id, error) = await bid.is_valid(bid_id=bid_id)
 
         if not valid_bid_id:
             return ErrorResponse(data=[], client_msg=os.getenv("INVALID_BID_ERROR"), dev_msg=error)
-    
-        (unassigned_transporter,error) = await transporter.unassign(bid_id=bid_id,transporter_id = transporter_id)
+
+        (unassigned_transporter, error) = await transporter.unassign(bid_id=bid_id, transporter_id=transporter_id)
 
         if error:
             return ErrorResponse(data=[], client_msg=os.getenv("INVALID_BID_ERROR"), dev_msg=error)
-        
-        return SuccessResponse(data=unassigned_transporter,client_msg=f"Successfully unassigned transporter for Bid-{bid_id}",dev_msg="Unassigned requested transporter from bid")
-    
+
+        return SuccessResponse(data=unassigned_transporter, client_msg=f"Successfully unassigned transporter for Bid-{bid_id}", dev_msg="Unassigned requested transporter from bid")
 
     except Exception as err:
         return ServerError(err=err, errMsg=str(err))

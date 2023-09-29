@@ -39,7 +39,9 @@ status_wise_fetch_query = """
             LEFT JOIN t_tracking_fleet ON t_tracking_fleet.tf_transporter_id = t_load_assigned.la_transporter_id
             WHERE
                 t_bidding_load.is_active = true
-                AND t_bidding_load.load_status = :load_status;"""
+                AND t_bidding_load.load_status = :load_status;
+                AND t_bidding_load.bl_shipper_id = :shipper_id
+                """
 
 
 filter_wise_fetch_query = """
