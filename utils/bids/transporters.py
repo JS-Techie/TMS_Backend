@@ -1,6 +1,6 @@
 from config.db_config import Session
 from utils.response import ServerError, SuccessResponse
-from models.models import BidTransaction, TransporterModel, MapShipperTransporter, LoadAssigned
+from models.models import BidTransaction, TransporterModel, MapShipperTransporter, LoadAssignedm,BiddingLoad
 from utils.bids.bidding import Bid
 from utils.utilities import log
 import os
@@ -203,7 +203,7 @@ class Transporter:
         session = Session()
 
         try:
-            
+
             transporter = (session
                            .query(LoadAssigned)
                            .filter(LoadAssigned.la_bidding_load_id == bid_id,
@@ -216,6 +216,18 @@ class Transporter:
                 return ({}, "Transporter details could not be found")
 
             transporter.is_active = False
+
+            bid = (session.
+                   query(BiddingLoad)
+                   .filter(BiddingLoad.bl_id == bid_id)
+                   .first()
+                   )
+            
+            if not bid:
+                return ({}, "Bid details could not be found")
+            
+            bid.load_status = "partially_confirmed"
+
             session.commit()
 
             return (transporter, "")
