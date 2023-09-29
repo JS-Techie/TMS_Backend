@@ -37,3 +37,6 @@ class TransporterBidMatchRequest(BaseModel):
 
 class TransporterUnassignRequest(BaseModel):
     transporter_id : str
+
+class TransporterLostBidsReq(BaseModel):
+    particpated : bool

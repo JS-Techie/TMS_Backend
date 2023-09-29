@@ -1,8 +1,8 @@
 from config.db_config import Session
 from utils.response import ServerError, SuccessResponse
-from models.models import BidTransaction, TransporterModel, MapShipperTransporter, LoadAssigned, BiddingLoad, User
+from models.models import BidTransaction, TransporterModel, MapShipperTransporter, LoadAssigned, BiddingLoad, User, ShipperModel, MapLoadSrcDestPair
 from utils.bids.bidding import Bid
-from utils.utilities import log
+from utils.utilities import log, structurize_transporter_bids
 import os
 
 bid = Bid()
@@ -263,47 +263,67 @@ class Transporter:
         finally:
             session.close()
 
-    async def bids(self, transporter_id: str,status : str | None = None) -> (any,str):
-       
+    async def bids_by_status(self, transporter_id: str, status: str | None = None) -> (any, str):
+
         session = Session()
 
-        all_bids = []
-        
-
         try:
-
-            (shippers,error) = await self.shippers(transporter_id=transporter_id)
-
+            shippers, error = await self.shippers(transporter_id=transporter_id)
             if error:
-                return ([],error)
-            
-            (public_bids,error) = await bid.public(status=status)
+                return [], error
 
+            public_bids, error = await bid.public(status=status)
             if error:
-                return ([],error)
-            
+                return [], error
+
             private_bids = []
-
             if shippers:
-                (private_bids,error) = await bid.private(shippers = shippers,status=status)
+                private_bids, error = await bid.private(shippers=shippers, status=status)
                 if error:
-                    return ([],error)
-            
+                    return [], error
 
-            all_bids.extend(private_bids)
-            all_bids.extend(public_bids)
-            
-            
-            return({
-                "all" : all_bids,
-                "private" : private_bids,
-                "public" : public_bids
-            },"")
-                
-            
+            return {
+                "all": private_bids + public_bids,
+                "private": private_bids,
+                "public": public_bids
+            }, ""
+
         except Exception as e:
             session.rollback()
-            return ([], str(e))
+            return [], str(e)
+        finally:
+            session.close()
+
+    async def selected(self, transporter_id: str) -> (any, str):
+
+        session = Session()
+
+        try:
+            bid_ids = (session
+                       .query(LoadAssigned.la_bidding_load_id)
+                       .filter(LoadAssigned.la_transporter_id == transporter_id)
+                       .all()
+                       )
+
+            if not bid_ids:
+                return ([], "Not been selected in any bids yet!")
+
+            bids = (session
+                    .query(BiddingLoad, ShipperModel, MapLoadSrcDestPair)
+                    .outerjoin(ShipperModel.shpr_id == BiddingLoad.bl_shipper_id)
+                    .outerjoin(MapLoadSrcDestPair.mlsdp_bidding_load_id == BiddingLoad.bl_id)
+                    .filter(BiddingLoad.is_active == True, BiddingLoad.bl_id.in_(bid_ids))
+                    .all()
+                    )
+
+            if not bids:
+                return ([], "Could not find bid details from bid IDs")
+
+            return (structurize_transporter_bids(bids=bids), "")
+
+        except Exception as e:
+            session.rollback()
+            return [], str(e)
         finally:
             session.close()
 
@@ -320,10 +340,10 @@ class Transporter:
                         )
 
             if not shippers:
-                return ([],"This shipper is not mapped to any transporters")
-            
-            return(shippers,"")
-            
+                return ([], "This transporter is not mapped to any shipper")
+
+            return (shippers, "")
+
         except Exception as e:
             session.rollback()
             return ([], str(e))

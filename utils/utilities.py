@@ -131,25 +131,20 @@ def structurize_assignment_data(data):
 
     return sorted_transporter_data
 
+
 def structurize_transporter_bids(bids):
 
     bid_details = []
 
     for bid_load, shipper, src_dest_pair in bids:
-        bid_id = bid_load.bl_id
-        shipper_name = shipper.name
-        contact_number = shipper.contact_no
-        source = src_dest_pair.src_city
-        destination = src_dest_pair.dest_city
-        bid_date_time = bid_load.bid_time
 
         bid_detail = {
-            "BID ID": bid_id,
-            "Shipper Name": shipper_name,
-            "Contact Number": contact_number,
-            "Source": source,
-            "Destination": destination,
-            "Bid date time": bid_date_time,
+            "BID ID": bid_load.bl_id,
+            "Shipper Name": shipper.name,
+            "Contact Number": shipper.contact_no,
+            "Source": src_dest_pair.src_city,
+            "Destination": src_dest_pair.dest_city,
+            "Bid date time": bid_load.bid_time,
         }
 
         bid_details.append(bid_detail)

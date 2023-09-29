@@ -2,7 +2,7 @@ from fastapi import APIRouter,Request
 import os,json
 
 from config.socket import manager
-from schemas.bidding import TransporterBidReq
+from schemas.bidding import TransporterBidReq,TransporterLostBidsReq
 from models.models import BiddingLoad,LoadAssigned,TransporterModel,ShipperModel,User,MapShipperTransporter
 from data.bidding import valid_bid_status
 from utils.bids.bidding import Bid
@@ -32,24 +32,23 @@ async def fetch_all_bids_for_transporter(request : Request,status : str | None =
         if user_type != trns or not user_id:
             return ErrorResponse(data=[],dev_msg=f"Only transporters have access to place bids. This user is a {user_type}",client_msg=os.getenv("GENERIC_ERROR"))
         
-        (transporter_id,error) = request.state.transporter_id
+        transporter_id = request.state.transporter_id
+
+        if not transporter_id:
+            return ErrorResponse(data=[],dev_msg="No transporter ID in token, could not get details",client_msg=os.getenv("GENERIC_ERROR"))
+        
+        (bids,error) = await transporter.bids_by_status(transporter_id = transporter_id,status=status)
 
         if error:
             return ErrorResponse(data=[],dev_msg=error,client_msg=os.getenv("GENERIC_ERROR"))
         
-        (bids,error) = await transporter.bids(transporter_id = transporter_id,status=status)
-
-        if error:
-            return ErrorResponse(data=[],dev_msg=error,client_msg=os.getenv("GENERIC_ERROR"))
-        
-        return SuccessResponse(data=bids,dev_msg="Fetched bids successfully",client_msg=f"Fetched all {status} bids successfully")
+        return SuccessResponse(data=bids,dev_msg="Fetched bids successfully",client_msg=f"Fetched all {status} bids successfully!")
         
     except Exception as err:
         return ServerError(err=err,errMsg=str(err))
 
-##TO DO
 
-@transporter_bidding_router.get("/category/{category}")
+@transporter_bidding_router.get("/selected")
 async def fetch_bids_for_transporter_by_category(request : Request,category : str):
     
     user_type,user_id = request.state.current_user.user_type,request.state.current_user.user_type
@@ -59,10 +58,17 @@ async def fetch_bids_for_transporter_by_category(request : Request,category : st
         if user_type != trns or not user_id:
             return ErrorResponse(data=[],dev_msg=f"Only transporters have access to place bids. This user is a {user_type}",client_msg=os.getenv("GENERIC_ERROR"))
         
-        (transporter_id,error) = request.state.transporter_id
+        transporter_id = request.state.transporter_id
+
+        if not transporter_id:
+            return ErrorResponse(data=[],dev_msg="No transporter ID in token, could not get details",client_msg=os.getenv("GENERIC_ERROR"))
+        
+        (bids,error) = await transporter.selected(transporter_id = transporter_id)
 
         if error:
             return ErrorResponse(data=[],dev_msg=error,client_msg=os.getenv("GENERIC_ERROR"))
+        
+        return SuccessResponse(data=bids,dev_msg="Fetched bids successfully",client_msg="Fetched all selected bids successfully!")
         
     except Exception as err:
         return ServerError(err=err,errMsg=str(err))
@@ -77,10 +83,10 @@ async def provide_new_rate_for_bid(request: Request, bid_id: str, bid_req: Trans
         if user_type != trns or not user_id:
             return ErrorResponse(data=[],dev_msg=f"Only transporters have access to place bids. This user is a {user_type}",client_msg=os.getenv("GENERIC_ERROR"))
         
-        (transporter_id,error) = request.state.transporter_id
+        transporter_id = request.state.transporter_id
 
-        if error:
-            return ErrorResponse(data=[],dev_msg=error,client_msg=os.getenv("GENERIC_ERROR"))
+        if not transporter_id:
+            return ErrorResponse(data=[],dev_msg="No transporter ID in token, could not get details",client_msg=os.getenv("GENERIC_ERROR"))
         
         if bid_req.rate <= 0:
             return ErrorResponse(data=bid_req.rate, client_msg="Invalid Rate Entered, Rate Entered Must be Greater Than Zero", dev_msg="Rate must be greater than zero")
@@ -172,8 +178,8 @@ async def provide_new_rate_for_bid(request: Request, bid_id: str, bid_req: Trans
 
 ## TO DO
 
-@transporter_bidding_router.get("/lost/{participation}")
-async def fetch_lost_bids_for_transporter_based_on_participation(request : Request,participation : str):
+@transporter_bidding_router.get("/lost")
+async def fetch_lost_bids_for_transporter_based_on_participation(request : Request,transporter : TransporterLostBidsReq):
 
     user_type,user_id = request.state.current_user.user_type,request.state.current_user.user_type
     
@@ -182,10 +188,10 @@ async def fetch_lost_bids_for_transporter_based_on_participation(request : Reque
         if user_type != trns or not user_id:
             return ErrorResponse(data=[],dev_msg=f"Only transporters have access to place bids. This user is a {user_type}",client_msg=os.getenv("GENERIC_ERROR"))
         
-        (transporter_id,error) = request.state.transporter_id
+        transporter_id = request.state.transporter_id
 
-        if error:
-            return ErrorResponse(data=[],dev_msg=error,client_msg=os.getenv("GENERIC_ERROR"))
+        if not transporter_id:
+            return ErrorResponse(data=[],dev_msg="No transporter ID in token, could not get details",client_msg=os.getenv("GENERIC_ERROR"))
         
     except Exception as err:
         return ServerError(err=err,errMsg=str(err))
