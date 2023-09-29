@@ -27,3 +27,9 @@ class TransporterAssignReq(BaseModel):
     price: float
     price_difference_percent: float
     no_of_fleets_assigned: int
+    
+    
+class TransporterBidMatchRequest(BaseModel):
+    transporter_id: UUID
+    trans_pos_in_bid: str
+    rate : float

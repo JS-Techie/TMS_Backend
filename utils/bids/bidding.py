@@ -351,11 +351,9 @@ class Bid:
             details = (
                 session.query(BidTransaction,
                               TransporterModel.name,
-                              PriceMatchRequest.pmr_price,
                               LoadAssigned
                               )
                 .join(TransporterModel, TransporterModel.trnsp_id == BidTransaction.transporter_id)
-                .outerjoin(PriceMatchRequest, PriceMatchRequest.pmr_bidding_load_id == BidTransaction.bid_id)
                 .outerjoin(LoadAssigned, LoadAssigned.la_bidding_load_id == BidTransaction.bid_id)
                 .filter(BidTransaction.bid_id == bid_id)
                 .all()
@@ -364,25 +362,19 @@ class Bid:
             # log("DETAILS",details)
 
             for bid in details:
-                bid_details, transporter_name, price_match_rate, load_assigned = bid
+                bid_details, transporter_name, load_assigned = bid
                 # price_match_rate, load_assigned
 
                 obj = {
                     "bid_details": bid_details,
                     "transporter_name": transporter_name,
-                    "price_match_rate": price_match_rate,
                     "load_assigned": load_assigned
                 }
                 bid_detail_arr.append(obj)
-
+            log("Bid Details", bid_detail_arr)
             res = structurize_assignment_data(bid_detail_arr)
 
-            if len(res) == 0:
-                return (True,[])
-            
-            return (True, res[0])
-
-
+            return (True, res)
 
         except Exception as e:
             session.rollback()
@@ -390,32 +382,7 @@ class Bid:
         finally:
             session.close()
 
-    async def status_update(self, bid_id: str, split: bool, status: str) -> (bool, str):
-
-        session = Session()
-        try:
-
-            bid_details = session.query(BiddingLoad).filter(
-                BiddingLoad.bl_id == bid_id).first()
-
-            if not bid_details:
-                return False, "Error While Fetching Bid Details"
-
-            setattr(bid_details, "split", split)
-            setattr(bid_details, "load_status", status)
-
-            session.commit()
-
-            return (True, "")
-
-        except Exception as e:
-            session.rollback()
-            return (False, str(e))
-
-        finally:
-            session.close()
-
-    async def assign(self, bid_id: str, transporters: list) -> (list, str):
+    async def assign(self, bid_id: str, transporters: list, split: bool, status: str) -> (list, str):
 
         session = Session()
         user_id = os.getenv("USER_ID")
@@ -423,36 +390,87 @@ class Bid:
         try:
 
             transporter_ids = []
+            fetched_transporter_ids = []
             assigned_transporters = []
-            for transporter in transporters:
 
+            for transporter in transporters:
                 transporter_ids.append(
                     getattr(transporter, "la_transporter_id"))
-                assign_detail = LoadAssigned(
-                    la_bidding_load_id=bid_id,
-                    la_transporter_id=getattr(
-                        transporter, "la_transporter_id"),
-                    trans_pos_in_bid=getattr(
-                        transporter, "trans_pos_in_bid"),
-                    price=getattr(transporter, "price"),
-                    price_difference_percent=getattr(
-                        transporter, "price_difference_percent"),
-                    no_of_fleets_assigned=getattr(
-                        transporter, "no_of_fleets_assigned"),
-                    created_by=user_id
-                )
-                assigned_transporters.append(assign_detail)
 
             transporter_details = session.query(LoadAssigned).filter(
                 LoadAssigned.la_bidding_load_id == bid_id, LoadAssigned.la_transporter_id.in_(transporter_ids)).all()
 
-            if transporter_details:
-                return ([], "Bid already assigned to same Transporter")
+            for transporter_detail in transporter_details:
+                fetched_transporter_ids.append(
+                    transporter_detail.la_transporter_id)
+
+            transporters_not_assigned = list(
+                set(transporter_ids) - set(fetched_transporter_ids))
+
+            transporters_to_be_updated = list(
+                set(transporter_ids).intersection(set(fetched_transporter_ids)))
+
+            for transporter in transporters:
+                if getattr(transporter, "la_transporter_id") in transporters_not_assigned:
+                    assign_detail = LoadAssigned(
+                        la_bidding_load_id=bid_id,
+                        la_transporter_id=getattr(
+                            transporter, "la_transporter_id"),
+                        trans_pos_in_bid=getattr(
+                            transporter, "trans_pos_in_bid"),
+                        price=getattr(transporter, "price"),
+                        price_difference_percent=getattr(
+                            transporter, "price_difference_percent"),
+                        no_of_fleets_assigned=getattr(
+                            transporter, "no_of_fleets_assigned"),
+                        is_active=True,
+                        created_by=user_id
+                    )
+                    assigned_transporters.append(assign_detail)
+
+            updation = False
+
+            for transporter_detail in transporter_details:
+
+                if getattr(transporter_detail, "la_transporter_id") in transporters_to_be_updated and not getattr(transporter_detail, "is_active"):
+
+                    for transporter in transporters:
+                        if getattr(transporter, "la_transporter_id") == getattr(transporter_detail, "la_transporter_id"):
+
+                            if not getattr(transporter_detail, "no_of_fleets_assigned"):
+                                updation = True
+
+                            setattr(transporter_detail, "la_transporter_id", getattr(
+                                transporter, "la_transporter_id"))
+                            setattr(transporter_detail, "trans_pos_in_bid",
+                                    getattr(transporter, "trans_pos_in_bid"))
+                            setattr(transporter_detail, "price",
+                                    getattr(transporter, "price"))
+                            setattr(transporter_detail, "price_difference_percent", getattr(
+                                transporter, "price_difference_percent"))
+                            setattr(transporter_detail, "no_of_fleets_assigned", getattr(
+                                transporter, "no_of_fleets_assigned"))
+                            setattr(transporter_detail, "is_active", True)
+
+            bid_details = session.query(BiddingLoad).filter(
+                BiddingLoad.bl_id == bid_id).first()
+
+            if not bid_details:
+                return [], "Error While Fetching Bid Details"
+
+            setattr(bid_details, "split", split)
+            setattr(bid_details, "load_status", status)
 
             session.bulk_save_objects(assigned_transporters)
             session.commit()
 
-            return (assigned_transporters, "")
+            if updation:
+                return ([], "This transporter is already assigned!")
+
+            if assigned_transporters:
+                return (assigned_transporters, "")
+            else:
+                return ([], "")
 
         except Exception as e:
             session.rollback()
