@@ -11,7 +11,7 @@ class Persistance:
     updated_by = Column(UUID(as_uuid=True), ForeignKey('t_user.user_id'), nullable = True)
     is_active = Column(Boolean, nullable=False, default=True)
 
-class Shipper(Base, Persistance):
+class ShipperModel(Base, Persistance):
     __tablename__ = "t_shipper"
 
     shpr_id = Column(UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()"))

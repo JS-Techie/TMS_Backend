@@ -1,6 +1,6 @@
 from config.db_config import Session
 from utils.response import ServerError, SuccessResponse
-from models.models import BidTransaction, TransporterModel, MapShipperTransporter, LoadAssigned,BiddingLoad,User
+from models.models import BidTransaction, TransporterModel, MapShipperTransporter, LoadAssigned, BiddingLoad, User
 from utils.bids.bidding import Bid
 from utils.utilities import log
 import os
@@ -10,28 +10,28 @@ bid = Bid()
 
 class Transporter:
 
-    async def id(self,user_id : str) -> (str,str):
+    async def id(self, user_id: str) -> (str, str):
 
         session = Session()
 
         try:
             if not user_id:
                 return (False, "The User ID provided is empty")
-            
+
             transporter = (session
                            .query(User)
-                           .filter(User.user_id == user_id,User.is_active == True)
-                            .first()
-                            )
-            
+                           .filter(User.user_id == user_id, User.is_active == True)
+                           .first()
+                           )
+
             if not transporter:
-                return ("","Transporter ID could not be found")
-            
-            return (transporter.user_transporter_id,"")
-            
+                return ("", "Transporter ID could not be found")
+
+            return (transporter.user_transporter_id, "")
+
         except Exception as e:
             session.rollback()
-            return ("",str(e))
+            return ("", str(e))
         finally:
             session.close()
 
@@ -236,7 +236,7 @@ class Transporter:
                                    LoadAssigned.is_active == True)
                            .first()
                            )
-            
+
             if not transporter:
                 return ({}, "Transporter details could not be found")
 
@@ -247,10 +247,10 @@ class Transporter:
                    .filter(BiddingLoad.bl_id == bid_id)
                    .first()
                    )
-            
+
             if not bid:
                 return ({}, "Bid details could not be found")
-            
+
             bid.load_status = "partially_confirmed"
 
             session.commit()
@@ -260,5 +260,72 @@ class Transporter:
         except Exception as e:
             session.rollback()
             return ({}, str(e))
+        finally:
+            session.close()
+
+    async def bids(self, transporter_id: str,status : str | None = None) -> (any,str):
+       
+        session = Session()
+
+        all_bids = []
+        
+
+        try:
+
+            (shippers,error) = await self.shippers(transporter_id=transporter_id)
+
+            if error:
+                return ([],error)
+            
+            (public_bids,error) = await bid.public(status=status)
+
+            if error:
+                return ([],error)
+            
+            private_bids = []
+
+            if shippers:
+                (private_bids,error) = await bid.private(shippers = shippers,status=status)
+                if error:
+                    return ([],error)
+            
+
+            all_bids.extend(private_bids)
+            all_bids.extend(public_bids)
+            
+            
+            return({
+                "all" : all_bids,
+                "private" : private_bids,
+                "public" : public_bids
+            },"")
+                
+            
+        except Exception as e:
+            session.rollback()
+            return ([], str(e))
+        finally:
+            session.close()
+
+    async def shippers(self, transporter_id: str) -> (any, str):
+
+        session = Session()
+
+        try:
+
+            shippers = (session
+                        .query(MapShipperTransporter.mst_shipper_id)
+                        .filter(MapShipperTransporter.mst_transporter_id == transporter_id)
+                        .all()
+                        )
+
+            if not shippers:
+                return ([],"This shipper is not mapped to any transporters")
+            
+            return(shippers,"")
+            
+        except Exception as e:
+            session.rollback()
+            return ([], str(e))
         finally:
             session.close()

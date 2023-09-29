@@ -10,14 +10,14 @@ from collections import defaultdict
 
 from utils.response import ErrorResponse
 from config.db_config import Session
-from models.models import BiddingLoad, MapLoadSrcDestPair, LoadAssigned, TransporterModel, LkpReason, BidTransaction, MapLoadMaterial, LkpMaterial, PriceMatchRequest, WorkflowApprovals, Tracking, TrackingFleet, MapShipperTransporter, BidSettings
+from models.models import BiddingLoad, LoadAssigned, TransporterModel, BidTransaction, BidSettings, ShipperModel,MapLoadSrcDestPair
 from utils.utilities import log, convert_date_to_string, structurize, structurize_assignment_data
 from config.redis import r as redis
 from utils.redis import Redis
 from data.bidding import status_wise_fetch_query, filter_wise_fetch_query, live_bid_details
 from schemas.bidding import FilterBidsRequest
 from config.scheduler import Scheduler
-from utils.utilities import log
+from utils.utilities import log,structurize_transporter_bids
 
 sched = Scheduler()
 redis = Redis()
@@ -59,13 +59,13 @@ class Bid:
         finally:
             session.close()
 
-    async def get_status_wise(self, status: str,shipper_id:str) -> (any, str):
+    async def get_status_wise(self, status: str, shipper_id: str) -> (any, str):
         session = Session()
 
         try:
 
             bid_array = session.execute(text(status_wise_fetch_query), params={
-                                        "load_status": status,"shipper_id" : shipper_id})
+                                        "load_status": status, "shipper_id": shipper_id})
 
             rows = bid_array.fetchall()
 
@@ -160,7 +160,7 @@ class Bid:
         finally:
             session.close()
 
-    async def update_status(self, bid_id: str, status: str,user_id : str) -> (bool, str):
+    async def update_status(self, bid_id: str, status: str, user_id: str) -> (bool, str):
 
         session = Session()
 
@@ -176,7 +176,7 @@ class Bid:
                 return (False, "Bid requested could not be found")
 
             setattr(bid_to_be_updated, "load_status", status)
-            setattr(bid_to_be_updated,"updated_by",user_id)
+            setattr(bid_to_be_updated, "updated_by", user_id)
             session.commit()
 
             return (True, "")
@@ -209,7 +209,7 @@ class Bid:
         finally:
             session.close()
 
-    async def new(self, bid_id: str, transporter_id: str, rate: float, comment: str,user_id : str) -> (any, str):
+    async def new(self, bid_id: str, transporter_id: str, rate: float, comment: str, user_id: str) -> (any, str):
 
         session = Session()
 
@@ -361,7 +361,7 @@ class Bid:
                 .all()
             )
 
-            log("BID DETAILS FOR ASSIGNMENT",details)
+            log("BID DETAILS FOR ASSIGNMENT", details)
 
             for bid in details:
                 bid_details, transporter_name, load_assigned = bid
@@ -375,10 +375,10 @@ class Bid:
 
             log("Bid Details", bid_detail_arr)
             res = structurize_assignment_data(bid_detail_arr)
-            
+
             if len(res) == 0:
-                return (True,[])
-            
+                return (True, [])
+
             return (True, res[0])
 
         except Exception as e:
@@ -387,10 +387,9 @@ class Bid:
         finally:
             session.close()
 
-    async def assign(self, bid_id: str, transporters: list, split: bool, status: str,user_id : str) -> (list, str):
+    async def assign(self, bid_id: str, transporters: list, split: bool, status: str, user_id: str) -> (list, str):
 
         session = Session()
-
 
         try:
 
@@ -573,5 +572,65 @@ class Bid:
             session.rollback()
             return (False, str(e))
 
+        finally:
+            session.close()
+
+    async def public(self, status: str | None = None) -> (any, str):
+
+        session = Session()
+
+        try:
+
+            bids_query = (session
+                          .query(BiddingLoad, ShipperModel,MapLoadSrcDestPair)
+                          .join(ShipperModel.shpr_id == BiddingLoad.bl_shipper_id)
+                          .join(MapLoadSrcDestPair.mlsdp_bidding_load_id == BiddingLoad.bl_id)
+                          .filter(BiddingLoad.is_active == True)
+                          )
+
+            if status:
+                bids_query = bids_query.filter(
+                    BiddingLoad.load_status == status)
+
+            bids = bids_query.all()
+
+            if not bids:
+                return (bids, "")
+            return (structurize_transporter_bids(bids=bids),"")
+
+            
+
+        except Exception as e:
+            session.rollback()
+            return ([], str(e))
+        finally:
+            session.close()
+
+    async def private(self, shippers: any,status : str | None = None) -> (any, str):
+
+        session = Session()
+
+        try:
+
+            bids_query = (session
+                          .query(BiddingLoad, ShipperModel,MapLoadSrcDestPair)
+                          .outerjoin(ShipperModel.shpr_id == BiddingLoad.bl_shipper_id)
+                          .outerjoin(MapLoadSrcDestPair.mlsdp_bidding_load_id == BiddingLoad.bl_id)
+                          .filter(BiddingLoad.is_active == True,BiddingLoad.bl_shipper_id.in_(shippers))
+                          )
+
+            if status:
+                bids_query = bids_query.filter(
+                    BiddingLoad.load_status == status)
+
+            bids = bids_query.all()
+
+            if not bids:
+                return (bids, "")
+            return (structurize_transporter_bids(bids=bids),"")
+
+        except Exception as e:
+            session.rollback()
+            return ([], str(e))
         finally:
             session.close()
