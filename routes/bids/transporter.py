@@ -1,93 +1,99 @@
-from fastapi import APIRouter,Request
-import os,json
+from fastapi import APIRouter, Request
+import os
+import json
+
 
 from config.socket import manager
-from schemas.bidding import TransporterBidReq,TransporterLostBidsReq
-from models.models import BiddingLoad,LoadAssigned,TransporterModel,ShipperModel,User,MapShipperTransporter
+from schemas.bidding import TransporterBidReq, TransporterLostBidsReq
+from models.models import BiddingLoad, LoadAssigned, TransporterModel, ShipperModel, User, MapShipperTransporter
 from data.bidding import valid_bid_status
 from utils.bids.bidding import Bid
 from utils.bids.transporters import Transporter
 from utils.bids.shipper import Shipper
 from utils.redis import Redis
-from utils.response import ErrorResponse,SuccessResponse,ServerError
+from utils.response import ErrorResponse, SuccessResponse, ServerError
 from utils.utilities import log
 
 
-transporter_bidding_router: APIRouter = APIRouter(prefix="/transporter/bid",tags=["Transporter routes for bidding"])
+transporter_bidding_router: APIRouter = APIRouter(
+    prefix="/transporter/bid", tags=["Transporter routes for bidding"])
 
 transporter = Transporter()
 bid = Bid()
 shipper = Shipper()
 redis = Redis()
 
-shp,trns,acu = os.getenv("SHIPPER"),os.getenv("TRANSPORTER"),os.getenv("ACULEAD")
+shp, trns, acu = os.getenv("SHIPPER"), os.getenv(
+    "TRANSPORTER"), os.getenv("ACULEAD")
+
 
 @transporter_bidding_router.get("/status/{status}")
-async def fetch_bids_for_transporter_by_status(request : Request,status : str | None = None):
-    
-    user_type,user_id = request.state.current_user.user_type,request.state.current_user.user_type
-    
+async def fetch_bids_for_transporter_by_status(request: Request, status: str | None = None):
+
+    user_type, user_id = request.state.current_user.user_type, request.state.current_user.user_type
+
     try:
 
         if user_type != trns or not user_id:
-            return ErrorResponse(data=[],dev_msg=f"Only transporters have access to place bids. This user is a {user_type}",client_msg=os.getenv("GENERIC_ERROR"))
-        
+            return ErrorResponse(data=[], dev_msg=f"Only transporters have access to place bids. This user is a {user_type}", client_msg=os.getenv("GENERIC_ERROR"))
+
         transporter_id = request.state.transporter_id
 
         if not transporter_id:
-            return ErrorResponse(data=[],dev_msg=os.getenv("TRANSPORTER_ID_NOT_FOUND_ERROR"),client_msg=os.getenv("GENERIC_ERROR"))
-        
-        (bids,error) = await transporter.bids_by_status(transporter_id = transporter_id,status=status)
+            return ErrorResponse(data=[], dev_msg=os.getenv("TRANSPORTER_ID_NOT_FOUND_ERROR"), client_msg=os.getenv("GENERIC_ERROR"))
+
+        (bids, error) = await transporter.bids_by_status(transporter_id=transporter_id, status=status)
 
         if error:
-            return ErrorResponse(data=[],dev_msg=error,client_msg=os.getenv("GENERIC_ERROR"))
-        
-        return SuccessResponse(data=bids,dev_msg="Fetched bids successfully",client_msg=f"Fetched all {status} bids successfully!")
-        
+            return ErrorResponse(data=[], dev_msg=error, client_msg=os.getenv("GENERIC_ERROR"))
+
+        return SuccessResponse(data=bids, dev_msg="Fetched bids successfully", client_msg=f"Fetched all {status} bids successfully!")
+
     except Exception as err:
-        return ServerError(err=err,errMsg=str(err))
+        return ServerError(err=err, errMsg=str(err))
 
 
 @transporter_bidding_router.get("/selected")
-async def fetch_bids_for_transporter_by_category(request : Request,category : str):
-    
-    user_type,user_id = request.state.current_user.user_type,request.state.current_user.user_type
-    
+async def fetch_bids_for_transporter_by_category(request: Request, category: str):
+
+    user_type, user_id = request.state.current_user.user_type, request.state.current_user.user_type
+
     try:
 
         if user_type != trns or not user_id:
-            return ErrorResponse(data=[],dev_msg=f"Only transporters have access to place bids. This user is a {user_type}",client_msg=os.getenv("GENERIC_ERROR"))
-        
+            return ErrorResponse(data=[], dev_msg=f"Only transporters have access to place bids. This user is a {user_type}", client_msg=os.getenv("GENERIC_ERROR"))
+
         transporter_id = request.state.transporter_id
 
         if not transporter_id:
-            return ErrorResponse(data=[],dev_msg=os.getenv("TRANSPORTER_ID_NOT_FOUND_ERROR"),client_msg=os.getenv("GENERIC_ERROR"))
-        
-        (bids,error) = await transporter.selected(transporter_id = transporter_id)
+            return ErrorResponse(data=[], dev_msg=os.getenv("TRANSPORTER_ID_NOT_FOUND_ERROR"), client_msg=os.getenv("GENERIC_ERROR"))
+
+        (bids, error) = await transporter.selected(transporter_id=transporter_id)
 
         if error:
-            return ErrorResponse(data=[],dev_msg=error,client_msg=os.getenv("GENERIC_ERROR"))
-        
-        return SuccessResponse(data=bids,dev_msg="Fetched bids successfully",client_msg="Fetched all selected bids successfully!")
-        
+            return ErrorResponse(data=[], dev_msg=error, client_msg=os.getenv("GENERIC_ERROR"))
+
+        return SuccessResponse(data=bids, dev_msg="Fetched bids successfully", client_msg="Fetched all selected bids successfully!")
+
     except Exception as err:
-        return ServerError(err=err,errMsg=str(err))
+        return ServerError(err=err, errMsg=str(err))
+
 
 @transporter_bidding_router.post("/rate/{bid_id}", response_model=None)
 async def provide_new_rate_for_bid(request: Request, bid_id: str, bid_req: TransporterBidReq):
 
-    user_type,user_id = request.state.current_user.user_type,request.state.current_user.user_type
+    user_type, user_id = request.state.current_user.user_type, request.state.current_user.user_type
 
     try:
 
         if user_type != trns or not user_id:
-            return ErrorResponse(data=[],dev_msg=f"Only transporters have access to place bids. This user is a {user_type}",client_msg=os.getenv("GENERIC_ERROR"))
-        
+            return ErrorResponse(data=[], dev_msg=f"Only transporters have access to place bids. This user is a {user_type}", client_msg=os.getenv("GENERIC_ERROR"))
+
         transporter_id = request.state.transporter_id
 
         if not transporter_id:
-            return ErrorResponse(data=[],dev_msg=os.getenv("TRANSPORTER_ID_NOT_FOUND_ERROR"),client_msg=os.getenv("GENERIC_ERROR"))
-        
+            return ErrorResponse(data=[], dev_msg=os.getenv("TRANSPORTER_ID_NOT_FOUND_ERROR"), client_msg=os.getenv("GENERIC_ERROR"))
+
         if bid_req.rate <= 0:
             return ErrorResponse(data=bid_req.rate, client_msg="Invalid Rate Entered, Rate Entered Must be Greater Than Zero", dev_msg="Rate must be greater than zero")
 
@@ -146,7 +152,7 @@ async def provide_new_rate_for_bid(request: Request, bid_id: str, bid_req: Trans
         log("VALID RATE", bid_id)
 
         (new_record, error) = await bid.new(
-            bid_id, transporter_id, bid_req.rate, bid_req.comment,user_id=user_id)
+            bid_id, transporter_id, bid_req.rate, bid_req.comment, user_id=user_id)
 
         log("NEW BID INSERTED", bid_id)
 
@@ -176,22 +182,22 @@ async def provide_new_rate_for_bid(request: Request, bid_id: str, bid_req: Trans
         return ServerError(err=err, errMsg=str(err))
 
 
-## TO DO
+# TO DO
 
 @transporter_bidding_router.get("/lost")
-async def fetch_lost_bids_for_transporter_based_on_participation(request : Request,transporter : TransporterLostBidsReq):
+async def fetch_lost_bids_for_transporter_based_on_participation(request: Request, transporter: TransporterLostBidsReq):
 
-    user_type,user_id = request.state.current_user.user_type,request.state.current_user.user_type
-    
+    user_type, user_id = request.state.current_user.user_type, request.state.current_user.user_type
+
     try:
 
         if user_type != trns or not user_id:
-            return ErrorResponse(data=[],dev_msg=f"Only transporters have access to place bids. This user is a {user_type}",client_msg=os.getenv("GENERIC_ERROR"))
-        
+            return ErrorResponse(data=[], dev_msg=f"Only transporters have access to place bids. This user is a {user_type}", client_msg=os.getenv("GENERIC_ERROR"))
+
         transporter_id = request.state.transporter_id
 
         if not transporter_id:
-            return ErrorResponse(data=[],dev_msg=os.getenv("TRANSPORTER_ID_NOT_FOUND_ERROR"),client_msg=os.getenv("GENERIC_ERROR"))
-        
+            return ErrorResponse(data=[], dev_msg=os.getenv("TRANSPORTER_ID_NOT_FOUND_ERROR"), client_msg=os.getenv("GENERIC_ERROR"))
+
     except Exception as err:
-        return ServerError(err=err,errMsg=str(err))
+        return ServerError(err=err, errMsg=str(err))

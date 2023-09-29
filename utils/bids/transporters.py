@@ -1,12 +1,12 @@
+import os
+
 from config.db_config import Session
 from utils.response import ServerError, SuccessResponse
 from models.models import BidTransaction, TransporterModel, MapShipperTransporter, LoadAssigned, BiddingLoad, User, ShipperModel, MapLoadSrcDestPair
 from utils.bids.bidding import Bid
 from utils.utilities import log, structurize_transporter_bids
-import os
 
 bid = Bid()
-
 
 class Transporter:
 

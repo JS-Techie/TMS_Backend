@@ -4,7 +4,7 @@ import os
 
 from utils.response import ErrorResponse
 from config.db_config import Session
-from models.models import Shipper as ShipperModel, User
+from models.models import ShipperModel, User
 from utils.utilities import log, convert_date_to_string
 from config.scheduler import Scheduler
 

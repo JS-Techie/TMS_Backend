@@ -1,23 +1,20 @@
-from sqlalchemy.sql.functions import func
 from datetime import datetime, timedelta
 import os
 import math
 
 from sqlalchemy import text
 from string import Template
-import json
-from collections import defaultdict
 
 from utils.response import ErrorResponse
 from config.db_config import Session
-from models.models import BiddingLoad, LoadAssigned, TransporterModel, BidTransaction, BidSettings, ShipperModel,MapLoadSrcDestPair
+from models.models import BiddingLoad, LoadAssigned, TransporterModel, BidTransaction, BidSettings, ShipperModel, MapLoadSrcDestPair
 from utils.utilities import log, convert_date_to_string, structurize, structurize_assignment_data
 from config.redis import r as redis
 from utils.redis import Redis
 from data.bidding import status_wise_fetch_query, filter_wise_fetch_query, live_bid_details
 from schemas.bidding import FilterBidsRequest
 from config.scheduler import Scheduler
-from utils.utilities import log,structurize_transporter_bids
+from utils.utilities import log, structurize_transporter_bids
 
 sched = Scheduler()
 redis = Redis()
@@ -582,7 +579,7 @@ class Bid:
         try:
 
             bids_query = (session
-                          .query(BiddingLoad, ShipperModel,MapLoadSrcDestPair)
+                          .query(BiddingLoad, ShipperModel, MapLoadSrcDestPair)
                           .join(ShipperModel.shpr_id == BiddingLoad.bl_shipper_id)
                           .join(MapLoadSrcDestPair.mlsdp_bidding_load_id == BiddingLoad.bl_id)
                           .filter(BiddingLoad.is_active == True)
@@ -596,9 +593,7 @@ class Bid:
 
             if not bids:
                 return (bids, "")
-            return (structurize_transporter_bids(bids=bids),"")
-
-            
+            return (structurize_transporter_bids(bids=bids), "")
 
         except Exception as e:
             session.rollback()
@@ -606,17 +601,17 @@ class Bid:
         finally:
             session.close()
 
-    async def private(self, shippers: any,status : str | None = None) -> (any, str):
+    async def private(self, shippers: any, status: str | None = None) -> (any, str):
 
         session = Session()
 
         try:
 
             bids_query = (session
-                          .query(BiddingLoad, ShipperModel,MapLoadSrcDestPair)
+                          .query(BiddingLoad, ShipperModel, MapLoadSrcDestPair)
                           .outerjoin(ShipperModel.shpr_id == BiddingLoad.bl_shipper_id)
                           .outerjoin(MapLoadSrcDestPair.mlsdp_bidding_load_id == BiddingLoad.bl_id)
-                          .filter(BiddingLoad.is_active == True,BiddingLoad.bl_shipper_id.in_(shippers))
+                          .filter(BiddingLoad.is_active == True, BiddingLoad.bl_shipper_id.in_(shippers))
                           )
 
             if status:
@@ -627,7 +622,7 @@ class Bid:
 
             if not bids:
                 return (bids, "")
-            return (structurize_transporter_bids(bids=bids),"")
+            return (structurize_transporter_bids(bids=bids), "")
 
         except Exception as e:
             session.rollback()
