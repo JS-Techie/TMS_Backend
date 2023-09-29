@@ -23,7 +23,7 @@ redis = Redis()
 shp,trns,acu = os.getenv("SHIPPER"),os.getenv("TRANSPORTER"),os.getenv("ACULEAD")
 
 @transporter_bidding_router.get("/status/{status}")
-async def fetch_all_bids_for_transporter(request : Request,status : str | None = None):
+async def fetch_bids_for_transporter_by_status(request : Request,status : str | None = None):
     
     user_type,user_id = request.state.current_user.user_type,request.state.current_user.user_type
     
@@ -35,7 +35,7 @@ async def fetch_all_bids_for_transporter(request : Request,status : str | None =
         transporter_id = request.state.transporter_id
 
         if not transporter_id:
-            return ErrorResponse(data=[],dev_msg="No transporter ID in token, could not get details",client_msg=os.getenv("GENERIC_ERROR"))
+            return ErrorResponse(data=[],dev_msg=os.getenv("TRANSPORTER_ID_NOT_FOUND_ERROR"),client_msg=os.getenv("GENERIC_ERROR"))
         
         (bids,error) = await transporter.bids_by_status(transporter_id = transporter_id,status=status)
 
@@ -61,7 +61,7 @@ async def fetch_bids_for_transporter_by_category(request : Request,category : st
         transporter_id = request.state.transporter_id
 
         if not transporter_id:
-            return ErrorResponse(data=[],dev_msg="No transporter ID in token, could not get details",client_msg=os.getenv("GENERIC_ERROR"))
+            return ErrorResponse(data=[],dev_msg=os.getenv("TRANSPORTER_ID_NOT_FOUND_ERROR"),client_msg=os.getenv("GENERIC_ERROR"))
         
         (bids,error) = await transporter.selected(transporter_id = transporter_id)
 
@@ -86,7 +86,7 @@ async def provide_new_rate_for_bid(request: Request, bid_id: str, bid_req: Trans
         transporter_id = request.state.transporter_id
 
         if not transporter_id:
-            return ErrorResponse(data=[],dev_msg="No transporter ID in token, could not get details",client_msg=os.getenv("GENERIC_ERROR"))
+            return ErrorResponse(data=[],dev_msg=os.getenv("TRANSPORTER_ID_NOT_FOUND_ERROR"),client_msg=os.getenv("GENERIC_ERROR"))
         
         if bid_req.rate <= 0:
             return ErrorResponse(data=bid_req.rate, client_msg="Invalid Rate Entered, Rate Entered Must be Greater Than Zero", dev_msg="Rate must be greater than zero")
@@ -191,7 +191,7 @@ async def fetch_lost_bids_for_transporter_based_on_participation(request : Reque
         transporter_id = request.state.transporter_id
 
         if not transporter_id:
-            return ErrorResponse(data=[],dev_msg="No transporter ID in token, could not get details",client_msg=os.getenv("GENERIC_ERROR"))
+            return ErrorResponse(data=[],dev_msg=os.getenv("TRANSPORTER_ID_NOT_FOUND_ERROR"),client_msg=os.getenv("GENERIC_ERROR"))
         
     except Exception as err:
         return ServerError(err=err,errMsg=str(err))
