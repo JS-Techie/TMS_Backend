@@ -1,6 +1,6 @@
 from config.db_config import Session
 from utils.response import ServerError, SuccessResponse
-from models.models import BidTransaction, TransporterModel, MapShipperTransporter, LoadAssignedm,BiddingLoad
+from models.models import BidTransaction, TransporterModel, MapShipperTransporter, LoadAssigned,BiddingLoad
 from utils.bids.bidding import Bid
 from utils.utilities import log
 import os
