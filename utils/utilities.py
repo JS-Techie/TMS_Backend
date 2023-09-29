@@ -90,14 +90,13 @@ def structurize_assignment_data(data):
                 "id": transporter_id,
                 "total_number_attempts": 0,
                 "pmr_price": None,
-                "assigned" : None,
+                "assigned": None,
                 "lowest_price": float('inf'),
                 "lowest_price_comment": None,
                 "rates": [],
                 "fleet_assigned": None
             }
-        
-   
+
         transporter_entry = transporter_data[transporter_id]
 
         # Update total_number_attempts
@@ -117,7 +116,6 @@ def structurize_assignment_data(data):
             transporter_entry["fleet_assigned"] = entry["load_assigned"].no_of_fleets_assigned
             transporter_entry["pmr_price"] = entry["load_assigned"].pmr_price
             transporter_entry["assigned"] = entry["load_assigned"].is_active
-
 
     # Sort the rates array for each transporter by rate
     for transporter_entry in transporter_data.values():
