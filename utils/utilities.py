@@ -74,7 +74,6 @@ def structurize(input_array):
     return list(result_dict.values())
 
 
-
 def structurize_assignment_data(data):
     # Initialize a dictionary to organize data by transporter_id
     transporter_data = {}
@@ -83,7 +82,6 @@ def structurize_assignment_data(data):
         transporter_id = bid_details.transporter_id
         rate = bid_details.rate
         comment = bid_details.comment
-        # pmr_price = entry["load_assigned"].pmr_price
 
         # Create or update the transporter entry
         if transporter_id not in transporter_data:
@@ -105,11 +103,6 @@ def structurize_assignment_data(data):
         # Update total_number_attempts
         transporter_entry["total_number_attempts"] += 1
 
-        # Update pmr_price
-        # if pmr_price is not None:
-        #     transporter_entry["pmr_price"] = pmr_price
-
-        # Update lowest_price and lowest_price_comment if needed
         if rate < transporter_entry["lowest_price"]:
             transporter_entry["lowest_price"] = rate
             transporter_entry["lowest_price_comment"] = comment
