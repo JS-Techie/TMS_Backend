@@ -128,7 +128,6 @@ class Transporter:
         finally:
             session.close()
     
-    
     async def bid_match(self, bid_id:str, transporters: any)->(any,str):
         session = Session()
         user_id = os.getenv("USER_ID")

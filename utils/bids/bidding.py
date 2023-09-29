@@ -428,17 +428,12 @@ class Bid:
                     )
                     assigned_transporters.append(assign_detail)
 
-            updation = False
-
             for transporter_detail in transporter_details:
 
                 if getattr(transporter_detail, "la_transporter_id") in transporters_to_be_updated and not getattr(transporter_detail, "is_active"):
 
                     for transporter in transporters:
                         if getattr(transporter, "la_transporter_id") == getattr(transporter_detail, "la_transporter_id"):
-
-                            if not getattr(transporter_detail, "no_of_fleets_assigned"):
-                                updation = True
 
                             setattr(transporter_detail, "la_transporter_id", getattr(
                                 transporter, "la_transporter_id"))
@@ -463,9 +458,6 @@ class Bid:
 
             session.bulk_save_objects(assigned_transporters)
             session.commit()
-
-            if updation:
-                return ([], "This transporter is already assigned!")
 
             if assigned_transporters:
                 return (assigned_transporters, "")
