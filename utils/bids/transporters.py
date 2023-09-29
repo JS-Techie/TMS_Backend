@@ -1,6 +1,6 @@
 from config.db_config import Session
 from utils.response import ServerError, SuccessResponse
-from models.models import BidTransaction, TransporterModel, MapShipperTransporter, PriceMatchRequest,LoadAssigned
+from models.models import BidTransaction, TransporterModel, MapShipperTransporter, LoadAssigned
 from utils.bids.bidding import Bid
 from utils.utilities import log
 import os
@@ -36,7 +36,7 @@ class Transporter:
         finally:
             session.close()
 
-    async def is_valid_bid_rate(self, bid_id: str, show_rate_to_transporter: bool, rate: float, transporter_id: str, decrement: float,status : str) -> (any, str):
+    async def is_valid_bid_rate(self, bid_id: str, show_rate_to_transporter: bool, rate: float, transporter_id: str, decrement: float, status: str) -> (any, str):
 
         session = Session()
 
@@ -45,7 +45,7 @@ class Transporter:
             if show_rate_to_transporter and status == "live":
                 return await bid.decrement_on_lowest_price(bid_id=bid_id, rate=rate, decrement=decrement)
             return await bid.decrement_on_transporter_lowest_price(bid_id, transporter_id, rate, decrement)
-         
+
         except Exception as e:
             session.rollback()
             return ({}, str(e))
@@ -115,7 +115,7 @@ class Transporter:
         try:
             log("INSIDE ALLOWED TO BID", "OK")
             transporter_details = session.query(MapShipperTransporter).filter(
-                MapShipperTransporter.mst_shipper_id == shipper_id, MapShipperTransporter.mst_transporter_id == transporter_id,MapShipperTransporter.is_active == True).first()
+                MapShipperTransporter.mst_shipper_id == shipper_id, MapShipperTransporter.mst_transporter_id == transporter_id, MapShipperTransporter.is_active == True).first()
             log("TRANSPORTER DETAILS", transporter_details)
             if not transporter_details:
                 return (False, "transporter not tagged with the specific shipper")
@@ -127,12 +127,12 @@ class Transporter:
             return (False, str(e))
         finally:
             session.close()
-    
-    async def bid_match(self, bid_id:str, transporters: any)->(any,str):
+
+    async def bid_match(self, bid_id: str, transporters: any) -> (any, str):
         session = Session()
         user_id = os.getenv("USER_ID")
         try:
-            
+
             transporter_ids = []
             fetched_transporter_ids = []
             assigned_transporters = []
@@ -140,14 +140,14 @@ class Transporter:
             for transporter in transporters:
                 transporter_ids.append(
                     getattr(transporter, "transporter_id"))
-                
+
             transporter_details = session.query(LoadAssigned).filter(
                 LoadAssigned.la_bidding_load_id == bid_id, LoadAssigned.la_transporter_id.in_(transporter_ids)).all()
             log("Fetched Transporter Detail ", transporter_details)
             for transporter_detail in transporter_details:
                 fetched_transporter_ids.append(
                     transporter_detail.la_transporter_id)
-                
+
             transporters_not_assigned = list(
                 set(transporter_ids) - set(fetched_transporter_ids))
             log("Transporter IDs not assigned", transporters_not_assigned)
@@ -161,7 +161,7 @@ class Transporter:
                         la_transporter_id=getattr(
                             transporter, "transporter_id"),
                         trans_pos_in_bid=getattr(
-                            transporter,"trans_pos_in_bid"
+                            transporter, "trans_pos_in_bid"
                         ),
                         pmr_price=getattr(
                             transporter, "rate"),
@@ -169,30 +169,59 @@ class Transporter:
                         created_by=user_id
                     )
                     assigned_transporters.append(assign_detail)
-                    
-                    
+
             log("Assigned Transporters", assigned_transporters)
-            for transporter_detail in  transporter_details:
+            for transporter_detail in transporter_details:
                 if getattr(transporter_detail, "la_transporter_id") in transporters_to_be_updated:
                     for transporter in transporters:
-                        if getattr(transporter,"transporter_id") == getattr(transporter_detail, "la_transporter_id"):
-                            setattr(transporter_detail,"la_transporter_id",getattr(transporter,"transporter_id"))
-                            setattr(transporter_detail,"pmr_price",getattr(transporter,"rate"))
-                            setattr(transporter_detail,"trans_pos_in_bid",getattr(transporter,"trans_pos_in_bid"))
-                            setattr(transporter_detail,"is_active",False)
-                            
+                        if getattr(transporter, "transporter_id") == getattr(transporter_detail, "la_transporter_id"):
+                            setattr(transporter_detail, "la_transporter_id",
+                                    getattr(transporter, "transporter_id"))
+                            setattr(transporter_detail, "pmr_price",
+                                    getattr(transporter, "rate"))
+                            setattr(transporter_detail, "trans_pos_in_bid",
+                                    getattr(transporter, "trans_pos_in_bid"))
+                            setattr(transporter_detail, "is_active", False)
+
             log("Data changed for UPdate")
             session.bulk_save_objects(assigned_transporters)
             session.commit()
-            
+
             if not assigned_transporters:
-                return ([],"")
-            
-            return (assigned_transporters,"")
-                
-            
+                return ([], "")
+
+            return (assigned_transporters, "")
+
         except Exception as e:
             session.rollback()
             return ([], str(e))
+        finally:
+            session.close()
+
+    async def unassign(self, bid_id: str, transporter_id: str) -> (any, str):
+
+        session = Session()
+
+        try:
+            
+            transporter = (session
+                           .query(LoadAssigned)
+                           .filter(LoadAssigned.la_bidding_load_id == bid_id,
+                                   LoadAssigned.la_transporter_id == transporter_id,
+                                   LoadAssigned.is_active == True)
+                           .first()
+                           )
+            
+            if not transporter:
+                return ({}, "Transporter details could not be found")
+
+            transporter.is_active = False
+            session.commit()
+
+            return (transporter, "")
+
+        except Exception as e:
+            session.rollback()
+            return ({}, str(e))
         finally:
             session.close()

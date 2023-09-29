@@ -344,6 +344,8 @@ class Bid:
 
         session = Session()
 
+        log("FETCHING DETAILS FOR ASSIGNMENT")
+
         try:
 
             bid_detail_arr = []
@@ -359,11 +361,10 @@ class Bid:
                 .all()
             )
 
-            # log("DETAILS",details)
+            log("BID DETAILS FOR ASSIGNMENT",details)
 
             for bid in details:
                 bid_details, transporter_name, load_assigned = bid
-                # price_match_rate, load_assigned
 
                 obj = {
                     "bid_details": bid_details,
@@ -371,10 +372,14 @@ class Bid:
                     "load_assigned": load_assigned
                 }
                 bid_detail_arr.append(obj)
+
             log("Bid Details", bid_detail_arr)
             res = structurize_assignment_data(bid_detail_arr)
-
-            return (True, res)
+            
+            if len(res) == 0:
+                return (True,[])
+            
+            return (True, res[0])
 
         except Exception as e:
             session.rollback()

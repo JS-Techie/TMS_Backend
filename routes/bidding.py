@@ -11,7 +11,7 @@ from utils.bids.bidding import Bid
 from utils.bids.transporters import Transporter
 from utils.bids.shipper import Shipper
 from utils.redis import Redis
-from schemas.bidding import HistoricalRatesReq, TransporterBidReq, TransporterAssignReq, FilterBidsRequest, TransporterBidMatchRequest
+from schemas.bidding import HistoricalRatesReq, TransporterBidReq, TransporterAssignReq, FilterBidsRequest, TransporterBidMatchRequest,TransporterUnassignRequest
 from utils.utilities import log
 from config.socket import manager
 
@@ -432,5 +432,26 @@ async def bid_match_for_transporters(bid_id:str, transporters: List[TransporterB
         
         return SuccessResponse(data=assignment_details, client_msg="Bid Match Successful", dev_msg="Bid Match Successful")
         
+    except Exception as err:
+        return ServerError(err=err, errMsg=str(err))
+
+
+@bidding_router.delete("unassign/{bid_id}")
+async def unassign_transporter_for_bid(bid_id : str,transporter_id : TransporterUnassignRequest):
+
+    try:
+        (valid_bid_id, error) = await bid.is_valid(bid_id=bid_id)
+
+        if not valid_bid_id:
+            return ErrorResponse(data=[], client_msg=os.getenv("INVALID_BID_ERROR"), dev_msg=error)
+    
+        (unassigned_transporter,error) = await transporter.unassign(bid_id=bid_id,transporter_id = transporter_id)
+
+        if error:
+            return ErrorResponse(data=[], client_msg=os.getenv("INVALID_BID_ERROR"), dev_msg=error)
+        
+        return SuccessResponse(data=unassigned_transporter,client_msg=f"Successfully unassigned transporter for Bid-{bid_id}",dev_msg="Unassigned requested transporter from bid")
+    
+
     except Exception as err:
         return ServerError(err=err, errMsg=str(err))
