@@ -217,8 +217,8 @@ class Transporter:
 
             transporter.is_active = False
 
-            bid = (session.
-                   query(BiddingLoad)
+            bid = (session
+                   .query(BiddingLoad)
                    .filter(BiddingLoad.bl_id == bid_id)
                    .first()
                    )
