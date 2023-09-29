@@ -436,7 +436,7 @@ async def bid_match_for_transporters(bid_id:str, transporters: List[TransporterB
         return ServerError(err=err, errMsg=str(err))
 
 
-@bidding_router.delete("unassign/{bid_id}")
+@bidding_router.delete("/unassign/{bid_id}")
 async def unassign_transporter_for_bid(bid_id : str,transporter_id : TransporterUnassignRequest):
 
     try:
