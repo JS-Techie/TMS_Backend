@@ -11,7 +11,7 @@ from utils.bids.bidding import Bid
 from utils.bids.transporters import Transporter
 from utils.bids.shipper import Shipper
 from utils.redis import Redis
-from schemas.bidding import HistoricalRatesReq, TransporterBidReq, TransporterAssignReq, FilterBidsRequest
+from schemas.bidding import HistoricalRatesReq, TransporterBidReq, TransporterAssignReq, FilterBidsRequest, TransporterBidMatchRequest
 from utils.utilities import log
 from config.socket import manager
 
@@ -305,9 +305,9 @@ async def cancel_bid(bid_id: str):
 @bidding_router.post("/assign/{bid_id}")
 async def assign_to_transporter(bid_id: str, transporters: List[TransporterAssignReq]):
 
-    (update_successful_bid_status, error) = (False, "")
     total_fleets = 0
     load_status = ""
+    load_split = False
 
     try:
 
@@ -329,6 +329,8 @@ async def assign_to_transporter(bid_id: str, transporters: List[TransporterAssig
 
         if bid_details.load_status not in valid_assignment_status:
             return ErrorResponse(data=[], client_msg=f"Transporter cannot be assigned to this bid as it is {bid_details.load_status}", dev_msg=f"transporter cannot be assigned to bid with status- {bid_details.load_status}")
+        
+        
 
         if total_fleets < bid_details.no_of_fleets:
             load_status = "partially_confirmed"
@@ -338,14 +340,9 @@ async def assign_to_transporter(bid_id: str, transporters: List[TransporterAssig
             return ErrorResponse(data=[], client_msg="Assigned number of fleets greater than requested number of fleets", dev_msg="Mismatch of assigned and requested fleets")
 
         if len(transporters) > 1:
-            (update_successful_bid_status, error) = await bid.status_update(bid_id=bid_id, split=True, status=load_status)
-        else:
-            (update_successful_bid_status, error) = await bid.status_update(bid_id=bid_id, split=False, status=load_status)
+            load_split = True
 
-        if not update_successful_bid_status:
-            return ErrorResponse(data=[], client_msg="Something Went Wrong while Assigning Transporters", dev_msg=error)
-
-        (assigned_loads, error) = await bid.assign(bid_id=bid_id, transporters=transporters)
+        (assigned_loads, error) = await bid.assign(bid_id=bid_id, transporters=transporters, split=load_split, status=load_status)
 
         if error:
             return ErrorResponse(data=[], client_msg="Something Went Wrong While Assigning Transporters", dev_msg=error)
@@ -415,5 +412,25 @@ async def live_bid_details(bid_id: str):
 
         return SuccessResponse(data=bid_details, client_msg="Live Bid Details fetched Successfully", dev_msg="Live Bid Details fetched Successfully")
 
+    except Exception as err:
+        return ServerError(err=err, errMsg=str(err))
+
+
+@bidding_router.post("/match/{bid_id}")
+async def bid_match_for_transporters(bid_id:str, transporters: List[TransporterBidMatchRequest]):
+    
+    try:
+        (valid_bid_id, error) = await bid.is_valid(bid_id=bid_id)
+
+        if not valid_bid_id:
+            return ErrorResponse(data=[], client_msg=os.getenv("INVALID_BID_ERROR"), dev_msg=error)
+        
+        (assignment_details, error) = await transporter.bid_match(bid_id=bid_id, transporters=transporters)
+        
+        if error:
+            return ErrorResponse(data=[], client_msg=os.getenv("GENERIC_ERROR"), dev_msg=error)
+        
+        return SuccessResponse(data=assignment_details, client_msg="Bid Match Successful", dev_msg="Bid Match Successful")
+        
     except Exception as err:
         return ServerError(err=err, errMsg=str(err))

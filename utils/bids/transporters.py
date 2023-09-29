@@ -1,8 +1,9 @@
 from config.db_config import Session
 from utils.response import ServerError, SuccessResponse
-from models.models import BidTransaction, TransporterModel, MapShipperTransporter
+from models.models import BidTransaction, TransporterModel, MapShipperTransporter, PriceMatchRequest,LoadAssigned
 from utils.bids.bidding import Bid
 from utils.utilities import log
+import os
 
 bid = Bid()
 
@@ -124,5 +125,75 @@ class Transporter:
         except Exception as e:
             session.rollback()
             return (False, str(e))
+        finally:
+            session.close()
+    
+    
+    async def bid_match(self, bid_id:str, transporters: any)->(any,str):
+        session = Session()
+        user_id = os.getenv("USER_ID")
+        try:
+            
+            transporter_ids = []
+            fetched_transporter_ids = []
+            assigned_transporters = []
+
+            for transporter in transporters:
+                transporter_ids.append(
+                    getattr(transporter, "transporter_id"))
+                
+            transporter_details = session.query(LoadAssigned).filter(
+                LoadAssigned.la_bidding_load_id == bid_id, LoadAssigned.la_transporter_id.in_(transporter_ids)).all()
+            log("Fetched Transporter Detail ", transporter_details)
+            for transporter_detail in transporter_details:
+                fetched_transporter_ids.append(
+                    transporter_detail.la_transporter_id)
+                
+            transporters_not_assigned = list(
+                set(transporter_ids) - set(fetched_transporter_ids))
+            log("Transporter IDs not assigned", transporters_not_assigned)
+            transporters_to_be_updated = list(
+                set(transporter_ids).intersection(set(fetched_transporter_ids)))
+            log("Transporter to be Updated", transporters_to_be_updated)
+            for transporter in transporters:
+                if getattr(transporter, "transporter_id") in transporters_not_assigned:
+                    assign_detail = LoadAssigned(
+                        la_bidding_load_id=bid_id,
+                        la_transporter_id=getattr(
+                            transporter, "transporter_id"),
+                        trans_pos_in_bid=getattr(
+                            transporter,"trans_pos_in_bid"
+                        ),
+                        pmr_price=getattr(
+                            transporter, "rate"),
+                        is_active=False,
+                        created_by=user_id
+                    )
+                    assigned_transporters.append(assign_detail)
+                    
+                    
+            log("Assigned Transporters", assigned_transporters)
+            for transporter_detail in  transporter_details:
+                if getattr(transporter_detail, "la_transporter_id") in transporters_to_be_updated:
+                    for transporter in transporters:
+                        if getattr(transporter,"transporter_id") == getattr(transporter_detail, "la_transporter_id"):
+                            setattr(transporter_detail,"la_transporter_id",getattr(transporter,"transporter_id"))
+                            setattr(transporter_detail,"pmr_price",getattr(transporter,"rate"))
+                            setattr(transporter_detail,"trans_pos_in_bid",getattr(transporter,"trans_pos_in_bid"))
+                            setattr(transporter_detail,"is_active",False)
+                            
+            log("Data changed for UPdate")
+            session.bulk_save_objects(assigned_transporters)
+            session.commit()
+            
+            if not assigned_transporters:
+                return ([],"")
+            
+            return (assigned_transporters,"")
+                
+            
+        except Exception as e:
+            session.rollback()
+            return ([], str(e))
         finally:
             session.close()
