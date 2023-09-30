@@ -180,8 +180,6 @@ async def provide_new_rate_for_bid(request: Request, bid_id: str, bid_req: Trans
         return ServerError(err=err, errMsg=str(err))
 
 
-# TO DO
-
 @transporter_bidding_router.get("/lost")
 async def fetch_lost_bids_for_transporter_based_on_participation(request: Request, t: TransporterLostBidsReq):
 
@@ -196,18 +194,20 @@ async def fetch_lost_bids_for_transporter_based_on_participation(request: Reques
 
         if not transporter_id:
             return ErrorResponse(data=[], dev_msg=os.getenv("TRANSPORTER_ID_NOT_FOUND_ERROR"), client_msg=os.getenv("GENERIC_ERROR"))
-        
-        (bids,error) = ([],"")
+
+        (bids, error) = ([], "")
 
         if t.particpated:
-            (bids,error) = transporter.participated_and_lost_bids(transporter_id = transporter_id)
+            (bids, error) = transporter.participated_and_lost_bids(
+                transporter_id=transporter_id)
         else:
-            (bids,error) = transporter.not_participated_and_lost_bids(transporter_id = transporter_id)
-        
-        if error:
-            return ErrorResponse(data=[],dev_msg=error,client_msg="Something went wrong file fetching bids, please try again in some time")
+            (bids, error) = transporter.not_participated_and_lost_bids(
+                transporter_id=transporter_id)
 
-        return SuccessResponse(data=bids,dev_msg="Fetched lost bids successfully",client_msg="Fetched all lost bids successfully!")
+        if error:
+            return ErrorResponse(data=[], dev_msg=error, client_msg="Something went wrong file fetching bids, please try again in some time")
+
+        return SuccessResponse(data=bids, dev_msg="Fetched lost bids successfully", client_msg="Fetched all lost bids successfully!")
 
     except Exception as err:
         return ServerError(err=err, errMsg=str(err))
