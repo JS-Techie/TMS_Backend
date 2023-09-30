@@ -56,17 +56,21 @@ class Bid:
         finally:
             session.close()
 
-    async def get_status_wise(self, status: str, shipper_id: str) -> (any, str):
+    async def get_status_wise(self, status: str, shipper_id: str | None = None) -> (any, str):
         session = Session()
 
         try:
 
             bid_array = session.execute(text(status_wise_fetch_query), params={
-                                        "load_status": status, "shipper_id": shipper_id})
+                                        "load_status": status, 
+                                        "shipper_id": shipper_id
+                                        }
+                                        )
 
             rows = bid_array.fetchall()
 
             log("BIDS", rows)
+
             b_arr = []
             for row in rows:
                 log("ROW", row.bl_id)

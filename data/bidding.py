@@ -42,7 +42,7 @@ status_wise_fetch_query = """
                 AND t_bidding_load.load_status = :load_status;
                 AND t_bidding_load.bl_shipper_id = :shipper_id
                 """
-
+#  
 
 filter_wise_fetch_query = """
             SELECT

@@ -275,20 +275,20 @@ class Transporter:
             if error:
                 return [], error
 
-            log("FETCHED SHIPPERS ATTACHED TO TRANSPORTERS",shippers)
+            log("FETCHED SHIPPERS ATTACHED TO TRANSPORTERS", shippers)
 
             public_bids, error = await bid.public(status=status)
             if error:
                 return [], error
-            
-            log("FETCHED PUBLIC BIDS",public_bids)
+
+            log("FETCHED PUBLIC BIDS", public_bids)
 
             private_bids = []
             if shippers:
                 private_bids, error = await bid.private(shippers=shippers, status=status)
                 if error:
                     return [], error
-                log("FETCHED PRIVATE BIDS",private_bids)
+                log("FETCHED PRIVATE BIDS", private_bids)
 
             return {
                 "all": private_bids + public_bids,
@@ -313,15 +313,15 @@ class Transporter:
                        .all()
                        )
 
-            if not bid_ids:
-                return ([], "Not been selected in any bids yet!")
-            
+            if not bid_arr:
+                return ([], "")
+
             bid_ids = [bid.la_bidding_load_id for bid in bid_arr]
 
             bids = (session
                     .query(BiddingLoad, ShipperModel, MapLoadSrcDestPair)
-                    .outerjoin(ShipperModel,ShipperModel.shpr_id == BiddingLoad.bl_shipper_id)
-                    .outerjoin(MapLoadSrcDestPair,MapLoadSrcDestPair.mlsdp_bidding_load_id == BiddingLoad.bl_id)
+                    .outerjoin(ShipperModel, ShipperModel.shpr_id == BiddingLoad.bl_shipper_id)
+                    .outerjoin(MapLoadSrcDestPair, MapLoadSrcDestPair.mlsdp_bidding_load_id == BiddingLoad.bl_id)
                     .filter(BiddingLoad.is_active == True, BiddingLoad.bl_id.in_(bid_ids))
                     .all()
                     )
@@ -337,22 +337,31 @@ class Transporter:
         finally:
             session.close()
     
-    async def participated_and_lost_bids(self,transporter_id : str) -> (any,str):
-        
+    async def participated_bids(self,transporter_id : str) -> (any,str):
+
         session = Session()
 
         try:
-            bid_ids = session.execute(text(lost_participated_transporter_bids),params={
-                "transporter_id" : transporter_id
-            })
+            bid_arr = (session
+                       .query(BidTransaction)
+                       .distinct(BidTransaction.bid_id)
+                       .filter(BidTransaction.transporter_id == transporter_id)
+                       .all()
+                       )
+            
+            if not bid_arr:
+                return ([], "")
+            
+            log("PARTICIPATED AND NOT LOST",bid_arr)
 
-            if not bid_ids:
-                return ([], "Not participated in any bids yet!")
+            bid_ids = [str(bid.bid_id) for bid in bid_arr]
+
+            log("BID IDs OF NOT LOST AND PARTICPATED",bid_ids)
 
             bids = (session
                     .query(BiddingLoad, ShipperModel, MapLoadSrcDestPair)
-                    .outerjoin(ShipperModel,ShipperModel.shpr_id == BiddingLoad.bl_shipper_id)
-                    .outerjoin(MapLoadSrcDestPair,MapLoadSrcDestPair.mlsdp_bidding_load_id == BiddingLoad.bl_id)
+                    .outerjoin(ShipperModel, ShipperModel.shpr_id == BiddingLoad.bl_shipper_id)
+                    .outerjoin(MapLoadSrcDestPair, MapLoadSrcDestPair.mlsdp_bidding_load_id == BiddingLoad.bl_id)
                     .filter(BiddingLoad.is_active == True, BiddingLoad.bl_id.in_(bid_ids))
                     .all()
                     )
@@ -368,29 +377,69 @@ class Transporter:
         finally:
             session.close()
 
-    async def not_participated_and_lost_bids(self,transporter_id : str) -> (any,str):
-        
+    async def participated_and_lost_bids(self, transporter_id: str) -> (any, str):
+
         session = Session()
 
         try:
-            all_bids,error = await self.bids_by_status(transporter_id=transporter_id)
+            bid_arr = session.execute(text(lost_participated_transporter_bids), params={
+                "transporter_id": transporter_id
+            })
+
+            bid_ids = [bid._mapping["bid_id"] for bid in bid_arr]
+
+            if not bid_ids:
+                return ([], "")
+
+            bids = (session
+                    .query(BiddingLoad, ShipperModel, MapLoadSrcDestPair)
+                    .outerjoin(ShipperModel, ShipperModel.shpr_id == BiddingLoad.bl_shipper_id)
+                    .outerjoin(MapLoadSrcDestPair, MapLoadSrcDestPair.mlsdp_bidding_load_id == BiddingLoad.bl_id)
+                    .filter(BiddingLoad.is_active == True, BiddingLoad.bl_id.in_(bid_ids))
+                    .all()
+                    )
+
+            if not bids:
+                return ([], "Could not find bid details from bid IDs")
+
+            log("PARTICPATED BIDS", bids)
+
+            return (structurize_transporter_bids(bids=bids), "")
+
+        except Exception as e:
+            session.rollback()
+            return [], str(e)
+        finally:
+            session.close()
+
+    async def not_participated_and_lost_bids(self, transporter_id: str) -> (any, str):
+
+        session = Session()
+
+        try:
+            all_bids, error = await self.bids_by_status(transporter_id=transporter_id)
+       
+            if error:
+                return ([], "All bids for transporter could not be fetched")
+            
+            all = all_bids["all"]
+
+            log("ALL BIDS",all)
+
+            (participated_bids, error) = await self.participated_bids(transporter_id=transporter_id)
 
             if error:
-                return ([],"All bids for transporter could not be fetched")
+                return ([], "Participated bids for transporter could not be fetched")
             
-            all_bids = all_bids["all"]
+            log("PARTICIPATED")
 
-            (participated_bids,error) = await self.participated_and_lost_bids(transporter_id=transporter_id)
+            not_participated_bids = [
+                bid for bid in all if bid not in participated_bids]
 
-            if error:
-                return ([],"Participated bids for transporter could not be fetched")
-
-            not_participated_bids = [bid for bid in all_bids if bid not in participated_bids]
-            
             if not not_participated_bids:
-                 return ([],"Participated bids for transporter could not be fetched")
+                return ([], "")
 
-            return (structurize_transporter_bids(bids=not_participated_bids), "")
+            return not_participated_bids,""
 
         except Exception as e:
             session.rollback()
@@ -413,10 +462,10 @@ class Transporter:
 
             if not shippers:
                 return ([], "This transporter is not mapped to any shipper")
-            
+
             shipper_ids = [shipper.mst_shipper_id for shipper in shippers]
 
-            log("SHIPPER IDs",shipper_ids)
+            log("SHIPPER IDs", shipper_ids)
 
             return (shipper_ids, "")
 

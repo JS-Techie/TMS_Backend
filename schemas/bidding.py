@@ -16,7 +16,6 @@ class HistoricalRatesReq(BaseModel):
 
 
 class TransporterBidReq(BaseModel):
-    transporter_id: UUID
     rate: float
     comment: str
 

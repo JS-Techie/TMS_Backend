@@ -36,7 +36,7 @@ async def fetch_bids_for_transporter_by_status(request: Request, status: str | N
             return ErrorResponse(data=[], dev_msg=f"Only transporters have access to view bids by status. This user is a {user_type}", client_msg=os.getenv("GENERIC_ERROR"))
 
         transporter_id = request.state.current_user["transporter_id"]
-     
+
         if not transporter_id:
             return ErrorResponse(data=[], dev_msg=os.getenv("TRANSPORTER_ID_NOT_FOUND_ERROR"), client_msg=os.getenv("GENERIC_ERROR"))
 
@@ -70,6 +70,9 @@ async def fetch_selected_bids(request: Request):
 
         if error:
             return ErrorResponse(data=[], dev_msg=error, client_msg=os.getenv("GENERIC_ERROR"))
+
+        if not bids:
+            return SuccessResponse(data=[], client_msg="You have not been selected in any bids yet", dev_msg="Not selected in any bids")
 
         return SuccessResponse(data=bids, dev_msg="Fetched bids successfully", client_msg="Fetched all selected bids successfully!")
 
@@ -166,7 +169,7 @@ async def provide_new_rate_for_bid(request: Request, bid_id: str, bid_req: Trans
             return ErrorResponse(data=[], client_msg=os.getenv("BID_RATE_ERROR"), dev_msg=error)
 
         (sorted_bid_details, error) = await redis.update(sorted_set=bid_id,
-                                                         transporter_id=str(transporter_id), comment=bid_req.comment, transporter_name=transporter_name, rate=bid_req.rate, attempts=transporter_attempts + 1)
+                                                         transporter_id=(transporter_id), comment=bid_req.comment, transporter_name=transporter_name, rate=bid_req.rate, attempts=transporter_attempts + 1)
 
         log("BID DETAILS", sorted_bid_details)
 
@@ -198,14 +201,17 @@ async def fetch_lost_bids_for_transporter_based_on_participation(request: Reques
         (bids, error) = ([], "")
 
         if t.particpated:
-            (bids, error) = transporter.participated_and_lost_bids(
+            (bids, error) = await transporter.participated_and_lost_bids(
                 transporter_id=transporter_id)
         else:
-            (bids, error) = transporter.not_participated_and_lost_bids(
+            (bids, error) = await transporter.not_participated_and_lost_bids(
                 transporter_id=transporter_id)
 
         if error:
             return ErrorResponse(data=[], dev_msg=error, client_msg="Something went wrong file fetching bids, please try again in some time")
+        
+        if not bids:
+            return SuccessResponse(data=[],dev_msg="Not lost any bid",client_msg="No lost bids to show right now!")
 
         return SuccessResponse(data=bids, dev_msg="Fetched lost bids successfully", client_msg="Fetched all lost bids successfully!")
 

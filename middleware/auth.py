@@ -55,9 +55,11 @@ class AuthMiddleware(BaseHTTPMiddleware):
                 log("JWT SECRET", os.getenv("JWT_SECRET"))
                 log("ALGO", os.getenv("JWT_ALGORITHM"))
 
-                payload = jwt.decode(token=token, key=os.getenv("JWT_SECRET"), algorithms=[os.getenv("JWT_ALGORITHM")], options={
+                payload = jwt.decode(token=token, key=os.getenv("JWT_SECRET"), algorithms=[os.getenv("JWT_ALGORITHM")], 
+                                     options={
                     "verify_signature": False
-                })
+                }
+                )
 
                 request.state.current_user = payload
 
