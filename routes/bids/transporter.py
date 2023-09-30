@@ -2,10 +2,8 @@ from fastapi import APIRouter, Request
 import os
 import json
 
-
 from config.socket import manager
 from schemas.bidding import TransporterBidReq, TransporterLostBidsReq
-from models.models import BiddingLoad, LoadAssigned, TransporterModel, ShipperModel, User, MapShipperTransporter
 from data.bidding import valid_bid_status
 from utils.bids.bidding import Bid
 from utils.bids.transporters import Transporter
@@ -35,7 +33,7 @@ async def fetch_bids_for_transporter_by_status(request: Request, status: str | N
     try:
 
         if user_type != trns or not user_id:
-            return ErrorResponse(data=[], dev_msg=f"Only transporters have access to place bids. This user is a {user_type}", client_msg=os.getenv("GENERIC_ERROR"))
+            return ErrorResponse(data=[], dev_msg=f"Only transporters have access to view bids by status. This user is a {user_type}", client_msg=os.getenv("GENERIC_ERROR"))
 
         transporter_id = request.state.transporter_id
 
@@ -61,7 +59,7 @@ async def fetch_bids_for_transporter_by_category(request: Request, category: str
     try:
 
         if user_type != trns or not user_id:
-            return ErrorResponse(data=[], dev_msg=f"Only transporters have access to place bids. This user is a {user_type}", client_msg=os.getenv("GENERIC_ERROR"))
+            return ErrorResponse(data=[], dev_msg=f"Only transporters have access to view selected bids. This user is a {user_type}", client_msg=os.getenv("GENERIC_ERROR"))
 
         transporter_id = request.state.transporter_id
 
@@ -185,19 +183,31 @@ async def provide_new_rate_for_bid(request: Request, bid_id: str, bid_req: Trans
 # TO DO
 
 @transporter_bidding_router.get("/lost")
-async def fetch_lost_bids_for_transporter_based_on_participation(request: Request, transporter: TransporterLostBidsReq):
+async def fetch_lost_bids_for_transporter_based_on_participation(request: Request, t: TransporterLostBidsReq):
 
     user_type, user_id = request.state.current_user.user_type, request.state.current_user.user_type
 
     try:
 
         if user_type != trns or not user_id:
-            return ErrorResponse(data=[], dev_msg=f"Only transporters have access to place bids. This user is a {user_type}", client_msg=os.getenv("GENERIC_ERROR"))
+            return ErrorResponse(data=[], dev_msg=f"Only transporters have access to view lost bids. This user is a {user_type}", client_msg=os.getenv("GENERIC_ERROR"))
 
         transporter_id = request.state.transporter_id
 
         if not transporter_id:
             return ErrorResponse(data=[], dev_msg=os.getenv("TRANSPORTER_ID_NOT_FOUND_ERROR"), client_msg=os.getenv("GENERIC_ERROR"))
+        
+        (bids,error) = ([],"")
+
+        if t.particpated:
+            (bids,error) = transporter.participated_and_lost_bids(transporter_id = transporter_id)
+        else:
+            (bids,error) = transporter.not_participated_and_lost_bids(transporter_id = transporter_id)
+        
+        if error:
+            return ErrorResponse(data=[],dev_msg=error,client_msg="Something went wrong file fetching bids, please try again in some time")
+
+        return SuccessResponse(data=bids,dev_msg="Fetched lost bids successfully",client_msg="Fetched all lost bids successfully!")
 
     except Exception as err:
         return ServerError(err=err, errMsg=str(err))

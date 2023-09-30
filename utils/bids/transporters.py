@@ -1,12 +1,15 @@
 import os
+from sqlalchemy import text
 
 from config.db_config import Session
 from utils.response import ServerError, SuccessResponse
 from models.models import BidTransaction, TransporterModel, MapShipperTransporter, LoadAssigned, BiddingLoad, User, ShipperModel, MapLoadSrcDestPair
 from utils.bids.bidding import Bid
 from utils.utilities import log, structurize_transporter_bids
+from data.bidding import lost_participated_transporter_bids
 
 bid = Bid()
+
 
 class Transporter:
 
@@ -320,6 +323,67 @@ class Transporter:
                 return ([], "Could not find bid details from bid IDs")
 
             return (structurize_transporter_bids(bids=bids), "")
+
+        except Exception as e:
+            session.rollback()
+            return [], str(e)
+        finally:
+            session.close()
+    
+    async def participated_and_lost_bids(self,transporter_id : str) -> (any,str):
+        
+        session = Session()
+
+        try:
+            bid_ids = session.execute(text(lost_participated_transporter_bids),params={
+                "transporter_id" : transporter_id
+            })
+
+            if not bid_ids:
+                return ([], "Not participated in any bids yet!")
+
+            bids = (session
+                    .query(BiddingLoad, ShipperModel, MapLoadSrcDestPair)
+                    .outerjoin(ShipperModel.shpr_id == BiddingLoad.bl_shipper_id)
+                    .outerjoin(MapLoadSrcDestPair.mlsdp_bidding_load_id == BiddingLoad.bl_id)
+                    .filter(BiddingLoad.is_active == True, BiddingLoad.bl_id.in_(bid_ids))
+                    .all()
+                    )
+
+            if not bids:
+                return ([], "Could not find bid details from bid IDs")
+
+            return (structurize_transporter_bids(bids=bids), "")
+
+        except Exception as e:
+            session.rollback()
+            return [], str(e)
+        finally:
+            session.close()
+
+    async def not_participated_and_lost_bids(self,transporter_id : str) -> (any,str):
+        
+        session = Session()
+
+        try:
+            all_bids,error = await self.bids_by_status(transporter_id=transporter_id)
+
+            if error:
+                return ([],"All bids for transporter could not be fetched")
+            
+            all_bids = all_bids["all"]
+
+            (participated_bids,error) = await self.participated_bids(transporter_id=transporter_id)
+
+            if error:
+                return ([],"Participated bids for transporter could not be fetched")
+
+            not_participated_bids = [bid for bid in all_bids if bid not in participated_bids]
+            
+            if not not_participated_bids:
+                 return ([],"Participated bids for transporter could not be fetched")
+
+            return (structurize_transporter_bids(bids=not_participated_bids), "")
 
         except Exception as e:
             session.rollback()
