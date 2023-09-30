@@ -5,7 +5,7 @@ from typing import List
 from datetime import datetime, timedelta
 
 from utils.response import ErrorResponse, SuccessResponse, SuccessNoContentResponse, ServerError
-from data.bidding import valid_load_status, valid_rebid_status, valid_cancel_status, valid_assignment_status
+from data.bidding import valid_load_status, valid_cancel_status, valid_assignment_status
 
 from utils.bids.bidding import Bid
 from utils.bids.transporters import Transporter
@@ -39,7 +39,7 @@ async def get_bids_according_to_status(request: Request, status: str):
         if status not in valid_load_status:
             return ErrorResponse(data=[], dev_msg=os.getenv("STATUS_ERROR"), client_msg=os.getenv("GENERIC_ERROR"))
         
-        (shipper_id,error) = await shipper.id(user_id = user_id)
+        (shipper_id,error) = request.state.shipper_id
 
         if error:
             return ErrorResponse(data=[], dev_msg=error, client_msg=os.getenv("GENERIC_ERROR"))

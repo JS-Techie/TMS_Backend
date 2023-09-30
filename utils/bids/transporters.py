@@ -275,15 +275,20 @@ class Transporter:
             if error:
                 return [], error
 
+            log("FETCHED SHIPPERS ATTACHED TO TRANSPORTERS",shippers)
+
             public_bids, error = await bid.public(status=status)
             if error:
                 return [], error
+            
+            log("FETCHED PUBLIC BIDS",public_bids)
 
             private_bids = []
             if shippers:
                 private_bids, error = await bid.private(shippers=shippers, status=status)
                 if error:
                     return [], error
+                log("FETCHED PRIVATE BIDS",private_bids)
 
             return {
                 "all": private_bids + public_bids,
@@ -302,19 +307,21 @@ class Transporter:
         session = Session()
 
         try:
-            bid_ids = (session
-                       .query(LoadAssigned.la_bidding_load_id)
+            bid_arr = (session
+                       .query(LoadAssigned)
                        .filter(LoadAssigned.la_transporter_id == transporter_id)
                        .all()
                        )
 
             if not bid_ids:
                 return ([], "Not been selected in any bids yet!")
+            
+            bid_ids = [bid.la_bidding_load_id for bid in bid_arr]
 
             bids = (session
                     .query(BiddingLoad, ShipperModel, MapLoadSrcDestPair)
-                    .outerjoin(ShipperModel.shpr_id == BiddingLoad.bl_shipper_id)
-                    .outerjoin(MapLoadSrcDestPair.mlsdp_bidding_load_id == BiddingLoad.bl_id)
+                    .outerjoin(ShipperModel,ShipperModel.shpr_id == BiddingLoad.bl_shipper_id)
+                    .outerjoin(MapLoadSrcDestPair,MapLoadSrcDestPair.mlsdp_bidding_load_id == BiddingLoad.bl_id)
                     .filter(BiddingLoad.is_active == True, BiddingLoad.bl_id.in_(bid_ids))
                     .all()
                     )
@@ -344,8 +351,8 @@ class Transporter:
 
             bids = (session
                     .query(BiddingLoad, ShipperModel, MapLoadSrcDestPair)
-                    .outerjoin(ShipperModel.shpr_id == BiddingLoad.bl_shipper_id)
-                    .outerjoin(MapLoadSrcDestPair.mlsdp_bidding_load_id == BiddingLoad.bl_id)
+                    .outerjoin(ShipperModel,ShipperModel.shpr_id == BiddingLoad.bl_shipper_id)
+                    .outerjoin(MapLoadSrcDestPair,MapLoadSrcDestPair.mlsdp_bidding_load_id == BiddingLoad.bl_id)
                     .filter(BiddingLoad.is_active == True, BiddingLoad.bl_id.in_(bid_ids))
                     .all()
                     )
@@ -373,7 +380,7 @@ class Transporter:
             
             all_bids = all_bids["all"]
 
-            (participated_bids,error) = await self.participated_bids(transporter_id=transporter_id)
+            (participated_bids,error) = await self.participated_and_lost_bids(transporter_id=transporter_id)
 
             if error:
                 return ([],"Participated bids for transporter could not be fetched")
@@ -394,19 +401,24 @@ class Transporter:
     async def shippers(self, transporter_id: str) -> (any, str):
 
         session = Session()
+        shipper_ids = []
 
         try:
 
             shippers = (session
-                        .query(MapShipperTransporter.mst_shipper_id)
+                        .query(MapShipperTransporter)
                         .filter(MapShipperTransporter.mst_transporter_id == transporter_id)
                         .all()
                         )
 
             if not shippers:
                 return ([], "This transporter is not mapped to any shipper")
+            
+            shipper_ids = [shipper.mst_shipper_id for shipper in shippers]
 
-            return (shippers, "")
+            log("SHIPPER IDs",shipper_ids)
+
+            return (shipper_ids, "")
 
         except Exception as e:
             session.rollback()

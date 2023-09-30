@@ -139,12 +139,12 @@ def structurize_transporter_bids(bids):
     for bid_load, shipper, src_dest_pair in bids:
 
         bid_detail = {
-            "BID ID": bid_load.bl_id,
-            "Shipper Name": shipper.name,
-            "Contact Number": shipper.contact_no,
-            "Source": src_dest_pair.src_city,
-            "Destination": src_dest_pair.dest_city,
-            "Bid date time": bid_load.bid_time,
+            "bid_id": bid_load.bl_id,
+            "shipper_name": shipper.name,
+            "contact_number": shipper.contact_no,
+            "src_city": src_dest_pair.src_city if src_dest_pair else None,
+            "dest_city": src_dest_pair.dest_city if src_dest_pair else None,
+            "bid_time": bid_load.bid_time
         }
 
         bid_details.append(bid_detail)

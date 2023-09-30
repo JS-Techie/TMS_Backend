@@ -580,9 +580,9 @@ class Bid:
 
             bids_query = (session
                           .query(BiddingLoad, ShipperModel, MapLoadSrcDestPair)
-                          .join(ShipperModel.shpr_id == BiddingLoad.bl_shipper_id)
-                          .join(MapLoadSrcDestPair.mlsdp_bidding_load_id == BiddingLoad.bl_id)
-                          .filter(BiddingLoad.is_active == True)
+                          .outerjoin(ShipperModel,ShipperModel.shpr_id == BiddingLoad.bl_shipper_id)
+                          .outerjoin(MapLoadSrcDestPair,MapLoadSrcDestPair.mlsdp_bidding_load_id == BiddingLoad.bl_id)
+                          .filter(BiddingLoad.is_active == True,BiddingLoad.bid_mode=="open_market")
                           )
 
             if status:
@@ -609,9 +609,9 @@ class Bid:
 
             bids_query = (session
                           .query(BiddingLoad, ShipperModel, MapLoadSrcDestPair)
-                          .outerjoin(ShipperModel.shpr_id == BiddingLoad.bl_shipper_id)
-                          .outerjoin(MapLoadSrcDestPair.mlsdp_bidding_load_id == BiddingLoad.bl_id)
-                          .filter(BiddingLoad.is_active == True, BiddingLoad.bl_shipper_id.in_(shippers))
+                          .outerjoin(ShipperModel,ShipperModel.shpr_id == BiddingLoad.bl_shipper_id)
+                          .outerjoin(MapLoadSrcDestPair,MapLoadSrcDestPair.mlsdp_bidding_load_id == BiddingLoad.bl_id)
+                          .filter(BiddingLoad.is_active == True, BiddingLoad.bl_shipper_id.in_(shippers),BiddingLoad.bid_mode=="private_pool")
                           )
 
             if status:

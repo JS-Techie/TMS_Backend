@@ -616,7 +616,3 @@ class MapLoadSrcDestPair(Base, Persistance):
     dest_country = Column( String, nullable= False)
     dest_lat = Column(Double, nullable= True)
     dest_long = Column(Double, nullable= True)
-    contact_name = Column(String, nullable= True)
-    contact_no = Column(String, nullable= True)
-    is_item_wise_epod = Column(Boolean, nullable= False)
-    epod_status = Column( Enum("recieved", "pending", name = 'epod_status'), default = 'pending', nullable= True)
