@@ -169,7 +169,7 @@ async def provide_new_rate_for_bid(request: Request, bid_id: str, bid_req: Trans
         return ServerError(err=err, errMsg=str(err))
 
 
-@transporter_bidding_router.get("/lost")
+@transporter_bidding_router.post("/lost")
 async def fetch_lost_bids_for_transporter_based_on_participation(request: Request, t: TransporterLostBidsReq):
 
     transporter_id = request.state.current_user["transporter_id"]
