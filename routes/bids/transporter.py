@@ -131,7 +131,7 @@ async def provide_new_rate_for_bid(request: Request, bid_id: str, bid_req: Trans
         log("RATE OBJECT", rate)
 
         if error:
-            return ErrorResponse(data={}, dev_msg=error, client_msg=os.getenv("BID_RATE_ERROR"))
+            return ErrorResponse(data={}, dev_msg=error, client_msg=error)
 
         if not rate["valid"]:
             return ErrorResponse(data=[], client_msg=f"You entered an incorrect bid rate! Decrement is {bid_details.bid_price_decrement}", dev_msg="Incorrect bid price entered")
