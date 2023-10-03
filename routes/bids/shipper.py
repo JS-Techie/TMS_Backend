@@ -28,6 +28,9 @@ redis = Redis()
 @shipper_bidding_router.get("/status/{status}")
 async def get_bids_according_to_status(request: Request, status: str):
    
+
+   ##TODO : Aculead is also allowed to view bids from shiper
+   
     shipper_id = request.state.current_user["shipper_id"]
 
     try:

@@ -65,6 +65,8 @@ class AuthMiddleware(BaseHTTPMiddleware):
                     )
                     return JSONResponse(content=error_response, status_code=403)
 
+                ##TODO : Aculead is also allowed to view bids from shiper
+
                 if request.url.path.startswith("/api/v1/shipper") and payload.get("user_type") != shp:
                     error_response = ErrorResponse(
                         data=[], dev_msg="User is not a shipper!", client_msg=os.getenv("UNAUTHORIZED_ERR")
