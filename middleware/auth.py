@@ -9,10 +9,13 @@ from utils.response import ErrorResponse
 from utils.utilities import log
 
 
+shp, trns, acu = os.getenv("SHIPPER"), os.getenv(
+    "TRANSPORTER"), os.getenv("ACULEAD")
+
 class AuthMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
 
-        prefixes = ['/api/v1/shipper/bid', "api/v1/transporter/bid"]
+        prefixes = ['/api/v1/']
 
         try:
 
@@ -33,8 +36,6 @@ class AuthMiddleware(BaseHTTPMiddleware):
                     return JSONResponse(content=error_response, status_code=401)
 
                 split_token = auth_header.split(" ")
-
-                log("LENGTH OF SPLIT TOKEN", len(split_token))
 
                 if not split_token or len(split_token) <= 1:
                     error_response = ErrorResponse(
@@ -61,9 +62,25 @@ class AuthMiddleware(BaseHTTPMiddleware):
                 }
                 )
 
-                request.state.current_user = payload
+                if not payload.get("id"):
+                    error_response = ErrorResponse(
+                        data=[], dev_msg="User ID Invalid", client_msg=os.getenv("UNAUTHORIZED_ERR")
+                    )
+                    return JSONResponse(content=error_response, status_code=403)
 
-                log("PAYLOAD",payload)
+                if request.url.path.startswith("/api/v1/shipper") and payload.get("user_type") != shp:
+                    error_response = ErrorResponse(
+                        data=[], dev_msg="User is not a shipper!", client_msg=os.getenv("UNAUTHORIZED_ERR")
+                    )
+                    return JSONResponse(content=error_response, status_code=403)
+
+                if request.url.path.startswith("/api/v1/transporter") and payload.get("user_type") != trns:
+                    error_response = ErrorResponse(
+                        data=[], dev_msg="User is not a transporter!", client_msg=os.getenv("UNAUTHORIZED_ERR")
+                    )
+                    return JSONResponse(content=error_response, status_code=403)
+
+                request.state.current_user = payload
 
             return await call_next(request)
 

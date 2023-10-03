@@ -39,8 +39,8 @@ status_wise_fetch_query = """
             LEFT JOIN t_tracking_fleet ON t_tracking_fleet.tf_transporter_id = t_load_assigned.la_transporter_id
             WHERE
                 t_bidding_load.is_active = true
-                AND t_bidding_load.load_status = :load_status;
-                AND t_bidding_load.bl_shipper_id = :shipper_id
+                AND t_bidding_load.load_status = :load_status
+                AND t_bidding_load.bl_shipper_id = :shipper_id;
                 """
 #  
 
@@ -108,7 +108,7 @@ SELECT DISTINCT bt.bid_id
 FROM t_bid_transaction bt
 LEFT JOIN t_load_assigned la
 ON bt.bid_id = la.la_bidding_load_id AND bt.transporter_id = la.la_transporter_id
-WHERE bt.transporter_id = :transporter_id AND la.la_id IS NULL;
+WHERE bt.transporter_id = :transporter_id AND la.la_id IS NULL AND la.is_active = true;
 '''
 
 

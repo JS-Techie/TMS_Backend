@@ -309,7 +309,7 @@ class Transporter:
         try:
             bid_arr = (session
                        .query(LoadAssigned)
-                       .filter(LoadAssigned.la_transporter_id == transporter_id)
+                       .filter(LoadAssigned.la_transporter_id == transporter_id,LoadAssigned.is_active == True)
                        .all()
                        )
 
