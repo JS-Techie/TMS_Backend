@@ -108,7 +108,7 @@ SELECT DISTINCT bt.bid_id
 FROM t_bid_transaction bt
 LEFT JOIN t_load_assigned la
 ON bt.bid_id = la.la_bidding_load_id AND bt.transporter_id = la.la_transporter_id
-WHERE bt.transporter_id = :transporter_id AND la.la_id IS NULL AND la.is_active = true;
+WHERE bt.transporter_id = :transporter_id AND la.la_id IS NULL;
 '''
 
 
