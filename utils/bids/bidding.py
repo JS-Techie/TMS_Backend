@@ -1,7 +1,6 @@
 from datetime import datetime, timedelta
 import os
 import math
-
 from sqlalchemy import text
 from string import Template
 

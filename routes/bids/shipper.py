@@ -30,7 +30,7 @@ async def get_bids_according_to_status(request: Request, status: str):
    
 
    ##TODO : Aculead is also allowed to view bids from shiper
-   
+
     shipper_id = request.state.current_user["shipper_id"]
 
     try:
@@ -51,7 +51,6 @@ async def get_bids_according_to_status(request: Request, status: str):
     except Exception as err:
         return ServerError(err=err, errMsg=str(err))
 
-
 @shipper_bidding_router.post("/filter/{status}")
 async def get_bids_according_to_filter_criteria(request: Request, status: str, filter_criteria: FilterBidsRequest):
 
@@ -69,7 +68,6 @@ async def get_bids_according_to_filter_criteria(request: Request, status: str, f
 
     except Exception as err:
         return ServerError(err=err, errMsg=str(err))
-
 
 @shipper_bidding_router.patch("/publish/{bid_id}")
 async def publish_new_bid(request: Request, bid_id: str, bg_tasks: BackgroundTasks):
@@ -95,7 +93,6 @@ async def publish_new_bid(request: Request, bid_id: str, bg_tasks: BackgroundTas
 
     except Exception as err:
         return ServerError(err=err, errMsg=str(err))
-
 
 @shipper_bidding_router.get("/increment/{bid_id}")
 async def increment_time_of_bid(request: Request, bid_id: str):
@@ -130,7 +127,6 @@ async def increment_time_of_bid(request: Request, bid_id: str):
     except Exception as err:
         return ServerError(err=err, errMsg=str(err))
 
-
 @shipper_bidding_router.get("/lowest/{bid_id}")
 async def get_lowest_price_of_current_bid(request: Request, bid_id: str):
 
@@ -150,7 +146,6 @@ async def get_lowest_price_of_current_bid(request: Request, bid_id: str):
     except Exception as err:
         return ServerError(err=err, errMsg=str(err))
 
-
 @shipper_bidding_router.post("/history/{bid_id}")
 async def fetch_all_rates_given_by_transporter(request: Request, bid_id: str, req: HistoricalRatesReq):
 
@@ -166,7 +161,6 @@ async def fetch_all_rates_given_by_transporter(request: Request, bid_id: str, re
 
     except Exception as err:
         return ServerError(err=err, errMsg=str(err))
-
 
 @shipper_bidding_router.delete("/cancel/{bid_id}")
 async def cancel_bid(request: Request, bid_id: str):
@@ -201,7 +195,6 @@ async def cancel_bid(request: Request, bid_id: str):
 
     except Exception as err:
         return ServerError(err=err, errMsg=str(err))
-
 
 @shipper_bidding_router.post("/assign/{bid_id}")
 async def assign_to_transporter(request: Request, bid_id: str, transporters: List[TransporterAssignReq]):
@@ -253,7 +246,6 @@ async def assign_to_transporter(request: Request, bid_id: str, transporters: Lis
     except Exception as err:
         return ServerError(err=err, errMsg=str(err))
 
-
 @shipper_bidding_router.get("/details/{bid_id}")
 async def bid_details_for_assignment_to_transporter(request: Request, bid_id: str):
 
@@ -275,7 +267,6 @@ async def bid_details_for_assignment_to_transporter(request: Request, bid_id: st
 
     except Exception as err:
         return ServerError(err=err, errMsg=str(err))
-
 
 @shipper_bidding_router.get("/live/{bid_id}")
 async def live_bid_details(request: Request, bid_id: str):
@@ -322,7 +313,6 @@ async def live_bid_details(request: Request, bid_id: str):
     except Exception as err:
         return ServerError(err=err, errMsg=str(err))
 
-
 @shipper_bidding_router.post("/match/{bid_id}")
 async def bid_match_for_transporters(request: Request, bid_id: str, transporters: List[TransporterBidMatchRequest]):
 
@@ -344,7 +334,6 @@ async def bid_match_for_transporters(request: Request, bid_id: str, transporters
 
     except Exception as err:
         return ServerError(err=err, errMsg=str(err))
-
 
 @shipper_bidding_router.delete("/unassign/{bid_id}")
 async def unassign_transporter_for_bid(request: Request, bid_id: str, tr: TransporterUnassignRequest):
