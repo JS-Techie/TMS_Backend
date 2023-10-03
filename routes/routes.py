@@ -1,8 +1,9 @@
 from fastapi import APIRouter, FastAPI
 
+from middleware.auth import AuthMiddleware
 from routes.bids.shipper import shipper_bidding_router
 from routes.bids.transporter import transporter_bidding_router
-from middleware.auth import AuthMiddleware
+
 
 router: APIRouter = APIRouter(prefix="/api/v1")
 

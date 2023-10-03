@@ -6,11 +6,9 @@ def log(key: str, value: str | None = None):
     if os.getenv("print") == "true":
         print(key, " : ", value)
 
-
 def convert_date_to_string(date: datetime):
 
     return (str(date.year)+"-"+str(date.month)+"-"+str(date.hour)+" "+str(date.hour)+":"+str(date.minute))
-
 
 def structurize(input_array):
     result_dict = {}
@@ -72,8 +70,7 @@ def structurize(input_array):
             if item["tr_active"] and item["la_active"]:
                 result_dict[bl_id]["transporters"].append(bid_item)
     return list(result_dict.values())
-
-
+ 
 def structurize_assignment_data(data):
     # Initialize a dictionary to organize data by transporter_id
     transporter_data = {}
@@ -130,7 +127,6 @@ def structurize_assignment_data(data):
             sorted_transporter_data.append(sorted_data_for_transporter)
 
     return sorted_transporter_data
-
 
 def structurize_transporter_bids(bids):
 
