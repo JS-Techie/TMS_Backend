@@ -1,6 +1,6 @@
-from fastapi import Request, HTTPException
+from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
-from jose import jwt, jws
+from jose import jwt
 from jose.exceptions import JWTError
 from fastapi.responses import JSONResponse
 import os
