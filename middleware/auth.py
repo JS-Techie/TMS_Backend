@@ -53,9 +53,6 @@ class AuthMiddleware(BaseHTTPMiddleware):
                     )
                     return JSONResponse(content=error_response, status_code=401)
 
-                log("JWT SECRET", os.getenv("JWT_SECRET"))
-                log("ALGO", os.getenv("JWT_ALGORITHM"))
-
                 payload = jwt.decode(token=token, key=os.getenv("JWT_SECRET"), algorithms=[os.getenv("JWT_ALGORITHM")], 
                                      options={
                     "verify_signature": False
