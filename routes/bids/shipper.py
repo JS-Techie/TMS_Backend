@@ -344,7 +344,7 @@ async def bid_match_for_transporters(request: Request, bid_id: str, transporters
 
 
 @shipper_bidding_router.delete("/unassign/{bid_id}")
-async def unassign_transporter_for_bid(request: Request, bid_id: str, transporter_id: TransporterUnassignRequest):
+async def unassign_transporter_for_bid(request: Request, bid_id: str, tr: TransporterUnassignRequest):
 
     # user_id =  request.state.current_user["id"]
 
@@ -356,7 +356,7 @@ async def unassign_transporter_for_bid(request: Request, bid_id: str, transporte
         if not valid_bid_id:
             return ErrorResponse(data=[], client_msg=os.getenv("INVALID_BID_ERROR"), dev_msg=error)
 
-        (unassigned_transporter, error) = await transporter.unassign(bid_id=bid_id, transporter_id=transporter_id)
+        (unassigned_transporter, error) = await transporter.unassign(bid_id=bid_id, transporter_id=tr["transporter_id"])
 
         if error:
             return ErrorResponse(data=[], client_msg=os.getenv("INVALID_BID_ERROR"), dev_msg=error)
