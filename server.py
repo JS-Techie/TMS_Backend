@@ -12,6 +12,8 @@ from config.socket import manager
 
 app: FastAPI = FastAPI()
 
+setup_routes(app)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -20,12 +22,8 @@ app.add_middleware(
     allow_headers= ['*']
 )
 
-setup_routes(app)
 
 # schedule_jobs()
-
-
-
 
 @app.websocket("/ws/{bid_id}")
 async def websocket_endpoint(websocket: WebSocket, bid_id: str):
