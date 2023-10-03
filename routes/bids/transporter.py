@@ -73,7 +73,8 @@ async def fetch_selected_bids(request: Request):
 @transporter_bidding_router.post("/rate/{bid_id}", response_model=None)
 async def provide_new_rate_for_bid(request: Request, bid_id: str, bid_req: TransporterBidReq):
 
-    transporter_id = request.state.current_user["transporter_id"]
+    transporter_id,user_id = request.state.current_user["transporter_id"],request.state.current_user["id"]
+
 
     try:
 
