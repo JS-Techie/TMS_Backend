@@ -173,6 +173,7 @@ class Transporter:
 
             transporter_details = session.query(LoadAssigned).filter(
                 LoadAssigned.la_bidding_load_id == bid_id, LoadAssigned.la_transporter_id.in_(transporter_ids)).all()
+            
             log("Fetched Transporter Detail ", transporter_details)
             for transporter_detail in transporter_details:
                 fetched_transporter_ids.append(
