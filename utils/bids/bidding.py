@@ -639,3 +639,23 @@ class Bid:
             return ([], str(e))
         finally:
             session.close()
+
+    async def bidding_details(self,bid_id : str) -> (any,str):
+        
+        session = Session()
+
+        try:
+
+            bids = (session
+                          .query(BidTransaction)
+                          .filter(BidTransaction.bid_id == bid_id,BidTransaction.is_active == True)
+                          .all()
+                          )
+
+            return (bids,"")
+
+        except Exception as e:
+            session.rollback()
+            return ([], str(e))
+        finally:
+            session.close()

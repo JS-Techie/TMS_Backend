@@ -23,12 +23,12 @@ bid = Bid()
 shipper = Shipper()
 redis = Redis()
 
-acu,shp = os.getenv("ACULEAD"),os.getenv("SHIPPER")
+acu, shp = os.getenv("ACULEAD"), os.getenv("SHIPPER")
 
 
 @shipper_bidding_router.get("/status/{status}")
 async def get_bids_according_to_status(request: Request, status: str):
-   
+
     shipper_id = None
     if request.state.current_user["user_type"] == shp:
         shipper_id = request.state.current_user["shipper_id"]
@@ -36,7 +36,7 @@ async def get_bids_according_to_status(request: Request, status: str):
     try:
 
         if status not in valid_load_status:
-            return ErrorResponse(data=[], dev_msg=os.getenv("STATUS_ERROR"), client_msg=os.getenv("GENERIC_ERROR"))     
+            return ErrorResponse(data=[], dev_msg=os.getenv("STATUS_ERROR"), client_msg=os.getenv("GENERIC_ERROR"))
 
         (bids, error) = await bid.get_status_wise(status=status, shipper_id=shipper_id)
 
@@ -51,9 +51,9 @@ async def get_bids_according_to_status(request: Request, status: str):
     except Exception as err:
         return ServerError(err=err, errMsg=str(err))
 
+
 @shipper_bidding_router.post("/filter/{status}")
 async def get_bids_according_to_filter_criteria(request: Request, status: str, filter_criteria: FilterBidsRequest):
-
 
     try:
         if status not in valid_load_status:
@@ -69,11 +69,11 @@ async def get_bids_according_to_filter_criteria(request: Request, status: str, f
     except Exception as err:
         return ServerError(err=err, errMsg=str(err))
 
+
 @shipper_bidding_router.patch("/publish/{bid_id}")
 async def publish_new_bid(request: Request, bid_id: str, bg_tasks: BackgroundTasks):
 
     user_id = request.state.current_user["id"]
-    
 
     try:
 
@@ -93,6 +93,7 @@ async def publish_new_bid(request: Request, bid_id: str, bg_tasks: BackgroundTas
 
     except Exception as err:
         return ServerError(err=err, errMsg=str(err))
+
 
 @shipper_bidding_router.get("/increment/{bid_id}")
 async def increment_time_of_bid(request: Request, bid_id: str):
@@ -127,6 +128,7 @@ async def increment_time_of_bid(request: Request, bid_id: str):
     except Exception as err:
         return ServerError(err=err, errMsg=str(err))
 
+
 @shipper_bidding_router.get("/lowest/{bid_id}")
 async def get_lowest_price_of_current_bid(request: Request, bid_id: str):
 
@@ -146,9 +148,9 @@ async def get_lowest_price_of_current_bid(request: Request, bid_id: str):
     except Exception as err:
         return ServerError(err=err, errMsg=str(err))
 
+
 @shipper_bidding_router.post("/history/{bid_id}")
 async def fetch_all_rates_given_by_transporter(request: Request, bid_id: str, req: HistoricalRatesReq):
-
 
     try:
 
@@ -161,6 +163,7 @@ async def fetch_all_rates_given_by_transporter(request: Request, bid_id: str, re
 
     except Exception as err:
         return ServerError(err=err, errMsg=str(err))
+
 
 @shipper_bidding_router.delete("/cancel/{bid_id}")
 async def cancel_bid(request: Request, bid_id: str):
@@ -196,10 +199,11 @@ async def cancel_bid(request: Request, bid_id: str):
     except Exception as err:
         return ServerError(err=err, errMsg=str(err))
 
+
 @shipper_bidding_router.post("/assign/{bid_id}")
 async def assign_to_transporter(request: Request, bid_id: str, transporters: List[TransporterAssignReq]):
 
-    user_id =  request.state.current_user["id"]
+    user_id = request.state.current_user["id"]
 
     total_fleets = 0
     load_status = ""
@@ -246,6 +250,7 @@ async def assign_to_transporter(request: Request, bid_id: str, transporters: Lis
     except Exception as err:
         return ServerError(err=err, errMsg=str(err))
 
+
 @shipper_bidding_router.get("/details/{bid_id}")
 async def bid_details_for_assignment_to_transporter(request: Request, bid_id: str):
 
@@ -267,6 +272,7 @@ async def bid_details_for_assignment_to_transporter(request: Request, bid_id: st
 
     except Exception as err:
         return ServerError(err=err, errMsg=str(err))
+
 
 @shipper_bidding_router.get("/live/{bid_id}")
 async def live_bid_details(request: Request, bid_id: str):
@@ -313,10 +319,11 @@ async def live_bid_details(request: Request, bid_id: str):
     except Exception as err:
         return ServerError(err=err, errMsg=str(err))
 
+
 @shipper_bidding_router.post("/match/{bid_id}")
 async def bid_match_for_transporters(request: Request, bid_id: str, transporters: List[TransporterBidMatchRequest]):
 
-    user_id =  request.state.current_user["id"]
+    user_id = request.state.current_user["id"]
 
     try:
 
@@ -325,7 +332,7 @@ async def bid_match_for_transporters(request: Request, bid_id: str, transporters
         if not valid_bid_id:
             return ErrorResponse(data=[], client_msg=os.getenv("INVALID_BID_ERROR"), dev_msg=error)
 
-        (assignment_details, error) = await transporter.bid_match(bid_id=bid_id, transporters=transporters,user_id = user_id)
+        (assignment_details, error) = await transporter.bid_match(bid_id=bid_id, transporters=transporters, user_id=user_id)
 
         if error:
             return ErrorResponse(data=[], client_msg=os.getenv("GENERIC_ERROR"), dev_msg=error)
@@ -335,13 +342,13 @@ async def bid_match_for_transporters(request: Request, bid_id: str, transporters
     except Exception as err:
         return ServerError(err=err, errMsg=str(err))
 
+
 @shipper_bidding_router.post("/unassign/{bid_id}")
 async def unassign_transporter_for_bid(request: Request, bid_id: str, tr: TransporterUnassignRequest):
 
     # user_id =  request.state.current_user["id"]
 
     try:
-
 
         (valid_bid_id, error) = await bid.is_valid(bid_id=bid_id)
 
@@ -354,6 +361,34 @@ async def unassign_transporter_for_bid(request: Request, bid_id: str, tr: Transp
             return ErrorResponse(data=[], client_msg=os.getenv("INVALID_BID_ERROR"), dev_msg=error)
 
         return SuccessResponse(data=unassigned_transporter, client_msg=f"Successfully unassigned transporter for Bid-{bid_id}", dev_msg="Unassigned requested transporter from bid")
+
+    except Exception as err:
+        return ServerError(err=err, errMsg=str(err))
+
+
+@shipper_bidding_router.get("/bids/{bid_id}")
+async def details_of_a_bid(request: Request, bid_id: str):
+
+    try:
+
+        (valid_bid_id, error) = await bid.is_valid(bid_id=bid_id)
+
+        if not valid_bid_id:
+            return ErrorResponse(data=[], client_msg=os.getenv("INVALID_BID_ERROR"), dev_msg=error)
+
+        (bid_details, error) = await bid.bidding_details(bid_id=bid_id)
+
+        if error:
+            return ErrorResponse(data=[], dev_msg=error, client_msg="Something went wrong while trying to fetch bid details, please try again in sometime")
+
+        if not bid_details:
+            return SuccessResponse(data=[], client_msg="No bids have been placed yet", dev_msg="No bids have been placed yet")
+
+        return SuccessResponse(data={"bid_details": bid_details, 
+                                     "no_of_bids": len(bid_details)
+                                     }, 
+                                     client_msg=f"Successfully unassigned transporter for Bid-{bid_id}", 
+                                     dev_msg="Unassigned requested transporter from bid")
 
     except Exception as err:
         return ServerError(err=err, errMsg=str(err))

@@ -338,7 +338,7 @@ class Transporter:
                     )
 
             if not bids:
-                return ([], "Could not find bid details from bid IDs")
+                return ([], "")
 
             return (structurize_transporter_bids(bids=bids), "")
 
@@ -378,7 +378,7 @@ class Transporter:
                     )
 
             if not bids:
-                return ([], "Could not find bid details from bid IDs")
+                return ([], "")
 
             return (structurize_transporter_bids(bids=bids), "")
 
@@ -411,7 +411,7 @@ class Transporter:
                     )
 
             if not bids:
-                return ([], "Could not find bid details from bid IDs")
+                return ([], "")
 
             log("PARTICPATED BIDS", bids)
 
