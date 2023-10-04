@@ -230,18 +230,18 @@ async def lowest_price_of_bid_and_transporter(request: Request, bid_id: str):
 
         log("FOUND BID LOWEST PRICE", bid_lowest_price)
 
-        (transporter_historical_rates, error) = await transporter.historical_rates(
-            transporter_id=transporter_id, bid_id=bid_id)
+        # (transporter_historical_rates, error) = await transporter.historical_rates(
+        #     transporter_id=transporter_id, bid_id=bid_id)
         
-        if error:
-            return ErrorResponse(data=[], dev_msg=error, client_msg="Something went wrong file fetching lowest price of transporter, please try again in sometime!")
+        # if error:
+        #     return ErrorResponse(data=[], dev_msg=error, client_msg="Something went wrong file fetching lowest price of transporter, please try again in sometime!")
 
-        log("FOUND TRANSPORTER RATES HISTORICAL", transporter_historical_rates)
+        # log("FOUND TRANSPORTER RATES HISTORICAL", transporter_historical_rates)
 
         return SuccessResponse(data={
-            "bid_lowest_price": bid_lowest_price,
-            "transporter_lowest_price": transporter_id,
-            "transporter_rates": transporter_historical_rates
+            "bid_lowest_price": bid_lowest_price if bid_lowest_price != float("inf") else None,
+            "transporter_lowest_price": transporter_lowest_price if transporter_lowest_price != 0.0 else None,
+            # "transporter_rates": transporter_historical_rates
         }, dev_msg="Found all rates successfully", client_msg="Fetched lowest price of bid and transporter successfully")
 
     except Exception as err:

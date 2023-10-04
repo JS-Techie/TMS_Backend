@@ -110,6 +110,9 @@ class Transporter:
                                .first()
                                )
 
+            if not transporter_bid:
+                return (0.0,"")
+                        
             return (transporter_bid.rate, "")
 
         except Exception as e:
