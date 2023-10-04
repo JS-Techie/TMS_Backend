@@ -215,12 +215,13 @@ class Bid:
 
         try:
 
-            attempt_number = 0
+            attempt_number = 1
             attempted = session.query(BidTransaction).filter(
-                BidTransaction.transporter_id == transporter_id, BidTransaction.bid_id == bid_id).order_by(BidTransaction.created_at.desc()).first()
+                BidTransaction.transporter_id == transporter_id, BidTransaction.bid_id == bid_id).count()
 
             if attempted:
-                attempt_number = attempted.attempt_number + 1
+                attempt_number = attempted + 1
+
 
             bid = BidTransaction(
                 bid_id=bid_id,

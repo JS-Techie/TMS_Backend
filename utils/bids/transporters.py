@@ -87,6 +87,8 @@ class Transporter:
         try:
             no_of_tries = session.query(BidTransaction).filter(
                 BidTransaction.transporter_id == transporter_id, BidTransaction.bid_id == bid_id).count()
+            
+            log("NUMBER OF TRIES", no_of_tries)
 
             return (no_of_tries, "")
 
@@ -182,6 +184,7 @@ class Transporter:
             transporters_to_be_updated = list(
                 set(transporter_ids).intersection(set(fetched_transporter_ids)))
             log("Transporter to be Updated", transporters_to_be_updated)
+
             for transporter in transporters:
                 if getattr(transporter, "transporter_id") in transporters_not_assigned:
                     assign_detail = LoadAssigned(
@@ -191,6 +194,7 @@ class Transporter:
                         trans_pos_in_bid=getattr(
                             transporter, "trans_pos_in_bid"
                         ),
+                        price = getattr(transporter,"rate"),
                         pmr_price=getattr(
                             transporter, "rate"),
                         is_active=False,

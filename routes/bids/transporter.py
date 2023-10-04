@@ -141,7 +141,7 @@ async def provide_new_rate_for_bid(request: Request, bid_id: str, bid_req: Trans
         (new_record, error) = await bid.new(
             bid_id, transporter_id, bid_req.rate, bid_req.comment, user_id=user_id)
 
-        log("NEW BID INSERTED", bid_id)
+        log("NEW BID INSERTED", new_record)
 
         if error:
             return ErrorResponse(data=[], dev_msg=error, client_msg=os.getenv("BID_RATE_ERROR"))
@@ -161,7 +161,7 @@ async def provide_new_rate_for_bid(request: Request, bid_id: str, bid_req: Trans
 
         socket_successful = await manager.broadcast(bid_id=bid_id, message=json.dumps(sorted_bid_details))
 
-        log("SOCKET EVENT SENT", socket_successful)
+        log("SOCKET EVENT SENT", sorted_bid_details)
 
         return SuccessResponse(data=sorted_bid_details, dev_msg="Bid submitted successfully", client_msg=f"Bid for Bid-{bid_id} submitted!")
 
