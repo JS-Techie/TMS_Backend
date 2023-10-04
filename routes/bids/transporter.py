@@ -73,8 +73,8 @@ async def fetch_selected_bids(request: Request):
 @transporter_bidding_router.post("/rate/{bid_id}", response_model=None)
 async def provide_new_rate_for_bid(request: Request, bid_id: str, bid_req: TransporterBidReq):
 
-    transporter_id,user_id = request.state.current_user["transporter_id"],request.state.current_user["id"]
-
+    transporter_id, user_id = request.state.current_user[
+        "transporter_id"], request.state.current_user["id"]
 
     try:
 
@@ -174,7 +174,6 @@ async def fetch_lost_bids_for_transporter_based_on_participation(request: Reques
 
     transporter_id = request.state.current_user["transporter_id"]
 
-
     try:
         if not transporter_id:
             return ErrorResponse(data=[], dev_msg=os.getenv("TRANSPORTER_ID_NOT_FOUND_ERROR"), client_msg=os.getenv("GENERIC_ERROR"))
@@ -190,11 +189,60 @@ async def fetch_lost_bids_for_transporter_based_on_participation(request: Reques
 
         if error:
             return ErrorResponse(data=[], dev_msg=error, client_msg="Something went wrong file fetching bids, please try again in some time")
-        
+
         if not bids:
-            return SuccessResponse(data=[],dev_msg="Not lost any bid",client_msg="No lost bids to show right now!")
+            return SuccessResponse(data=[], dev_msg="Not lost any bid", client_msg="No lost bids to show right now!")
 
         return SuccessResponse(data=bids, dev_msg="Fetched lost bids successfully", client_msg="Fetched all lost bids successfully!")
+
+    except Exception as err:
+        return ServerError(err=err, errMsg=str(err))
+
+
+@transporter_bidding_router.get("/lowest/{bid_id}")
+async def lowest_price_of_bid_and_transporter(request: Request, bid_id: str):
+
+    transporter_id = request.state.current_user["transporter_id"]
+
+    try:
+        if not transporter_id:
+            return ErrorResponse(data=[], dev_msg=os.getenv("TRANSPORTER_ID_NOT_FOUND_ERROR"), client_msg=os.getenv("GENERIC_ERROR"))
+
+        (transporter_lowest_price, error) = await transporter.lowest_price(
+            bid_id=bid_id, transporter_id=transporter_id)
+
+        if error:
+            return ErrorResponse(data=[], dev_msg=error, client_msg="Something went wrong file fetching lowest price of transporter, please try again in sometime!")
+
+        log("FOUND TRANSPORTER LOWEST PRICE", transporter_lowest_price)
+
+        (success,bid_details) = await bid.details(bid_id=bid_id)
+        if not success:
+            return ErrorResponse(data=[], dev_msg=error, client_msg="Something went wrong file fetching lowest price of transporter, please try again in sometime!")
+        
+        (bid_lowest_price, error) = (None,None)
+
+        if bid_details.show_current_lowest_rate_transporter:
+            (bid_lowest_price, error) = await bid.lowest_price(bid_id=bid_id)
+
+        if error:
+            return ErrorResponse(data=[], dev_msg="Could not fetch lowest price of bid!", client_msg="Something went wrong file fetching lowest price of transporter, please try again in sometime!")
+
+        log("FOUND BID LOWEST PRICE", bid_lowest_price)
+
+        (transporter_historical_rates, error) = await transporter.historical_rates(
+            transporter_id=transporter_id, bid_id=bid_id)
+        
+        if error:
+            return ErrorResponse(data=[], dev_msg=error, client_msg="Something went wrong file fetching lowest price of transporter, please try again in sometime!")
+
+        log("FOUND TRANSPORTER RATES HISTORICAL", transporter_historical_rates)
+
+        return SuccessResponse(data={
+            "bid_lowest_price": bid_lowest_price,
+            "transporter_lowest_price": transporter_id,
+            "transporter_rates": transporter_historical_rates
+        }, dev_msg="Found all rates successfully", client_msg="Fetched lowest price of bid and transporter successfully")
 
     except Exception as err:
         return ServerError(err=err, errMsg=str(err))

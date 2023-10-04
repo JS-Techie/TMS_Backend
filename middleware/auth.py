@@ -12,6 +12,8 @@ from utils.utilities import log
 shp, trns, acu = os.getenv("SHIPPER"), os.getenv(
     "TRANSPORTER"), os.getenv("ACULEAD")
 
+valid_view_bids =  [shp,acu]
+
 class AuthMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
 
@@ -67,7 +69,7 @@ class AuthMiddleware(BaseHTTPMiddleware):
 
                 ##TODO : Aculead is also allowed to view bids from shiper
 
-                if request.url.path.startswith("/api/v1/shipper") and payload.get("user_type") != shp:
+                if request.url.path.startswith("/api/v1/shipper") and payload.get("user_type") not in valid_view_bids:
                     error_response = ErrorResponse(
                         data=[], dev_msg="User is not a shipper!", client_msg=os.getenv("UNAUTHORIZED_ERR")
                     )

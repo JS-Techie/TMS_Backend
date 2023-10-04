@@ -8,6 +8,9 @@ valid_assignment_status = ['pending', 'partially_confirmed']
 
 valid_bid_status = ['live', 'not_started']
 
+particpated_and_lost_status = ['pending','confirmed','partially_confirmed','completed']
+
+
 status_wise_fetch_query = """
             SELECT
                 t_bidding_load.bl_id,
@@ -40,9 +43,8 @@ status_wise_fetch_query = """
             WHERE
                 t_bidding_load.is_active = true
                 AND t_bidding_load.load_status = :load_status
-                AND t_bidding_load.bl_shipper_id = :shipper_id;
                 """
-#  
+
 
 filter_wise_fetch_query = """
             SELECT

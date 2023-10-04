@@ -132,7 +132,6 @@ def structurize_assignment_data(data):
 
     return sorted_transporter_data
 
-
 def structurize_transporter_bids(bids):
 
     bid_details = []
@@ -145,7 +144,8 @@ def structurize_transporter_bids(bids):
             "contact_number": shipper.contact_no,
             "src_city": src_dest_pair.src_city if src_dest_pair else None,
             "dest_city": src_dest_pair.dest_city if src_dest_pair else None,
-            "bid_time": bid_load.bid_time
+            "bid_time": bid_load.bid_time,
+            "load_status" : bid_load.load_status,
         }
 
         bid_details.append(bid_detail)

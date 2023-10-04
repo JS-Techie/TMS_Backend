@@ -6,10 +6,9 @@ from utils.response import ServerError, SuccessResponse
 from models.models import BidTransaction, TransporterModel, MapShipperTransporter, LoadAssigned, BiddingLoad, User, ShipperModel, MapLoadSrcDestPair
 from utils.bids.bidding import Bid
 from utils.utilities import log, structurize_transporter_bids
-from data.bidding import lost_participated_transporter_bids
+from data.bidding import lost_participated_transporter_bids,particpated_and_lost_status
 
 bid = Bid()
-
 
 class Transporter:
 
@@ -404,7 +403,7 @@ class Transporter:
                     .query(BiddingLoad, ShipperModel, MapLoadSrcDestPair)
                     .outerjoin(ShipperModel, ShipperModel.shpr_id == BiddingLoad.bl_shipper_id)
                     .outerjoin(MapLoadSrcDestPair, MapLoadSrcDestPair.mlsdp_bidding_load_id == BiddingLoad.bl_id)
-                    .filter(BiddingLoad.is_active == True, BiddingLoad.bl_id.in_(bid_ids))
+                    .filter(BiddingLoad.is_active == True, BiddingLoad.bl_id.in_(bid_ids),BiddingLoad.load_status in ["completed","confirmed"])
                     .all()
                     )
 
@@ -431,9 +430,9 @@ class Transporter:
             if error:
                 return ([], "All bids for transporter could not be fetched")
             
-            all = all_bids["all"]
+            _all = all_bids["all"]
 
-            log("ALL BIDS",all)
+            log("ALL BIDS",_all)
 
             (participated_bids, error) = await self.participated_bids(transporter_id=transporter_id)
 
@@ -443,7 +442,9 @@ class Transporter:
             log("PARTICIPATED")
 
             not_participated_bids = [
-                bid for bid in all if bid not in participated_bids]
+                bid for bid in _all if bid not in participated_bids]
+
+            # and bid.load_status in particpated_and_lost_status 
 
             if not not_participated_bids:
                 return ([], "")

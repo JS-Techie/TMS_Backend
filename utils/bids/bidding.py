@@ -10,7 +10,7 @@ from models.models import BiddingLoad, LoadAssigned, TransporterModel, BidTransa
 from utils.utilities import log, convert_date_to_string, structurize, structurize_assignment_data
 from config.redis import r as redis
 from utils.redis import Redis
-from data.bidding import status_wise_fetch_query, filter_wise_fetch_query, live_bid_details
+from data.bidding import filter_wise_fetch_query, live_bid_details,status_wise_fetch_query
 from schemas.bidding import FilterBidsRequest
 from config.scheduler import Scheduler
 from utils.utilities import log, structurize_transporter_bids
@@ -60,11 +60,17 @@ class Bid:
 
         try:
 
-            bid_array = session.execute(text(status_wise_fetch_query), params={
-                                        "load_status": status, 
-                                        "shipper_id": shipper_id
-                                        }
-                                        )
+            filter_criteria = {
+                "load_status" : status
+            }
+
+            query = status_wise_fetch_query
+
+            if shipper_id is not None:
+                filter_criteria["shipper_id"] = shipper_id
+                query+=' AND t_bidding_load.bl_shipper_id = :shipper_id'
+    
+            bid_array = session.execute(text(query), params=filter_criteria)
 
             rows = bid_array.fetchall()
 
