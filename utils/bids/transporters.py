@@ -250,12 +250,15 @@ class Transporter:
                 return ({}, "Transporter details could not be found")
 
             transporter.is_active = False
+            transporter.no_of_fleets_assigned = 0
 
             bid = (session
                    .query(BiddingLoad)
                    .filter(BiddingLoad.bl_id == bid_id)
                    .first()
                    )
+            
+           
 
             if not bid:
                 return ({}, "Bid details could not be found")
