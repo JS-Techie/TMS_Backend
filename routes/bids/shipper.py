@@ -316,7 +316,7 @@ async def live_bid_details(request: Request, bid_id: str):
 @shipper_bidding_router.post("/match/{bid_id}")
 async def bid_match_for_transporters(request: Request, bid_id: str, transporters: List[TransporterBidMatchRequest]):
 
-    # user_id =  request.state.current_user["id"]
+    user_id =  request.state.current_user["id"]
 
     try:
 
@@ -325,7 +325,7 @@ async def bid_match_for_transporters(request: Request, bid_id: str, transporters
         if not valid_bid_id:
             return ErrorResponse(data=[], client_msg=os.getenv("INVALID_BID_ERROR"), dev_msg=error)
 
-        (assignment_details, error) = await transporter.bid_match(bid_id=bid_id, transporters=transporters)
+        (assignment_details, error) = await transporter.bid_match(bid_id=bid_id, transporters=transporters,user_id = user_id)
 
         if error:
             return ErrorResponse(data=[], client_msg=os.getenv("GENERIC_ERROR"), dev_msg=error)

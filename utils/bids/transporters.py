@@ -158,9 +158,9 @@ class Transporter:
         finally:
             session.close()
 
-    async def bid_match(self, bid_id: str, transporters: any) -> (any, str):
+    async def bid_match(self, bid_id: str, transporters: any,user_id : str) -> (any, str):
         session = Session()
-        user_id = os.getenv("USER_ID")
+
         try:
 
             transporter_ids = []
@@ -194,6 +194,7 @@ class Transporter:
                         trans_pos_in_bid=getattr(
                             transporter, "trans_pos_in_bid"
                         ),
+                        no_of_fleets_assigned = 0,
                         price = getattr(transporter,"rate"),
                         pmr_price=getattr(
                             transporter, "rate"),
