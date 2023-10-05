@@ -323,6 +323,7 @@ class LoadAssigned(Base, Persistance):
     price_difference_percent = Column(Double, nullable = True)
     no_of_fleets_assigned = Column(Integer, nullable = True)
     pmr_price = Column(Double, nullable = True)
+    pmr_comment = Column(String,nullable=True)
 
 
 class Notification(Base, Persistance):

@@ -41,24 +41,37 @@ class Transporter:
         log(bid_id)
         log("Notification to transporters will be sent here!")
 
-    async def historical_rates(self, transporter_id: str, bid_id: str):
+    async def historical_rates(self, transporter_id: str, bid_id: str) -> (any,str):
 
         session = Session()
 
         try:
 
-            rates = (session
+            historical_rates = (session
                      .query(BidTransaction)
                      .filter(BidTransaction.transporter_id == transporter_id, BidTransaction.bid_id == bid_id)
                      .order_by(BidTransaction.created_at.desc())
                      .all()
                      )
-
-            return SuccessResponse(data=rates, dev_msg="Historical rates for requested transporter was found", client_msg="Requested rates found!")
+            
+            price_match_rates = (session
+                                 .query(LoadAssigned)
+                                 .filter(LoadAssigned.la_transporter_id == transporter_id, LoadAssigned.la_bidding_load_id == bid_id)
+                                 .first()
+                                 )
+            
+            return({
+                "historical" : historical_rates,
+                "pmr_price" : price_match_rates.pmr_price if price_match_rates else None,
+                "pmr_comment" : price_match_rates.pmr_comment if price_match_rates else None,
+                "pmr_date" : price_match_rates.updated_at if price_match_rates else None,
+                "no_of_fleets_assigned" : price_match_rates.no_of_fleets_assigned if price_match_rates else None,
+            },"")
+            
 
         except Exception as err:
             session.rollback()
-            return ServerError(err=err, errMsg=str(err))
+            return ([],str(err))
 
         finally:
             session.close()
@@ -201,12 +214,16 @@ class Transporter:
                         price = getattr(transporter,"rate"),
                         pmr_price=getattr(
                             transporter, "rate"),
-                        is_active=False,
+                        pmr_comment = getattr(
+                            transporter,"comment"
+                        ),
+                        is_active=None,
                         created_by=user_id
                     )
                     assigned_transporters.append(assign_detail)
 
             log("Assigned Transporters", assigned_transporters)
+
             for transporter_detail in transporter_details:
                 if getattr(transporter_detail, "la_transporter_id") in transporters_to_be_updated:
                     for transporter in transporters:
@@ -217,9 +234,11 @@ class Transporter:
                                     getattr(transporter, "rate"))
                             setattr(transporter_detail, "trans_pos_in_bid",
                                     getattr(transporter, "trans_pos_in_bid"))
-                            setattr(transporter_detail, "is_active", False)
+                            setattr(transporter_detail, "is_active", getattr(transporter_detail,"is_active"))
+                            setattr(transporter_detail, "pmr_comment", getattr(transporter,"comment"))
 
-            log("Data changed for UPdate")
+            log("Data changed for Update")
+
             session.bulk_save_objects(assigned_transporters)
             session.commit()
 
@@ -485,5 +504,77 @@ class Transporter:
         except Exception as e:
             session.rollback()
             return ([], str(e))
+        finally:
+            session.close()
+
+    async def bid_details(self,bid_id :str,transporter_id : str) -> (any,str):
+
+        session = Session()
+
+        try:
+
+            bid_details = (
+                session
+                .query(BiddingLoad,LoadAssigned)
+                .join(LoadAssigned, LoadAssigned.la_bidding_load_id == BiddingLoad.bl_id)
+                .filter(BiddingLoad.bl_id == bid_id,LoadAssigned.la_transporter_id == transporter_id,BiddingLoad.is_active == True,LoadAssigned.is_active == True)
+                .first()
+            )
+
+            return (bid_details,"")
+        
+        except Exception as e:
+            session.rollback()
+            return ({},[])
+        finally:
+            session.close()
+
+    async def assigned_bids(self,transporter_id : str) -> (any,str):
+
+        session = Session()
+
+        try:
+        
+         _all,error = self.bids_by_status(transporter_id=transporter_id)
+
+         if error:
+             return ([],error)
+         
+         all_bids = _all["all"]
+
+         if not all_bids:
+             return([],"")
+         
+         ## Filtering all bids which are confirmed or partially confirmed
+         filtered_bid_ids = [str(bid.bid_id) for bid in all_bids if bid.load_status == "confirmed" or bid.load_status == "partially_confirmed"]
+
+         bids_which_transporter_has_been_assigned_to = (
+             session
+             .query(LoadAssigned)
+             .filter(LoadAssigned.la_bidding_load_id.in_(filtered_bid_ids),LoadAssigned.la_transporter_id == transporter_id,LoadAssigned.is_active == True)
+             .all()
+         )
+
+         if not bids_which_transporter_has_been_assigned_to:
+                return ([], "")
+
+         bid_ids = [str(bid.la_bidding_load_id) for bid in bids_which_transporter_has_been_assigned_to]
+
+         bids = (session
+                    .query(BiddingLoad, ShipperModel, MapLoadSrcDestPair)
+                    .outerjoin(ShipperModel, ShipperModel.shpr_id == BiddingLoad.bl_shipper_id)
+                    .outerjoin(MapLoadSrcDestPair, MapLoadSrcDestPair.mlsdp_bidding_load_id == BiddingLoad.bl_id)
+                    .filter(BiddingLoad.is_active == True, BiddingLoad.bl_id.in_(bid_ids))
+                    .all()
+                    )
+
+         if not bids:
+                return ([], "")
+
+         return (structurize_transporter_bids(bids=bids), "")
+        
+        except Exception as e:
+            session.rollback()
+            return ({},[])
         finally:
             session.close()

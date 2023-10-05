@@ -1,5 +1,6 @@
 
 from fastapi import APIRouter, BackgroundTasks, Request
+from fastapi_mail import FastMail
 import os
 from typing import List
 from datetime import datetime, timedelta
@@ -12,7 +13,10 @@ from utils.bids.transporters import Transporter
 from utils.bids.shipper import Shipper
 from utils.redis import Redis
 from schemas.bidding import HistoricalRatesReq, TransporterAssignReq, FilterBidsRequest, TransporterBidMatchRequest, TransporterUnassignRequest
+from schemas.mail import PriceMatchEmail
 from utils.utilities import log
+from services.mail import Email
+from config.mail import email_conf
 
 
 shipper_bidding_router: APIRouter = APIRouter(
@@ -22,6 +26,8 @@ transporter = Transporter()
 bid = Bid()
 shipper = Shipper()
 redis = Redis()
+mail = Email()
+fm = FastMail(email_conf)
 
 acu, shp = os.getenv("ACULEAD"), os.getenv("SHIPPER")
 
@@ -159,7 +165,12 @@ async def fetch_all_rates_given_by_transporter(request: Request, bid_id: str, re
         if not valid_bid_id:
             return ErrorResponse(data=bid_id, client_msg=os.getenv("INVALID_BID_ERROR"), dev_msg=error)
 
-        return await transporter.historical_rates(transporter_id=req.transporter_id, bid_id=bid_id)
+        (rates,error) = await transporter.historical_rates(transporter_id=req.transporter_id, bid_id=bid_id)
+
+        if error:
+            return ErrorResponse(data=[], client_msg="Something went wrong while fetching historical rates, please try again in sometime", dev_msg=error)
+        
+        return SuccessResponse(data=rates,client_msg="Fetched all rates successfully",dev_msg="Fetched historical and negotitated rates")
 
     except Exception as err:
         return ServerError(err=err, errMsg=str(err))
@@ -321,7 +332,7 @@ async def live_bid_details(request: Request, bid_id: str):
 
 
 @shipper_bidding_router.post("/match/{bid_id}")
-async def bid_match_for_transporters(request: Request, bid_id: str, transporters: List[TransporterBidMatchRequest]):
+async def bid_match_for_transporters(request: Request, bid_id: str, transporters: List[TransporterBidMatchRequest],bg_tasks : BackgroundTasks):
 
     user_id = request.state.current_user["id"]
 
@@ -336,7 +347,22 @@ async def bid_match_for_transporters(request: Request, bid_id: str, transporters
 
         if error:
             return ErrorResponse(data=[], client_msg=os.getenv("GENERIC_ERROR"), dev_msg=error)
+        
+        # transporter_ids = [t.transporter_id for t in transporters]
 
+        # (email_data,error) = await transporter.details(transporters = transporter_ids)
+
+        # if error:
+        #     return ErrorResponse(data=[],dev_msg="Email could not be sent",client_msg="Bid match was successful but email to transporter could not be sent!")
+        
+        # (success,message) = mail.price_match(recipients=email_data.recipients,email_data=PriceMatchEmail(transporter_id=))
+
+        # if not success:
+        #     return ErrorResponse(data=[],dev_msg="Email could not be sent",client_msg="Bid match was successful but email to transporter could not be sent!")
+        
+        # ## Send email as a background task
+        # bg_tasks.add_task(fm.send_message,message)
+        
         return SuccessResponse(data=assignment_details, client_msg="Bid Match Successful", dev_msg="Bid Match Successful")
 
     except Exception as err:

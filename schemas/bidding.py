@@ -32,6 +32,7 @@ class TransporterBidMatchRequest(BaseModel):
     transporter_id: UUID
     trans_pos_in_bid: str
     rate : float
+    comment : str | None = None
 
 
 class TransporterUnassignRequest(BaseModel):

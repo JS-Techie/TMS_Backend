@@ -29,13 +29,17 @@ shp, trns, acu = os.getenv("SHIPPER"), os.getenv(
 async def fetch_bids_for_transporter_by_status(request: Request, status: str | None = None):
 
     transporter_id = request.state.current_user["transporter_id"]
+    (bids,error) = ([],"")
 
     try:
 
         if not transporter_id:
             return ErrorResponse(data=[], dev_msg=os.getenv("TRANSPORTER_ID_NOT_FOUND_ERROR"), client_msg=os.getenv("GENERIC_ERROR"))
-
-        (bids, error) = await transporter.bids_by_status(transporter_id=transporter_id, status=status)
+        
+        if status == "assigned":
+            (bids, error) = await transporter.assigned_bids(transporter_id=transporter_id)
+        else:
+            (bids, error) = await transporter.bids_by_status(transporter_id=transporter_id, status=status)
 
         if error:
             return ErrorResponse(data=[], dev_msg=error, client_msg=os.getenv("GENERIC_ERROR"))
@@ -230,14 +234,6 @@ async def lowest_price_of_bid_and_transporter(request: Request, bid_id: str):
 
         log("FOUND BID LOWEST PRICE", bid_lowest_price)
 
-        # (transporter_historical_rates, error) = await transporter.historical_rates(
-        #     transporter_id=transporter_id, bid_id=bid_id)
-        
-        # if error:
-        #     return ErrorResponse(data=[], dev_msg=error, client_msg="Something went wrong file fetching lowest price of transporter, please try again in sometime!")
-
-        # log("FOUND TRANSPORTER RATES HISTORICAL", transporter_historical_rates)
-
         return SuccessResponse(data={
             "bid_lowest_price": bid_lowest_price if bid_lowest_price != float("inf") else None,
             "transporter_lowest_price": transporter_lowest_price if transporter_lowest_price != 0.0 else None,
@@ -246,3 +242,24 @@ async def lowest_price_of_bid_and_transporter(request: Request, bid_id: str):
 
     except Exception as err:
         return ServerError(err=err, errMsg=str(err))
+
+
+@transporter_bidding_router.get("/details/{bid_id}")
+async def details_of_bid_for_transporter(request : Request,bid_id : str):
+
+    transporter_id = request.state.current_user["transporter_id"]
+
+    try:
+        if not transporter_id:
+            return ErrorResponse(data=[], dev_msg=os.getenv("TRANSPORTER_ID_NOT_FOUND_ERROR"), client_msg=os.getenv("GENERIC_ERROR"))
+        
+        (bid_details,error) = await transporter.bid_details(bid_id = bid_id,transporter_id = transporter_id)
+
+        if error:
+            return ErrorResponse(data=[], dev_msg="Could not fetch lowest price of bid!", client_msg="Something went wrong file fetching bid details for transporter, please try again in sometime!")
+
+        return SuccessResponse(data=bid_details,dev_msg="Fetched bid details for transporter",client_msg=f"Fetched details for Bid-{bid_id} successfully!")
+
+
+    except Exception as err:
+        return ServerError(err=err,errMsg=str(err))

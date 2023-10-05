@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Email for Bid Match to Transporter</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #E5F3FF; /* Light blue background */
+            color: #122B47;
+            font-size: 16px; /* Base font size */
+        }
+        p {
+            margin: 10px 0;
+            line-height: 1.5; /* Line spacing */
+        }
+        .highlight {
+            /* background-color: #065AD8; Blue background */
+            color: black; /* White text color */
+            font-weight: bold; /* Bold text */
+        }
+        em {
+            text-decoration: underline; /* Underline */
+            font-style: normal; /* Remove italic style */
+            color: black; /* Black text color */
+        }
+        a {
+            color: #065AD8; /* Blue link color */
+            text-decoration: none; /* Remove underline */
+            font-weight: bold; /* Bold link text */
+        }
+    </style>
+</head>
+<body>
+    <span>Hi </span>
+    <span class="highlight" style="font-size: 20px;"> <b>{{ transporter_name }}</b>,</span>
+    <br>
+    <br>
+
+    <p style="font-size: 18px;">You have been assigned to Bid - <b>{{ bid_id }}</b>.</p>
+
+    <p style="font-size: 16px;">The number of fleets requested from you is <b>{{ no_of_fleets_assigned }}.</b></p>
+
+    <p style="font-size: 16px;">Your lowest price was <b>&#8377; {{ lowest_price }}</b> and after discussion with the Aculead team your negotiated price is <b>&#8377; {{ negotiated_price }}.</b></p>
+
+    <p style="font-size: 16px;">Click here to view the bid : <a href="http://35.154.208.82/transporter-secured/dashboard">Bid Details</a></p>
+
+    <br>
+    <br>
+    <br>
+    <br>
+
+    <p style="font-size: 14px;">Thanks and Regards, <br></p>
+
+    <img src = "Aculead.png" alt="Aculead-Logo" />
+
+    <br>
+    <br>
+
+    <p style="font-size: 12px;"><em>This email was sent from a notification-only address. Any reply to this email will not be received by Aculead.com. If you need further assistance, please contact our Customer Care team.</em></p>
+</body>
+</html>
