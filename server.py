@@ -4,6 +4,7 @@ load_dotenv()
 import json
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from utils.db import generate_tables
 
 from routes.routes import setup_routes
 from utils.background_jobs import schedule_jobs
@@ -22,7 +23,7 @@ app.add_middleware(
     allow_headers= ['*']
 )
 
-
+# generate_tables()
 # schedule_jobs()
 
 @app.websocket("/ws/{bid_id}")

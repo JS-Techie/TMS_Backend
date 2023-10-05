@@ -61,13 +61,13 @@ class AuthMiddleware(BaseHTTPMiddleware):
                 }
                 )
 
+                log("PAYLOAD",payload)
+
                 if not payload.get("id"):
                     error_response = ErrorResponse(
                         data=[], dev_msg="User ID Invalid", client_msg=os.getenv("UNAUTHORIZED_ERR")
                     )
                     return JSONResponse(content=error_response, status_code=403)
-
-                ##TODO : Aculead is also allowed to view bids from shiper
 
                 if request.url.path.startswith("/api/v1/shipper") and payload.get("user_type") not in valid_view_bids:
                     error_response = ErrorResponse(

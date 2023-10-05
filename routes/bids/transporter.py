@@ -4,7 +4,7 @@ import json
 
 from config.socket import manager
 from schemas.bidding import TransporterBidReq, TransporterLostBidsReq
-from data.bidding import valid_bid_status
+from data.bidding import valid_bid_status,valid_transporter_status
 from utils.bids.bidding import Bid
 from utils.bids.transporters import Transporter
 from utils.bids.shipper import Shipper
@@ -32,6 +32,9 @@ async def fetch_bids_for_transporter_by_status(request: Request, status: str | N
     (bids,error) = ([],"")
 
     try:
+
+        if status not in valid_transporter_status:
+            return ErrorResponse(data=[], dev_msg="Invalid status", client_msg=os.getenv("GENERIC_ERROR"))
 
         if not transporter_id:
             return ErrorResponse(data=[], dev_msg=os.getenv("TRANSPORTER_ID_NOT_FOUND_ERROR"), client_msg=os.getenv("GENERIC_ERROR"))

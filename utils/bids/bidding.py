@@ -287,7 +287,7 @@ class Bid:
             log("BID RATE NOT OK", rate)
             return ({
                 "valid": False
-            }, "Incorrect Bid price, has to be lower")
+            }, f"Incorrect Bid price, has to be lower, the decrement is {decrement} %")
 
         except Exception as e:
             session.rollback()
@@ -317,7 +317,7 @@ class Bid:
             log("TRANSPORTER BID RATE NOT VALID", bid)
             return ({
                 "valid": False
-            }, "Incorrect Bid price, has to be lower")
+            }, f"Incorrect Bid price, has to be lower,decrement is {decrement} %")
 
         except Exception as e:
             session.rollback()

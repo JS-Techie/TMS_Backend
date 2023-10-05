@@ -511,6 +511,8 @@ class Transporter:
 
         session = Session()
 
+        log("FINDING BID DETAILS FOR A TRANSPORTER")
+
         try:
 
             bid_details = (
@@ -521,7 +523,17 @@ class Transporter:
                 .first()
             )
 
-            return (bid_details,"")
+            (load_details,assignment_details) = bid_details
+
+            log("BID DETAILS",{
+                "load_details" : load_details,
+                "assignment_details" : assignment_details
+            })
+
+            return ({
+                "load_details" : load_details,
+                "assignment_details" : assignment_details
+            },"")
         
         except Exception as e:
             session.rollback()
@@ -535,7 +547,7 @@ class Transporter:
 
         try:
         
-         _all,error = self.bids_by_status(transporter_id=transporter_id)
+         _all,error = await self.bids_by_status(transporter_id=transporter_id)
 
          if error:
              return ([],error)
@@ -545,8 +557,12 @@ class Transporter:
          if not all_bids:
              return([],"")
          
+         log("ALL BIDS FOR A TRANSPORTER",all_bids)
+         
          ## Filtering all bids which are confirmed or partially confirmed
-         filtered_bid_ids = [str(bid.bid_id) for bid in all_bids if bid.load_status == "confirmed" or bid.load_status == "partially_confirmed"]
+         filtered_bid_ids = [str(bid["bid_id"]) for bid in all_bids if bid["load_status"] == "confirmed" or bid["load_status"] == "partially_confirmed"]
+
+         log("BIDS WHICH ARE CONFIRMED OR PARTIALLY CONFIRMED ",filtered_bid_ids)
 
          bids_which_transporter_has_been_assigned_to = (
              session
@@ -557,8 +573,12 @@ class Transporter:
 
          if not bids_which_transporter_has_been_assigned_to:
                 return ([], "")
+         
+         log("BIDS WHICH TRANSPORTER IS ASSIGNED TO ",bids_which_transporter_has_been_assigned_to)
 
          bid_ids = [str(bid.la_bidding_load_id) for bid in bids_which_transporter_has_been_assigned_to]
+
+
 
          bids = (session
                     .query(BiddingLoad, ShipperModel, MapLoadSrcDestPair)
@@ -570,11 +590,14 @@ class Transporter:
 
          if not bids:
                 return ([], "")
+         
+         log("ALL BIDS WHICH TRANSPORTER IS ASSIGNED TO ",bids)
+
 
          return (structurize_transporter_bids(bids=bids), "")
         
         except Exception as e:
             session.rollback()
-            return ({},[])
+            return ([],str(e))
         finally:
             session.close()
