@@ -218,7 +218,9 @@ class Transporter:
                             transporter,"comment"
                         ),
                         is_active=None,
-                        created_by=user_id
+                        updated_at = "NOW()",
+                        created_by=user_id,
+                        updated_by=user_id
                     )
                     assigned_transporters.append(assign_detail)
 
@@ -236,6 +238,8 @@ class Transporter:
                                     getattr(transporter, "trans_pos_in_bid"))
                             setattr(transporter_detail, "is_active", getattr(transporter_detail,"is_active"))
                             setattr(transporter_detail, "pmr_comment", getattr(transporter,"comment"))
+                            setattr(transporter_detail,"updated_at","NOW()")
+                            setattr(transporter_detail,"updated_by",user_id)
 
             log("Data changed for Update")
 
