@@ -302,9 +302,11 @@ class Bid:
 
         try:
             bid = session.query(BidTransaction).filter(
-                BidTransaction.transporter_id == transporter_id, BidTransaction.bid_id == bid_id).order_by(BidTransaction.created_at).first()
+                BidTransaction.transporter_id == transporter_id, BidTransaction.bid_id == bid_id).order_by(BidTransaction.rate).first()
+            
             if not bid:
                 return ({"valid": True}, "")
+            
             log("TRANSPORTER BID RATE OK", bid)
 
             decrement = int(decrement)
