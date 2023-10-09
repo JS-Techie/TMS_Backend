@@ -511,7 +511,7 @@ class Transporter:
         finally:
             session.close()
 
-    async def bid_details(self,bid_id :str,transporter_id : str) -> (any,str):
+    async def bid_details(self,bid_id :str,transporter_id : str | None = None) -> (any,str):
 
         session = Session()
 
@@ -521,27 +521,24 @@ class Transporter:
 
             bid_details = (
                 session
-                .query(BiddingLoad,LoadAssigned)
-                .join(LoadAssigned, LoadAssigned.la_bidding_load_id == BiddingLoad.bl_id)
-                .filter(BiddingLoad.bl_id == bid_id,LoadAssigned.la_transporter_id == transporter_id,BiddingLoad.is_active == True,LoadAssigned.is_active == True)
+                .query(BiddingLoad)
+                .filter(BiddingLoad.bl_id == bid_id)
                 .first()
-            )
+            )   
 
-            (load_details,assignment_details) = bid_details
 
-            log("BID DETAILS",{
-                "load_details" : load_details,
-                "assignment_details" : assignment_details
-            })
+            log("BID DETAILS AFTER QUERY",bid_details)
 
-            return ({
-                "load_details" : load_details,
-                "assignment_details" : assignment_details
-            },"")
+
+            if not bid_details:
+                return ([],"")
+
+          
+            return (bid_details,"")
         
         except Exception as e:
             session.rollback()
-            return ({},[])
+            return ({},str(e))
         finally:
             session.close()
 
