@@ -533,7 +533,6 @@ class Transporter:
             if not bid_details:
                 return ([],"")
 
-          
             return (bid_details,"")
         
         except Exception as e:
