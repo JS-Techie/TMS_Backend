@@ -225,7 +225,7 @@ async def lowest_price_of_bid_and_transporter(request: Request, bid_id: str):
 
         (success,bid_details) = await bid.details(bid_id=bid_id)
         if not success:
-            return ErrorResponse(data=[], dev_msg=error, client_msg="Something went wrong file fetching lowest price of transporter, please try again in sometime!")
+            return ErrorResponse(data=[], dev_msg=error, client_msg="Something went wrong while fetching bid details for transporter, please try again in sometime!")
         
         (bid_lowest_price, error) = (None,None)
 
@@ -233,13 +233,22 @@ async def lowest_price_of_bid_and_transporter(request: Request, bid_id: str):
             (bid_lowest_price, error) = await bid.lowest_price(bid_id=bid_id)
 
         if error:
-            return ErrorResponse(data=[], dev_msg="Could not fetch lowest price of bid!", client_msg="Something went wrong file fetching lowest price of transporter, please try again in sometime!")
+            return ErrorResponse(data=[], dev_msg=error, client_msg="Something went wrong while fetching bid details for transporter, please try again in sometime!")
 
         log("FOUND BID LOWEST PRICE", bid_lowest_price)
+
+        transporter_position,error = redis.position(sorted_set=bid_id,key=transporter_id)
+
+        if error:
+            return ErrorResponse(data=[], dev_msg=error, client_msg="Something went wrong file fetching bid details for transporter, please try again in sometime!")
+        
+
+
 
         return SuccessResponse(data={
             "bid_lowest_price": bid_lowest_price if bid_lowest_price != float("inf") else None,
             "transporter_lowest_price": transporter_lowest_price if transporter_lowest_price != 0.0 else None,
+            "position" : transporter_position+1 if transporter_position else None
             # "transporter_rates": transporter_historical_rates
         }, dev_msg="Found all rates successfully", client_msg="Fetched lowest price of bid and transporter successfully")
 

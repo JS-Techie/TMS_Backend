@@ -92,3 +92,10 @@ class Redis:
                     redis.hdel(contained_id, field)
 
                 redis.zrem(sorted_set, contained_id)
+    
+    def position(self,sorted_set:str,key : str) -> (any,str):
+
+        try:
+            return (redis.zrank(name=sorted_set,value=key,withscore=False),"")
+        except Exception as e:
+            return ({},str(e))
