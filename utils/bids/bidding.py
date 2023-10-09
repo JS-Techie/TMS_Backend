@@ -443,7 +443,7 @@ class Bid:
 
             for transporter_detail in transporter_details:
 
-                if getattr(transporter_detail, "la_transporter_id") in transporters_to_be_updated and not getattr(transporter_detail, "is_active"):
+                if getattr(transporter_detail, "la_transporter_id") in transporters_to_be_updated:
 
                     for transporter in transporters:
                         if getattr(transporter, "la_transporter_id") == getattr(transporter_detail, "la_transporter_id"):
