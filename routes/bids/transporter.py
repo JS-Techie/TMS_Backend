@@ -4,7 +4,7 @@ import json
 
 from config.socket import manager
 from schemas.bidding import TransporterBidReq, TransporterLostBidsReq
-from data.bidding import valid_bid_status,valid_transporter_status
+from data.bidding import valid_bid_status, valid_transporter_status
 from utils.bids.bidding import Bid
 from utils.bids.transporters import Transporter
 from utils.bids.shipper import Shipper
@@ -29,7 +29,7 @@ shp, trns, acu = os.getenv("SHIPPER"), os.getenv(
 async def fetch_bids_for_transporter_by_status(request: Request, status: str | None = None):
 
     transporter_id = request.state.current_user["transporter_id"]
-    (bids,error) = ([],"")
+    (bids, error) = ([], "")
 
     try:
 
@@ -38,7 +38,7 @@ async def fetch_bids_for_transporter_by_status(request: Request, status: str | N
 
         if not transporter_id:
             return ErrorResponse(data=[], dev_msg=os.getenv("TRANSPORTER_ID_NOT_FOUND_ERROR"), client_msg=os.getenv("GENERIC_ERROR"))
-        
+
         if status == "assigned":
             (bids, error) = await transporter.assigned_bids(transporter_id=transporter_id)
         else:
@@ -223,11 +223,11 @@ async def lowest_price_of_bid_and_transporter(request: Request, bid_id: str):
 
         log("FOUND TRANSPORTER LOWEST PRICE", transporter_lowest_price)
 
-        (success,bid_details) = await bid.details(bid_id=bid_id)
+        (success, bid_details) = await bid.details(bid_id=bid_id)
         if not success:
             return ErrorResponse(data=[], dev_msg=error, client_msg="Something went wrong while fetching bid details for transporter, please try again in sometime!")
-        
-        (bid_lowest_price, error) = (None,None)
+
+        (bid_lowest_price, error) = (None, None)
 
         if bid_details.show_current_lowest_rate_transporter:
             (bid_lowest_price, error) = await bid.lowest_price(bid_id=bid_id)
@@ -237,21 +237,18 @@ async def lowest_price_of_bid_and_transporter(request: Request, bid_id: str):
 
         log("FOUND BID LOWEST PRICE", bid_lowest_price)
 
-        transporter_position,error = redis.position(sorted_set=bid_id,key=transporter_id)
+        transporter_position, error = redis.position(
+            sorted_set=bid_id, key=transporter_id)
 
         if error:
             return ErrorResponse(data=[], dev_msg=error, client_msg="Something went wrong file fetching bid details for transporter, please try again in sometime!")
-        
-
-
 
         return SuccessResponse(data={
             "bid_lowest_price": bid_lowest_price if bid_lowest_price != float("inf") else None,
             "transporter_lowest_price": transporter_lowest_price if transporter_lowest_price != 0.0 else None,
-            "position" : transporter_position+1 if transporter_position else None
+            "position": transporter_position+1 if transporter_position else None
             # "transporter_rates": transporter_historical_rates
         }, dev_msg="Found all rates successfully", client_msg="Fetched lowest price of bid and transporter successfully")
 
     except Exception as err:
         return ServerError(err=err, errMsg=str(err))
-
