@@ -5,7 +5,6 @@ from routes.bids.shipper import shipper_bidding_router
 from routes.bids.transporter import transporter_bidding_router
 from routes.dashboard import dashboard_router
 
-
 router: APIRouter = APIRouter(prefix="/api/v1")
 
 
