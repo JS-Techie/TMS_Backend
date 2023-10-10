@@ -1,19 +1,19 @@
 from datetime import datetime, timedelta
 import os
 import math
-from sqlalchemy import text
+from sqlalchemy import text, func, distinct
 from string import Template
 
 from utils.response import ErrorResponse
 from config.db_config import Session
-from models.models import BiddingLoad, LoadAssigned, TransporterModel, BidTransaction, BidSettings, ShipperModel, MapLoadSrcDestPair
+from models.models import BiddingLoad, LoadAssigned, TransporterModel, BidTransaction, BidSettings, ShipperModel, MapLoadSrcDestPair, LkpReason
 from utils.utilities import log, convert_date_to_string, structurize, structurize_assignment_data
 from config.redis import r as redis
 from utils.redis import Redis
-from data.bidding import filter_wise_fetch_query, live_bid_details,status_wise_fetch_query
+from data.bidding import filter_wise_fetch_query, live_bid_details, status_wise_fetch_query, transporter_analysis
 from schemas.bidding import FilterBidsRequest
 from config.scheduler import Scheduler
-from utils.utilities import log, structurize_transporter_bids
+from utils.utilities import log, structurize_transporter_bids, structurize_bidding_stats, add_filter
 
 sched = Scheduler()
 redis = Redis()
@@ -61,15 +61,15 @@ class Bid:
         try:
 
             filter_criteria = {
-                "load_status" : status
+                "load_status": status
             }
 
             query = status_wise_fetch_query
 
             if shipper_id is not None:
                 filter_criteria["shipper_id"] = shipper_id
-                query+=' AND t_bidding_load.bl_shipper_id = :shipper_id'
-    
+                query += ' AND t_bidding_load.bl_shipper_id = :shipper_id'
+
             bid_array = session.execute(text(query), params=filter_criteria)
 
             rows = bid_array.fetchall()
@@ -228,7 +228,6 @@ class Bid:
             if attempted:
                 attempt_number = attempted + 1
 
-
             bid = BidTransaction(
                 bid_id=bid_id,
                 transporter_id=transporter_id,
@@ -303,10 +302,10 @@ class Bid:
         try:
             bid = session.query(BidTransaction).filter(
                 BidTransaction.transporter_id == transporter_id, BidTransaction.bid_id == bid_id).order_by(BidTransaction.rate).first()
-            
+
             if not bid:
                 return ({"valid": True}, "")
-            
+
             log("TRANSPORTER BID RATE OK", bid)
 
             decrement = int(decrement)
@@ -592,9 +591,9 @@ class Bid:
 
             bids_query = (session
                           .query(BiddingLoad, ShipperModel, MapLoadSrcDestPair)
-                          .outerjoin(ShipperModel,ShipperModel.shpr_id == BiddingLoad.bl_shipper_id)
-                          .outerjoin(MapLoadSrcDestPair,MapLoadSrcDestPair.mlsdp_bidding_load_id == BiddingLoad.bl_id)
-                          .filter(BiddingLoad.is_active == True,BiddingLoad.bid_mode=="open_market")
+                          .outerjoin(ShipperModel, ShipperModel.shpr_id == BiddingLoad.bl_shipper_id)
+                          .outerjoin(MapLoadSrcDestPair, MapLoadSrcDestPair.mlsdp_bidding_load_id == BiddingLoad.bl_id)
+                          .filter(BiddingLoad.is_active == True, BiddingLoad.bid_mode == "open_market")
                           )
 
             if status:
@@ -621,9 +620,9 @@ class Bid:
 
             bids_query = (session
                           .query(BiddingLoad, ShipperModel, MapLoadSrcDestPair)
-                          .outerjoin(ShipperModel,ShipperModel.shpr_id == BiddingLoad.bl_shipper_id)
-                          .outerjoin(MapLoadSrcDestPair,MapLoadSrcDestPair.mlsdp_bidding_load_id == BiddingLoad.bl_id)
-                          .filter(BiddingLoad.is_active == True, BiddingLoad.bl_shipper_id.in_(shippers),BiddingLoad.bid_mode=="private_pool")
+                          .outerjoin(ShipperModel, ShipperModel.shpr_id == BiddingLoad.bl_shipper_id)
+                          .outerjoin(MapLoadSrcDestPair, MapLoadSrcDestPair.mlsdp_bidding_load_id == BiddingLoad.bl_id)
+                          .filter(BiddingLoad.is_active == True, BiddingLoad.bl_shipper_id.in_(shippers), BiddingLoad.bid_mode == "private_pool")
                           )
 
             if status:
@@ -642,19 +641,149 @@ class Bid:
         finally:
             session.close()
 
-    async def bidding_details(self,bid_id : str) -> (any,str):
-        
+    async def bidding_details(self, bid_id: str) -> (any, str):
+
         session = Session()
 
         try:
 
             bids = (session
-                          .query(BidTransaction)
-                          .filter(BidTransaction.bid_id == bid_id,BidTransaction.is_active == True)
-                          .all()
-                          )
+                    .query(BidTransaction)
+                    .filter(BidTransaction.bid_id == bid_id, BidTransaction.is_active == True)
+                    .all()
+                    )
 
-            return (bids,"")
+            return (bids, "")
+
+        except Exception as e:
+            session.rollback()
+            return ([], str(e))
+        finally:
+            session.close()
+
+    async def stats(self, filter: FilterBidsRequest):
+
+        session = Session()
+
+        try:
+            query = session.query(BiddingLoad)
+
+            query = add_filter(query=query, filter=filter)
+
+            bids = query.all()
+
+            if not bids:
+                return (bids, "")
+
+            return (structurize_bidding_stats(bids=bids), "")
+
+        except Exception as e:
+            session.rollback()
+            return ([], str(e))
+        finally:
+            session.close()
+
+    async def cancellation_reasons(self, filter: FilterBidsRequest):
+
+        session = Session()
+
+        try:
+            query = session.query(BiddingLoad.bl_cancellation_reason, func.count(BiddingLoad.bl_cancellation_reason)).filter(
+                BiddingLoad.load_status == "cancelled").group_by(BiddingLoad.bl_cancellation_reason)
+
+            query = add_filter(query=query, filter=filter)
+
+            cancellations = query.all()
+
+            if not cancellations:
+                return (cancellations, "")
+
+            cancellation_counts = {
+                cancellation[0]: cancellation[1] for cancellation in cancellations}
+
+            log("CANCELLATION COUNTS", cancellation_counts)
+
+            bid_ids = list(cancellation_counts.keys())
+
+            cancellation_reasons = session.query(
+                LkpReason.id, LkpReason.desc, LkpReason.type).filter(LkpReason.id.in_(bid_ids)).all()
+
+            result = [
+                {"reason": reason[1], "type": reason[2],
+                    "count": cancellation_counts.get(reason[0], 0)}
+                for reason in cancellation_reasons
+            ]
+
+            return (result, "")
+
+        except Exception as e:
+            session.rollback()
+            return ([], str(e))
+        finally:
+            session.close()
+
+    async def transporter_analysis(self, filter: FilterBidsRequest):
+
+        session = Session()
+        results = []
+
+        try:
+
+            where_conditions = []
+
+            query = transporter_analysis
+
+            if filter.shipper_id:
+                where_conditions.append(f'tbl.bl_shipper_id = :shipper_id')
+
+            if filter.rc_id:
+                where_conditions.append(f'tbl.bl_region_cluster_id = :rc_id')
+
+            if filter.branch_id:
+                where_conditions.append(f'tbl.branch_id = :branch_id')
+
+            if filter.from_date:
+                where_conditions.append(f'tbl.created_at >= :from_date')
+
+            if filter.to_date:
+                where_conditions.append(f'tbl.created_at <= :to_date')
+
+            if where_conditions:
+                query += ' WHERE ' + ' AND '.join(where_conditions)
+
+            query += ''' GROUP BY tt."name";'''
+
+            query = text(query)
+
+            params = {
+                'shipper_id': filter.shipper_id,
+                'rc_id': filter.rc_id,
+                'branch_id': filter.branch_id,
+                'from_date': filter.from_date,
+                'to_date': filter.to_date,
+                }
+
+
+            transporters = session.execute(query,params=params).all()
+
+            if not transporters:
+                return ([], "")
+
+
+            log(transporters)
+            for transporter in transporters:
+                name, participated, selected, avg_assignment_delay = transporter
+                if avg_assignment_delay is not None and avg_assignment_delay != 'E':
+                    avg_assignment_delay = int(avg_assignment_delay)
+
+                results.append({
+                    "name": name,
+                    "participated": participated,
+                    "selected": selected,
+                    "assignment_delay": avg_assignment_delay if avg_assignment_delay is not None else None
+                })
+
+            return (results, "")
 
         except Exception as e:
             session.rollback()

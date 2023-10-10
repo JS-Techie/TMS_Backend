@@ -115,6 +115,21 @@ ON bt.bid_id = la.la_bidding_load_id AND bt.transporter_id = la.la_transporter_i
 WHERE bt.transporter_id = :transporter_id AND la.la_id IS NULL;
 '''
 
+transporter_analysis = '''SELECT
+    tt."name" AS transporter_name,
+    COUNT(DISTINCT tbl.bl_id) AS participated_bids,
+    COUNT(DISTINCT tla.la_bidding_load_id) AS selected_bids,
+    AVG(EXTRACT(DAY FROM (tla.created_at - tbl.bid_end_time))) AS avg_assignment_delay_days
+FROM
+    t_transporter tt
+LEFT JOIN
+    t_bid_transaction tbt ON tt.trnsp_id = tbt.transporter_id
+LEFT JOIN
+    t_bidding_load tbl ON tbl.bl_id = tbt.bid_id AND tbl.is_active = true
+LEFT JOIN
+    t_load_assigned tla ON tla.la_bidding_load_id = tbl.bl_id AND tla.is_active = true
+'''
+
 
 
 # load id

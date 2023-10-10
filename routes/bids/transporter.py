@@ -255,26 +255,3 @@ async def lowest_price_of_bid_and_transporter(request: Request, bid_id: str):
     except Exception as err:
         return ServerError(err=err, errMsg=str(err))
 
-
-@transporter_bidding_router.get("/details/{bid_id}")
-async def details_of_bid_for_transporter(request : Request,bid_id : str):
-
-    transporter_id = request.state.current_user["transporter_id"]
-
-    try:
-        if not transporter_id:
-            return ErrorResponse(data=[], dev_msg=os.getenv("TRANSPORTER_ID_NOT_FOUND_ERROR"), client_msg=os.getenv("GENERIC_ERROR"))
-        
-        (bid_details,error) = await transporter.bid_details(bid_id = bid_id,transporter_id = transporter_id)
-
-        if error:
-            return ErrorResponse(data=[], dev_msg=error, client_msg="Something went wrong file fetching bid details for transporter, please try again in sometime!")
-        
-        if not bid_details:
-            return SuccessResponse(data=[],dev_msg="No records to show",client_msg="There are no bid details to show right now!")
-
-        return SuccessResponse(data=bid_details,dev_msg="Fetched bid details for transporter",client_msg=f"Fetched details for Bid-{bid_id} successfully!")
-
-
-    except Exception as err:
-        return ServerError(err=err,errMsg=str(err))

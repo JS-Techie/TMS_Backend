@@ -1,14 +1,18 @@
 import os
 from datetime import datetime
+from schemas.bidding import FilterBidsRequest
+from models.models import BiddingLoad
 
 
 def log(key: str, value: str | None = None):
     if os.getenv("print") == "true":
         print(key, " : ", value)
 
+
 def convert_date_to_string(date: datetime):
 
     return (str(date.year)+"-"+str(date.month)+"-"+str(date.hour)+" "+str(date.hour)+":"+str(date.minute))
+
 
 def structurize(input_array):
     result_dict = {}
@@ -70,7 +74,8 @@ def structurize(input_array):
             if item["tr_active"] and item["la_active"]:
                 result_dict[bl_id]["transporters"].append(bid_item)
     return list(result_dict.values())
- 
+
+
 def structurize_assignment_data(data):
     # Initialize a dictionary to organize data by transporter_id
     transporter_data = {}
@@ -103,11 +108,12 @@ def structurize_assignment_data(data):
             transporter_entry["lowest_price"] = rate
             transporter_entry["lowest_price_comment"] = comment
 
-        
-        existing_entry = next((item for item in transporter_entry["rates"] if item["rate"] == rate and item["comment"] == comment), None)
+        existing_entry = next(
+            (item for item in transporter_entry["rates"] if item["rate"] == rate and item["comment"] == comment), None)
         # Add rate and comment to the rates array
         if not existing_entry:
-            transporter_entry["rates"].append({"rate": rate, "comment": comment})
+            transporter_entry["rates"].append(
+                {"rate": rate, "comment": comment})
 
         if not entry["load_assigned"]:
             transporter_entry["pmr_price"] = None
@@ -120,7 +126,8 @@ def structurize_assignment_data(data):
     # Sort the rates array for each transporter by rate
     for transporter_entry in transporter_data.values():
         transporter_entry["rates"].sort(key=lambda x: x["rate"])
-        transporter_entry["total_number_attempts"] = len(transporter_entry["rates"])
+        transporter_entry["total_number_attempts"] = len(
+            transporter_entry["rates"])
 
     # Sort the final array by lowest_price
     sorted_transporter_data = []
@@ -131,6 +138,7 @@ def structurize_assignment_data(data):
             sorted_transporter_data.append(sorted_data_for_transporter)
 
     return sorted_transporter_data
+
 
 def structurize_transporter_bids(bids):
 
@@ -145,9 +153,49 @@ def structurize_transporter_bids(bids):
             "src_city": src_dest_pair.src_city if src_dest_pair else None,
             "dest_city": src_dest_pair.dest_city if src_dest_pair else None,
             "bid_time": bid_load.bid_time,
-            "load_status" : bid_load.load_status,
+            "load_status": bid_load.load_status,
         }
 
         bid_details.append(bid_detail)
-    
+
     return bid_details
+
+
+def structurize_bidding_stats(bids):
+
+    status_counters = {
+        "confirmed": 0,
+        "partially_confirmed": 0,
+        "completed": 0,
+        "cancelled": 0,
+        "live": 0,
+        "not_started": 0,
+        "pending": 0
+    }
+
+    total = len(bids)
+
+    log("TOTAL BIDS", total)
+
+    for bid in bids:
+        load_status = bid.load_status
+        if load_status in status_counters:
+            status_counters[load_status] += 1
+
+    return {**status_counters, "total": total}
+
+
+def add_filter(query: str, filter: FilterBidsRequest):
+
+    if filter.shipper_id is not None:
+        query = query.filter(BiddingLoad.bl_shipper_id == filter.shipper_id)
+    if filter.rc_id is not None:
+        query = query.filter(BiddingLoad.bl_region_cluster_id == filter.rc_id)
+    if filter.branch_id is not None:
+        query = query.filter(BiddingLoad.bl_branch_id == filter.branch_id)
+    if filter.from_date is not None:
+        query = query.filter(BiddingLoad.created_at >= filter.from_date)
+    if filter.to_date is not None:
+        query = query.filter(BiddingLoad.created_at <= filter.to_date)
+
+    return query
