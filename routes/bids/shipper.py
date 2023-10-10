@@ -328,6 +328,7 @@ async def live_bid_details(request: Request, bid_id: str):
     except Exception as err:
         return ServerError(err=err, errMsg=str(err))
 
+## TODO - email 
 
 @shipper_bidding_router.post("/match/{bid_id}")
 async def bid_match_for_transporters(request: Request, bid_id: str, transporters: List[TransporterBidMatchRequest], bg_tasks: BackgroundTasks):
