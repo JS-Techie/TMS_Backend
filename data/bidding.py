@@ -127,9 +127,8 @@ LEFT JOIN
 LEFT JOIN
     t_bidding_load tbl ON tbl.bl_id = tbt.bid_id AND tbl.is_active = true
 LEFT JOIN
-    t_load_assigned tla ON tla.la_bidding_load_id = tbl.bl_id AND tla.is_active = true
+    t_load_assigned tla ON tla.la_bidding_load_id = tbl.bl_id AND tla.is_active = true AND tla.la_transporter_id = tt.trnsp_id
 '''
-
 
 
 # load id
