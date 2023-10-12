@@ -166,7 +166,7 @@ class Bid:
         finally:
             session.close()
 
-    async def update_status(self, bid_id: str, status: str, user_id: str) -> (bool, str):
+    async def update_status(self, bid_id: str, status: str, user_id: str,reason : str | None = None) -> (bool, str):
 
         session = Session()
 
@@ -183,6 +183,10 @@ class Bid:
 
             setattr(bid_to_be_updated, "load_status", status)
             setattr(bid_to_be_updated, "updated_by", user_id)
+
+            if reason:
+                setattr(bid_to_be_updated,"bl_cancellation_reason",reason)
+
             session.commit()
 
             return (True, "")

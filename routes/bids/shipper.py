@@ -11,7 +11,7 @@ from utils.bids.bidding import Bid
 from utils.bids.transporters import Transporter
 from utils.bids.shipper import Shipper
 from utils.redis import Redis
-from schemas.bidding import HistoricalRatesReq, TransporterAssignReq, FilterBidsRequest, TransporterBidMatchRequest, TransporterUnassignRequest
+from schemas.bidding import HistoricalRatesReq, TransporterAssignReq, FilterBidsRequest, TransporterBidMatchRequest, TransporterUnassignRequest,CancelBidReq
 from utils.utilities import log
 from services.mail import Email
 from config.mail import email_conf
@@ -175,11 +175,14 @@ async def fetch_all_rates_given_by_transporter(request: Request, bid_id: str, re
 
 
 @shipper_bidding_router.delete("/cancel/{bid_id}")
-async def cancel_bid(request: Request, bid_id: str):
+async def cancel_bid(request: Request, bid_id: str,r : CancelBidReq):
 
     user_id = request.state.current_user["id"]
 
     try:
+
+        if not r.reason:
+            return ErrorResponse(data=[],dev_msg="No cancellation reason provided",client_msg="Please provide a valid cancellation reason")
 
         (valid_bid_id, error) = await bid.is_valid(bid_id)
 
@@ -198,7 +201,7 @@ async def cancel_bid(request: Request, bid_id: str):
             return ErrorResponse(data=[], client_msg="This bid is not valid and cannot be cancelled!", dev_msg=f"Bid-{bid_id} is {bid_details.load_status}, cannot be cancelled!")
 
         log("BID STATUS IS VALID")
-        (update_successful, error) = await bid.update_status(bid_id=bid_id, status="cancelled", user_id=user_id)
+        (update_successful, error) = await bid.update_status(bid_id=bid_id, status="cancelled", user_id=user_id,reason=r.reason)
 
         if not update_successful:
             return ErrorResponse(data=[], client_msg=os.getenv("BID_CANCEL_ERROR"), dev_msg=error)

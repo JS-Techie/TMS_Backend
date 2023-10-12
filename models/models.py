@@ -308,7 +308,7 @@ class BiddingLoad(Base, Persistance):
     base_price = Column(Double, default=0.0,nullable=False)
     system_base_price = Column(Double, default=0.0,nullable=False)
     is_cancelled  = Column(Boolean, default=False)
-    bl_cancellation_reason = Column(UUID(as_uuid=True), ForeignKey("t_lkp_reason.id")) 
+    bl_cancellation_reason =  Column(String, nullable = True) 
     is_published = Column(Boolean, default=False)
 
 

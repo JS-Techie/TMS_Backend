@@ -48,3 +48,6 @@ class TransporterUnassignRequest(BaseModel):
 
 class TransporterLostBidsReq(BaseModel):
     particpated : bool
+
+class CancelBidReq(BaseModel):
+    reason : str
