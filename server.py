@@ -9,9 +9,6 @@ from utils.db import generate_tables
 from routes.routes import setup_routes
 from utils.background_jobs import schedule_jobs
 from config.socket import manager
-# from utils.redis import Redis
-
-# r = Redis()
 
 
 app: FastAPI = FastAPI()
@@ -25,8 +22,6 @@ app.add_middleware(
     allow_methods= ['*'],
     allow_headers= ['*']
 )
-
-# r.delete(sorted_set='133a35cd-d39b-4d22-8b02-56142f0ea63e')
 
 # generate_tables()
 # schedule_jobs()
