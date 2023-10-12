@@ -83,7 +83,7 @@ async def provide_new_rate_for_bid(request: Request, bid_id: str, bid_req: Trans
     transporter_id, user_id = request.state.current_user[
         "transporter_id"], request.state.current_user["id"]
     
-    user_id = os.getenv("USERID")
+    # user_id = os.getenv("USERID")
 
     try:
 

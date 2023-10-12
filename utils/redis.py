@@ -14,7 +14,13 @@ class Redis:
         log("COMMENT", comment)
         log("RATE", rate)
         log("NUMBER OF ATTEMPTS", attempts)
-
+        
+        current_timestamp = int(time.time())
+        
+        # key = f"{transporter_id}_{current_timestamp}"
+        
+        rate = rate + current_timestamp / (10**10)
+        log("RATE APPENDED WITH TIMESTAMP", rate)
         redis.hmset(transporter_id, {
             'transporter_id': transporter_id,
             'transporter_name': transporter_name,
@@ -24,10 +30,10 @@ class Redis:
 
         log("HASHING IN REDIS", "OK")
 
-        # redis.zadd(sorted_set, {transporter_id: rate})
+        redis.zadd(sorted_set, {transporter_id: rate})
 
-        current_timestamp = int(time.time())
-        redis.zadd(sorted_set, {transporter_id: (rate, current_timestamp)})
+      
+        # redis.zadd(sorted_set, {transporter_id: (rate, current_timestamp)})
 
         log("SORTED SET APPEND IN REDIS", "OK")
 
@@ -46,7 +52,7 @@ class Redis:
             log("TRANSPORTER IDS", transporter_ids)
 
             for transporter_id in transporter_ids:
-                rate = redis.zscore(sorted_set, transporter_id)
+                rate = int(redis.zscore(sorted_set, transporter_id))
                 log("TRANSPORTER DETAILS", {
                     "TRANSPORTER_ID": transporter_id, "RATE": rate})
                 transporter_data = redis.hgetall(transporter_id)
