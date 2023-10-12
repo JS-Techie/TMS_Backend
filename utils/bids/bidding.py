@@ -25,7 +25,7 @@ class Bid:
 
         session = Session()
         current_time = convert_date_to_string(
-            datetime.now()+timedelta(minutes=1))
+            datetime.now())
 
         try:
 
@@ -33,7 +33,6 @@ class Bid:
                 BiddingLoad.is_active == True, BiddingLoad.load_status == "not_started").all())
             log("THE BIDS TO INITIATE:", bids)
             if not bids:
-                log("ERROR OCCURED DURING FETCH BIDS STATUSWISE")
                 return
 
             for bid in bids:
@@ -491,7 +490,7 @@ class Bid:
 
         session = Session()
         current_time = convert_date_to_string(
-            datetime.now()+timedelta(minutes=1))
+            datetime.now())
 
         try:
 
@@ -506,8 +505,7 @@ class Bid:
             for bid in bids:
                 if convert_date_to_string(bid.bid_end_time) == current_time:
                     setattr(bid, "load_status", "pending")
-                    # MEHUL : No checks here because if there is no sorted set then it will return false too, so how to catch exception ?
-                    redis.delete(sorted_set=bid)
+                    # redis.delete(sorted_set=bid)
 
             session.commit()
 
