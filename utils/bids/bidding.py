@@ -7,11 +7,11 @@ from string import Template
 from utils.response import ErrorResponse
 from config.db_config import Session
 from models.models import BiddingLoad, LoadAssigned, TransporterModel, BidTransaction, BidSettings, ShipperModel, MapLoadSrcDestPair, LkpReason
-from utils.utilities import log, convert_date_to_string, structurize, structurize_assignment_data
+from utils.utilities import log, convert_date_to_string, structurize, structurize_assignment_data, structurize_confirmed_cancelled_trip_trend_stats
 from config.redis import r as redis
 from utils.redis import Redis
 from data.bidding import filter_wise_fetch_query, live_bid_details, status_wise_fetch_query, transporter_analysis
-from schemas.bidding import FilterBidsRequest
+from schemas.bidding import FilterBidsRequest, FilterTripTrendRequest
 from config.scheduler import Scheduler
 from utils.utilities import log, structurize_transporter_bids, structurize_bidding_stats, add_filter
 
@@ -784,6 +784,29 @@ class Bid:
                 })
 
             return (results, "")
+
+        except Exception as e:
+            session.rollback()
+            return ([], str(e))
+        finally:
+            session.close()
+            
+            
+    async def confirmed_cancelled_bid_trend_stats(self, filter: FilterTripTrendRequest):
+
+        session = Session()
+
+        try:
+            query = session.query(BiddingLoad).filter(BiddingLoad.load_status.in_(['confirmed','cancelled']))
+
+            query = add_filter(query=query, filter=filter)
+
+            bids = query.all()
+
+            if not bids:
+                return ("", "No Records found")
+
+            return (structurize_confirmed_cancelled_trip_trend_stats(bids=bids, filter=filter), "")
 
         except Exception as e:
             session.rollback()

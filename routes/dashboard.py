@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Request
 
-from schemas.bidding import FilterBidsRequest
+from schemas.bidding import FilterBidsRequest, FilterTripTrendRequest
 from utils.response import ServerError, SuccessResponse, ErrorResponse
 from utils.bids.bidding import Bid
 
@@ -10,7 +10,7 @@ bid = Bid()
 
 
 @dashboard_router.post("/stats")
-async def get_bid_details(request: Request, filter_criteria: FilterBidsRequest):
+async def get_status_wise_bid_count(request: Request, filter_criteria: FilterBidsRequest):
 
     try:
 
@@ -26,7 +26,7 @@ async def get_bid_details(request: Request, filter_criteria: FilterBidsRequest):
 
 
 @dashboard_router.post("/cancellations")
-async def get_bid_details(request: Request, filter_criteria: FilterBidsRequest):
+async def get_cancelled_load_analysis(request: Request, filter_criteria: FilterBidsRequest):
 
     try:
 
@@ -44,29 +44,29 @@ async def get_bid_details(request: Request, filter_criteria: FilterBidsRequest):
 
 
 @dashboard_router.post("/trend")
-async def get_bid_details(request: Request, filter_criteria: FilterBidsRequest):
+async def get_confirmed_cancelled_comparison_trip_trend(request: Request, filter_criteria: FilterTripTrendRequest):
 
     try:
 
-        bid_details, error = await bid.stats(filter=filter_criteria)
+        get_confirmed_cancelled_trip_trend_comparision, error = await bid.confirmed_cancelled_bid_trend_stats(filter=filter_criteria)
 
         if error:
             return ErrorResponse(data=[], dev_msg=error, client_msg="Something went wrong while fetching bid details")
 
-        return SuccessResponse(data=bid_details, dev_msg="All bid stats fetched", client_msg="Requested stats fetched successfully")
+        return SuccessResponse(data=get_confirmed_cancelled_trip_trend_comparision, dev_msg="All bid stats fetched", client_msg="Requested stats fetched successfully")
 
     except Exception as e:
         return ServerError(err=e, errMsg=str(e))
 
 
 @dashboard_router.post("/transporters")
-async def get_bid_details(request: Request, filter_criteria: FilterBidsRequest):
+async def get_transporter_analysis(request: Request, filter_criteria: FilterBidsRequest):
 
     try:
 
         bid_details, error = await bid.transporter_analysis(filter=filter_criteria)
 
-        if error:
+        if not bid_details:
             return ErrorResponse(data=[], dev_msg=error, client_msg="Something went wrong while fetching transporter details")
 
         return SuccessResponse(data=bid_details, dev_msg="All bid stats fetched", client_msg="Requested stats fetched successfully")
