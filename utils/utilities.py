@@ -1,6 +1,6 @@
-import os
-from datetime import datetime
-from schemas.bidding import FilterBidsRequest
+import os, math, copy
+import datetime
+from schemas.bidding import FilterBidsRequest, FilterTripTrendRequest
 from models.models import BiddingLoad
 
 
@@ -199,3 +199,63 @@ def add_filter(query: str, filter: FilterBidsRequest):
         query = query.filter(BiddingLoad.created_at <= filter.to_date)
 
     return query
+
+
+def structurize_confirmed_cancelled_trip_trend_stats(bids, filter:FilterTripTrendRequest):
+
+    from_datetime = filter.from_date
+    to_datetime  = filter.to_date
+    day_difference = (to_datetime-from_datetime).days+1
+    datapoints =0 
+    response_data = []
+    counter_datetime= copy.copy(from_datetime)
+    datapoints = {'day': day_difference, 'month': math.ceil(day_difference / 30), 'year': math.ceil(day_difference / 365)}.get(filter.type, None)
+    
+    for _ in range(datapoints):
+        
+        if filter.type == 'day':            
+            response_data.append({
+                'x-axis-label':str(counter_datetime.day)+"-"+str(counter_datetime.month)+"-"+str(counter_datetime.year),
+                'confirmed':0,
+                'cancelled':0
+            })
+            counter_datetime+=datetime.timedelta(days=1)
+                
+        elif filter.type == 'month':
+            response_data.append({
+                'x-axis-label':str(counter_datetime.month)+"-"+str(counter_datetime.year),
+                'confirmed':0,
+                'cancelled':0
+            })
+            counter_datetime+=datetime.timedelta(days=30)
+                
+        elif filter.type == 'year':
+            response_data.append({
+                'x-axis-label':counter_datetime.year,
+                'confirmed':0,
+                'cancelled':0
+            })
+            counter_datetime+=datetime.timedelta(days=365)
+        
+        
+        
+    for bid in bids:
+        date_created= bid.created_at
+        status = bid.load_status
+        
+        if filter.type== 'day':
+            for record in response_data:
+                if (str(date_created.day)+"-"+str(date_created.month)+"-"+str(date_created.year)) == record['x-axis-label']:
+                    record[status]+=1
+                    
+        elif filter.type== 'month':
+            for record in response_data:
+                if (str(date_created.month)+"-"+str(date_created.year)) == record['x-axis-label']:
+                    record[status]+=1
+                    
+        if filter.type== 'year':
+            for record in response_data:
+                if (date_created.year) == record['x-axis-label']:
+                    record[status]+=1
+
+    return response_data
