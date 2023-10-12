@@ -699,25 +699,16 @@ class Bid:
 
             cancellations = query.all()
 
+            log("CANCELLATION", cancellations)
             if not cancellations:
                 return (cancellations, "")
-
-            cancellation_counts = {
-                cancellation[0]: cancellation[1] for cancellation in cancellations}
-
-            log("CANCELLATION COUNTS", cancellation_counts)
-
-            bid_ids = list(cancellation_counts.keys())
-
-            cancellation_reasons = session.query(
-                LkpReason.id, LkpReason.desc, LkpReason.type).filter(LkpReason.id.in_(bid_ids)).all()
-
-            result = [
-                {"reason": reason[1], "type": reason[2],
-                    "count": cancellation_counts.get(reason[0], 0)}
-                for reason in cancellation_reasons
-            ]
-
+            result=[]
+            for cancellation in cancellations:
+                result.append({
+                    'reason': cancellation[0],
+                    'count':cancellation[1]
+                })
+            
             return (result, "")
 
         except Exception as e:
