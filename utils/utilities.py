@@ -1,6 +1,6 @@
 import os, math, copy
 import datetime
-from schemas.bidding import FilterBidsRequest, FilterTripTrendRequest
+from schemas.bidding import FilterBidsRequest, FilterBidsRequest
 from models.models import BiddingLoad
 
 
@@ -201,7 +201,7 @@ def add_filter(query: str, filter: FilterBidsRequest):
     return query
 
 
-def structurize_confirmed_cancelled_trip_trend_stats(bids, filter:FilterTripTrendRequest):
+def structurize_confirmed_cancelled_trip_trend_stats(bids, filter:FilterBidsRequest, type: str):
 
     from_datetime = filter.from_date
     to_datetime  = filter.to_date
@@ -209,11 +209,11 @@ def structurize_confirmed_cancelled_trip_trend_stats(bids, filter:FilterTripTren
     datapoints =0 
     response_data = []
     counter_datetime= copy.copy(from_datetime)
-    datapoints = {'day': day_difference, 'month': math.ceil(day_difference / 30), 'year': math.ceil(day_difference / 365)}.get(filter.type, None)
+    datapoints = {'day': day_difference, 'month': math.ceil(day_difference / 30), 'year': math.ceil(day_difference / 365)}.get(type, None)
     
     for _ in range(datapoints):
         
-        if filter.type == 'day':            
+        if type == 'day':            
             response_data.append({
                 'x-axis-label':str(counter_datetime.day)+"-"+str(counter_datetime.month)+"-"+str(counter_datetime.year),
                 'confirmed':0,
@@ -221,7 +221,7 @@ def structurize_confirmed_cancelled_trip_trend_stats(bids, filter:FilterTripTren
             })
             counter_datetime+=datetime.timedelta(days=1)
                 
-        elif filter.type == 'month':
+        elif type == 'month':
             response_data.append({
                 'x-axis-label':str(counter_datetime.month)+"-"+str(counter_datetime.year),
                 'confirmed':0,
@@ -229,7 +229,7 @@ def structurize_confirmed_cancelled_trip_trend_stats(bids, filter:FilterTripTren
             })
             counter_datetime+=datetime.timedelta(days=30)
                 
-        elif filter.type == 'year':
+        elif type == 'year':
             response_data.append({
                 'x-axis-label':counter_datetime.year,
                 'confirmed':0,
@@ -243,17 +243,17 @@ def structurize_confirmed_cancelled_trip_trend_stats(bids, filter:FilterTripTren
         date_created= bid.created_at
         status = bid.load_status
         
-        if filter.type== 'day':
+        if type== 'day':
             for record in response_data:
                 if (str(date_created.day)+"-"+str(date_created.month)+"-"+str(date_created.year)) == record['x-axis-label']:
                     record[status]+=1
                     
-        elif filter.type== 'month':
+        elif type== 'month':
             for record in response_data:
                 if (str(date_created.month)+"-"+str(date_created.year)) == record['x-axis-label']:
                     record[status]+=1
                     
-        if filter.type== 'year':
+        if type== 'year':
             for record in response_data:
                 if (date_created.year) == record['x-axis-label']:
                     record[status]+=1

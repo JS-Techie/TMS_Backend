@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Request
 
-from schemas.bidding import FilterBidsRequest, FilterTripTrendRequest
+from schemas.bidding import FilterBidsRequest, FilterBidsRequest
 from utils.response import ServerError, SuccessResponse, ErrorResponse
 from utils.bids.bidding import Bid
 
@@ -43,12 +43,12 @@ async def get_cancelled_load_analysis(request: Request, filter_criteria: FilterB
 # TODO
 
 
-@dashboard_router.post("/trend")
-async def get_confirmed_cancelled_comparison_trip_trend(request: Request, filter_criteria: FilterTripTrendRequest):
+@dashboard_router.post("/trend/{type}")
+async def get_confirmed_cancelled_comparison_trip_trend(request: Request, filter_criteria: FilterBidsRequest, type: str):
 
     try:
 
-        get_confirmed_cancelled_trip_trend_comparision, error = await bid.confirmed_cancelled_bid_trend_stats(filter=filter_criteria)
+        get_confirmed_cancelled_trip_trend_comparision, error = await bid.confirmed_cancelled_bid_trend_stats(filter=filter_criteria, type= type)
 
         if error:
             return ErrorResponse(data=[], dev_msg=error, client_msg="Something went wrong while fetching bid details")

@@ -11,7 +11,7 @@ from utils.utilities import log, convert_date_to_string, structurize, structuriz
 from config.redis import r as redis
 from utils.redis import Redis
 from data.bidding import filter_wise_fetch_query, live_bid_details, status_wise_fetch_query, transporter_analysis
-from schemas.bidding import FilterBidsRequest, FilterTripTrendRequest
+from schemas.bidding import FilterBidsRequest, FilterBidsRequest
 from config.scheduler import Scheduler
 from utils.utilities import log, structurize_transporter_bids, structurize_bidding_stats, add_filter
 
@@ -796,7 +796,7 @@ class Bid:
             session.close()
             
             
-    async def confirmed_cancelled_bid_trend_stats(self, filter: FilterTripTrendRequest):
+    async def confirmed_cancelled_bid_trend_stats(self, filter: FilterBidsRequest, type: str):
 
         session = Session()
 
@@ -810,7 +810,7 @@ class Bid:
             if not bids:
                 return ("", "No Records found")
 
-            return (structurize_confirmed_cancelled_trip_trend_stats(bids=bids, filter=filter), "")
+            return (structurize_confirmed_cancelled_trip_trend_stats(bids=bids, filter=filter, type= type), "")
 
         except Exception as e:
             session.rollback()

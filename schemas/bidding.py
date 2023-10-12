@@ -11,14 +11,6 @@ class FilterBidsRequest(BaseModel):
     to_date: datetime | None = None
 
 
-class FilterTripTrendRequest(BaseModel):
-    shipper_id: UUID | None = None
-    rc_id: UUID | None = None
-    branch_id: UUID | None = None
-    from_date: datetime 
-    to_date: datetime 
-    type:str | None = 'day'
-
 class HistoricalRatesReq(BaseModel):
     transporter_id: UUID
 
