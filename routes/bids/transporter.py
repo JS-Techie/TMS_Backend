@@ -82,6 +82,8 @@ async def provide_new_rate_for_bid(request: Request, bid_id: str, bid_req: Trans
 
     transporter_id, user_id = request.state.current_user[
         "transporter_id"], request.state.current_user["id"]
+    
+    user_id = os.getenv("USERID")
 
     try:
 
@@ -162,7 +164,7 @@ async def provide_new_rate_for_bid(request: Request, bid_id: str, bid_req: Trans
             return ErrorResponse(data=[], client_msg=os.getenv("BID_RATE_ERROR"), dev_msg=error)
 
         (sorted_bid_details, error) = await redis.update(sorted_set=bid_id,
-                                                         transporter_id=(transporter_id), comment=bid_req.comment, transporter_name=transporter_name, rate=bid_req.rate, attempts=transporter_attempts + 1)
+                                                         transporter_id=transporter_id, comment=bid_req.comment, transporter_name=transporter_name, rate=bid_req.rate, attempts=transporter_attempts + 1)
 
         log("BID DETAILS", sorted_bid_details)
 

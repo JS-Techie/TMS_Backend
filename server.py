@@ -24,7 +24,7 @@ app.add_middleware(
 )
 
 # generate_tables()
-schedule_jobs()
+# schedule_jobs()
 
 @app.websocket("/ws/{bid_id}")
 async def websocket_endpoint(websocket: WebSocket, bid_id: str):

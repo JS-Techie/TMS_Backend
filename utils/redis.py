@@ -1,5 +1,8 @@
+import time
+
 from config.redis import r as redis
 from utils.utilities import log
+
 
 
 class Redis:
@@ -21,7 +24,10 @@ class Redis:
 
         log("HASHING IN REDIS", "OK")
 
-        redis.zadd(sorted_set, {transporter_id: rate})
+        # redis.zadd(sorted_set, {transporter_id: rate})
+
+        current_timestamp = int(time.time())
+        redis.zadd(sorted_set, {transporter_id: (rate, current_timestamp)})
 
         log("SORTED SET APPEND IN REDIS", "OK")
 
