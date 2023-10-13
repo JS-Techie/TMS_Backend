@@ -669,7 +669,7 @@ class Bid:
         session = Session()
 
         try:
-            query = session.query(BiddingLoad)
+            query = session.query(BiddingLoad).filter(BiddingLoad.is_active == True)
 
             query = add_filter(query=query, filter=filter)
 
