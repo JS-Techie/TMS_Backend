@@ -40,8 +40,6 @@ async def get_cancelled_load_analysis(request: Request, filter_criteria: FilterB
     except Exception as e:
         return ServerError(err=e, errMsg=str(e))
 
-# TODO
-
 
 @dashboard_router.post("/trend/{type}")
 async def get_confirmed_cancelled_comparison_trip_trend(request: Request, filter_criteria: FilterBidsRequest, type: str):

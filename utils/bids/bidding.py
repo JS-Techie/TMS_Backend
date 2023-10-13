@@ -692,7 +692,7 @@ class Bid:
 
         try:
             query = session.query(BiddingLoad.bl_cancellation_reason, func.count(BiddingLoad.bl_cancellation_reason)).filter(
-                BiddingLoad.load_status == "cancelled").group_by(BiddingLoad.bl_cancellation_reason)
+                BiddingLoad.load_status == "cancelled",BiddingLoad.is_active == True).group_by(BiddingLoad.bl_cancellation_reason)
 
             query = add_filter(query=query, filter=filter)
 
@@ -791,7 +791,7 @@ class Bid:
         session = Session()
 
         try:
-            query = session.query(BiddingLoad).filter(BiddingLoad.load_status.in_(['confirmed','cancelled']))
+            query = session.query(BiddingLoad).filter(BiddingLoad.load_status.in_(['confirmed','cancelled']),BiddingLoad.is_active == True)
 
             query = add_filter(query=query, filter=filter)
 
