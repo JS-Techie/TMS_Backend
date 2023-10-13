@@ -210,7 +210,7 @@ def structurize_confirmed_cancelled_trip_trend_stats(bids, filter:FilterBidsRequ
     datapoints =0 
     trip_trend = []
     counter_datetime= copy.copy(from_datetime)
-    datapoints = {'day': day_difference, 'month': math.ceil(day_difference / 30), 'year': math.ceil(day_difference / 365)}.get(type, None)
+    datapoints = {'day':(to_datetime-from_datetime).days+1, 'month':((to_datetime.year-from_datetime.year)*12+(to_datetime.month-from_datetime.month))+1, 'year':(to_datetime.year-from_datetime.year)+1}.get(type, None)
     
     for _ in range(datapoints):
         
