@@ -207,14 +207,14 @@ def structurize_confirmed_cancelled_trip_trend_stats(bids, filter:FilterBidsRequ
     to_datetime  = filter.to_date
     day_difference = (to_datetime-from_datetime).days+1
     datapoints =0 
-    response_data = []
+    trip_trend = []
     counter_datetime= copy.copy(from_datetime)
     datapoints = {'day': day_difference, 'month': math.ceil(day_difference / 30), 'year': math.ceil(day_difference / 365)}.get(type, None)
     
     for _ in range(datapoints):
         
         if type == 'day':            
-            response_data.append({
+            trip_trend.append({
                 'x-axis-label':str(counter_datetime.day)+"-"+str(counter_datetime.month)+"-"+str(counter_datetime.year),
                 'confirmed':0,
                 'cancelled':0
@@ -222,7 +222,7 @@ def structurize_confirmed_cancelled_trip_trend_stats(bids, filter:FilterBidsRequ
             counter_datetime+=datetime.timedelta(days=1)
                 
         elif type == 'month':
-            response_data.append({
+            trip_trend.append({
                 'x-axis-label':str(counter_datetime.month)+"-"+str(counter_datetime.year),
                 'confirmed':0,
                 'cancelled':0
@@ -230,7 +230,7 @@ def structurize_confirmed_cancelled_trip_trend_stats(bids, filter:FilterBidsRequ
             counter_datetime+=datetime.timedelta(days=30)
                 
         elif type == 'year':
-            response_data.append({
+            trip_trend.append({
                 'x-axis-label':counter_datetime.year,
                 'confirmed':0,
                 'cancelled':0
@@ -244,18 +244,18 @@ def structurize_confirmed_cancelled_trip_trend_stats(bids, filter:FilterBidsRequ
         status = bid.load_status
         
         if type== 'day':
-            for record in response_data:
+            for record in trip_trend:
                 if (str(date_created.day)+"-"+str(date_created.month)+"-"+str(date_created.year)) == record['x-axis-label']:
                     record[status]+=1
                     
         elif type== 'month':
-            for record in response_data:
+            for record in trip_trend:
                 if (str(date_created.month)+"-"+str(date_created.year)) == record['x-axis-label']:
                     record[status]+=1
                     
         if type== 'year':
-            for record in response_data:
+            for record in trip_trend:
                 if (date_created.year) == record['x-axis-label']:
                     record[status]+=1
 
-    return response_data
+    return trip_trend

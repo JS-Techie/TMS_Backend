@@ -237,6 +237,7 @@ class Bid:
                 rate=rate,
                 comment=comment,
                 attempt_number=attempt_number,
+                
                 created_by=user_id
             )
 
@@ -795,9 +796,6 @@ class Bid:
             query = add_filter(query=query, filter=filter)
 
             bids = query.all()
-
-            if not bids:
-                return ("", "No Records found")
 
             return (structurize_confirmed_cancelled_trip_trend_stats(bids=bids, filter=filter, type= type), "")
 
