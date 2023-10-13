@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Request
 
-from schemas.bidding import FilterBidsRequest, FilterBidsRequest
-from utils.response import ServerError, SuccessResponse, ErrorResponse
+from schemas.bidding import FilterBidsRequest
 from utils.bids.bidding import Bid
+from utils.response import ErrorResponse, ServerError, SuccessResponse
 
 dashboard_router = APIRouter(prefix="/dashboard", tags=["Dashboard routes"])
 
@@ -35,7 +35,7 @@ async def get_cancelled_load_analysis(request: Request, filter_criteria: FilterB
         if error:
             return ErrorResponse(data=[], dev_msg=error, client_msg="Something went wrong while fetching cancellation reasons")
 
-        return SuccessResponse(data=bid_details, dev_msg="All cancellation reasons fetched", client_msg="Requested stats fetched successfully")
+        return SuccessResponse(data=bid_details, dev_msg="All cancellation reasons fetched", client_msg="Requested cancellation stats fetched successfully")
 
     except Exception as e:
         return ServerError(err=e, errMsg=str(e))
@@ -51,7 +51,7 @@ async def get_confirmed_cancelled_comparison_trip_trend(request: Request, filter
         if error:
             return ErrorResponse(data=[], dev_msg=error, client_msg="Something went wrong while fetching bid details")
 
-        return SuccessResponse(data=get_confirmed_cancelled_trip_trend_comparision, dev_msg="All bid stats fetched", client_msg="Requested stats fetched successfully")
+        return SuccessResponse(data=get_confirmed_cancelled_trip_trend_comparision, dev_msg="All bid trend stats fetched", client_msg="Requested trend stats fetched successfully")
 
     except Exception as e:
         return ServerError(err=e, errMsg=str(e))

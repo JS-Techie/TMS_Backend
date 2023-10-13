@@ -1,19 +1,26 @@
-from datetime import datetime, timedelta
-import os
 import math
-from sqlalchemy import text, func, distinct
+import os
+from datetime import datetime
 from string import Template
 
-from utils.response import ErrorResponse
+from sqlalchemy import func, text
+
 from config.db_config import Session
-from models.models import BiddingLoad, LoadAssigned, TransporterModel, BidTransaction, BidSettings, ShipperModel, MapLoadSrcDestPair, LkpReason
-from utils.utilities import log, convert_date_to_string, structurize, structurize_assignment_data, structurize_confirmed_cancelled_trip_trend_stats
 from config.redis import r as redis
-from utils.redis import Redis
-from data.bidding import filter_wise_fetch_query, live_bid_details, status_wise_fetch_query, transporter_analysis
-from schemas.bidding import FilterBidsRequest, FilterBidsRequest
 from config.scheduler import Scheduler
-from utils.utilities import log, structurize_transporter_bids, structurize_bidding_stats, add_filter
+from data.bidding import (filter_wise_fetch_query, live_bid_details,
+                          status_wise_fetch_query, transporter_analysis)
+from models.models import (BiddingLoad, BidSettings, BidTransaction,
+                           LoadAssigned, MapLoadSrcDestPair, ShipperModel,
+                           TransporterModel)
+from schemas.bidding import FilterBidsRequest
+from utils.redis import Redis
+from utils.response import ErrorResponse
+from utils.utilities import (add_filter, convert_date_to_string, log,
+                             structurize, structurize_assignment_data,
+                             structurize_bidding_stats,
+                             structurize_confirmed_cancelled_trip_trend_stats,
+                             structurize_transporter_bids)
 
 sched = Scheduler()
 redis = Redis()
@@ -165,7 +172,7 @@ class Bid:
         finally:
             session.close()
 
-    async def update_status(self, bid_id: str, status: str, user_id: str,reason : str | None = None) -> (bool, str):
+    async def update_status(self, bid_id: str, status: str, user_id: str, reason: str | None = None) -> (bool, str):
 
         session = Session()
 
@@ -184,7 +191,7 @@ class Bid:
             setattr(bid_to_be_updated, "updated_by", user_id)
 
             if reason:
-                setattr(bid_to_be_updated,"bl_cancellation_reason",reason)
+                setattr(bid_to_be_updated, "bl_cancellation_reason", reason)
 
             session.commit()
 
@@ -237,7 +244,7 @@ class Bid:
                 rate=rate,
                 comment=comment,
                 attempt_number=attempt_number,
-                
+
                 created_by=user_id
             )
 
@@ -669,7 +676,8 @@ class Bid:
         session = Session()
 
         try:
-            query = session.query(BiddingLoad).filter(BiddingLoad.is_active == True)
+            query = session.query(BiddingLoad).filter(
+                BiddingLoad.is_active == True)
 
             query = add_filter(query=query, filter=filter)
 
@@ -692,7 +700,7 @@ class Bid:
 
         try:
             query = session.query(BiddingLoad.bl_cancellation_reason, func.count(BiddingLoad.bl_cancellation_reason)).filter(
-                BiddingLoad.load_status == "cancelled",BiddingLoad.is_active == True).group_by(BiddingLoad.bl_cancellation_reason)
+                BiddingLoad.load_status == "cancelled", BiddingLoad.is_active == True).group_by(BiddingLoad.bl_cancellation_reason)
 
             query = add_filter(query=query, filter=filter)
 
@@ -701,13 +709,13 @@ class Bid:
             log("CANCELLATION", cancellations)
             if not cancellations:
                 return (cancellations, "")
-            result=[]
+            result = []
             for cancellation in cancellations:
                 result.append({
                     'reason': cancellation[0],
-                    'count':cancellation[1]
+                    'count': cancellation[1]
                 })
-            
+
             return (result, "")
 
         except Exception as e:
@@ -755,14 +763,12 @@ class Bid:
                 'branch_id': filter.branch_id,
                 'from_date': filter.from_date,
                 'to_date': filter.to_date,
-                }
+            }
 
-
-            transporters = session.execute(query,params=params).all()
+            transporters = session.execute(query, params=params).all()
 
             if not transporters:
                 return ([], "")
-
 
             log(transporters)
             for transporter in transporters:
@@ -784,20 +790,20 @@ class Bid:
             return ([], str(e))
         finally:
             session.close()
-            
-            
+
     async def confirmed_cancelled_bid_trend_stats(self, filter: FilterBidsRequest, type: str):
 
         session = Session()
 
         try:
-            query = session.query(BiddingLoad).filter(BiddingLoad.load_status.in_(['confirmed','cancelled']),BiddingLoad.is_active == True)
+            query = session.query(BiddingLoad).filter(BiddingLoad.load_status.in_(
+                ['confirmed', 'cancelled']), BiddingLoad.is_active == True)
 
             query = add_filter(query=query, filter=filter)
 
             bids = query.all()
 
-            return (structurize_confirmed_cancelled_trip_trend_stats(bids=bids, filter=filter, type= type), "")
+            return (structurize_confirmed_cancelled_trip_trend_stats(bids=bids, filter=filter, type=type), "")
 
         except Exception as e:
             session.rollback()

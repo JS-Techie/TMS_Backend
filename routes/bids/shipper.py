@@ -1,21 +1,26 @@
 
+import os
+from datetime import datetime, timedelta
+from typing import List
+
 from fastapi import APIRouter, BackgroundTasks, Request
 from fastapi_mail import FastMail
-import os
-from typing import List
-from datetime import datetime, timedelta
 
-from utils.response import ErrorResponse, SuccessResponse, SuccessNoContentResponse, ServerError
-from data.bidding import valid_load_status, valid_cancel_status, valid_assignment_status
-from utils.bids.bidding import Bid
-from utils.bids.transporters import Transporter
-from utils.bids.shipper import Shipper
-from utils.redis import Redis
-from schemas.bidding import HistoricalRatesReq, TransporterAssignReq, FilterBidsRequest, TransporterBidMatchRequest, TransporterUnassignRequest,CancelBidReq
-from utils.utilities import log
-from services.mail import Email
 from config.mail import email_conf
-
+from data.bidding import (valid_assignment_status, valid_cancel_status,
+                          valid_load_status)
+from schemas.bidding import (CancelBidReq, FilterBidsRequest,
+                             HistoricalRatesReq, TransporterAssignReq,
+                             TransporterBidMatchRequest,
+                             TransporterUnassignRequest)
+from services.mail import Email
+from utils.bids.bidding import Bid
+from utils.bids.shipper import Shipper
+from utils.bids.transporters import Transporter
+from utils.redis import Redis
+from utils.response import (ErrorResponse, ServerError,
+                            SuccessNoContentResponse, SuccessResponse)
+from utils.utilities import log
 
 shipper_bidding_router: APIRouter = APIRouter(
     prefix="/shipper/bid", tags=["Shipper routes for bidding"])
@@ -48,7 +53,7 @@ async def get_bids_according_to_status(request: Request, status: str):
             return ErrorResponse(data=[], dev_msg=error, client_msg=os.getenv("GENERIC_ERROR"))
 
         if len(bids) == 0:
-            return SuccessResponse(data=[], dev_msg="Correct status, data fetched", client_msg=f"There are no {status} bids to show right now!")
+            return SuccessResponse(data=[], dev_msg="No bids to show", client_msg=f"There are no {status} bids to show right now!")
 
         return SuccessResponse(data=bids, dev_msg="Correct status, data fetched", client_msg=f"Fetched all {status} bids successfully!")
 
@@ -175,14 +180,14 @@ async def fetch_all_rates_given_by_transporter(request: Request, bid_id: str, re
 
 
 @shipper_bidding_router.delete("/cancel/{bid_id}")
-async def cancel_bid(request: Request, bid_id: str,r : CancelBidReq):
+async def cancel_bid(request: Request, bid_id: str, r: CancelBidReq):
 
     user_id = request.state.current_user["id"]
 
     try:
 
         if not r.reason:
-            return ErrorResponse(data=[],dev_msg="No cancellation reason provided",client_msg="Please provide a valid cancellation reason")
+            return ErrorResponse(data=[], dev_msg="No cancellation reason provided", client_msg="Please provide a valid cancellation reason")
 
         (valid_bid_id, error) = await bid.is_valid(bid_id)
 
@@ -201,7 +206,7 @@ async def cancel_bid(request: Request, bid_id: str,r : CancelBidReq):
             return ErrorResponse(data=[], client_msg="This bid is not valid and cannot be cancelled!", dev_msg=f"Bid-{bid_id} is {bid_details.load_status}, cannot be cancelled!")
 
         log("BID STATUS IS VALID")
-        (update_successful, error) = await bid.update_status(bid_id=bid_id, status="cancelled", user_id=user_id,reason=r.reason)
+        (update_successful, error) = await bid.update_status(bid_id=bid_id, status="cancelled", user_id=user_id, reason=r.reason)
 
         if not update_successful:
             return ErrorResponse(data=[], client_msg=os.getenv("BID_CANCEL_ERROR"), dev_msg=error)
@@ -324,14 +329,15 @@ async def live_bid_details(request: Request, bid_id: str):
                 await redis.update(sorted_set=bid_id, transporter_name=transporter_rate_details["transporter_name"], transporter_id=str(transporter_rate_details["transporter_id"]),
                                    comment=transporter_rate_details["comment"], rate=transporter_rate_details["rate"], attempts=transporter_rate_details["attempts"])
 
-            return SuccessResponse(data=res_array, client_msg="Live Bid Details fetched Successfully", dev_msg="Live Bid Details fetched Successfully")
+            return SuccessResponse(data=res_array, client_msg="Live Bid Details fetched Successfully!", dev_msg="Live Bid Details fetched Successfully")
 
-        return SuccessResponse(data=bid_details, client_msg="Live Bid Details fetched Successfully", dev_msg="Live Bid Details fetched Successfully")
+        return SuccessResponse(data=bid_details, client_msg="Live Bid Details fetched Successfully!", dev_msg="Live Bid Details fetched Successfully")
 
     except Exception as err:
         return ServerError(err=err, errMsg=str(err))
 
-## TODO - email 
+# TODO - email
+
 
 @shipper_bidding_router.post("/match/{bid_id}")
 async def bid_match_for_transporters(request: Request, bid_id: str, transporters: List[TransporterBidMatchRequest], bg_tasks: BackgroundTasks):

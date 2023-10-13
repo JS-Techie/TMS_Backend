@@ -1,8 +1,10 @@
-from sqlalchemy import BigInteger, Boolean, Column, DateTime, Enum, ForeignKey, String, text, Double, JSON, Integer
-from sqlalchemy.orm import relationship
+from sqlalchemy import (JSON, BigInteger, Boolean, Column, DateTime, Double,
+                        Enum, ForeignKey, Integer, String, text)
 from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import relationship
 
 from config.db_config import Base
+
 
 class Persistance:
     created_at = Column(DateTime, nullable = False, server_default = text("now()"))

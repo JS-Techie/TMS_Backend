@@ -4,7 +4,6 @@ from config.redis import r as redis
 from utils.utilities import log
 
 
-
 class Redis:
 
     async def update(self, sorted_set: str, transporter_id: str, transporter_name: str, comment: str, rate: float, attempts: int) -> (any, str):
@@ -14,11 +13,11 @@ class Redis:
         log("COMMENT", comment)
         log("RATE", rate)
         log("NUMBER OF ATTEMPTS", attempts)
-        
+
         current_timestamp = int(time.time())
-        
+
         # key = f"{transporter_id}_{current_timestamp}"
-        
+
         rate = rate + current_timestamp / (10**10)
         log("RATE APPENDED WITH TIMESTAMP", rate)
         redis.hmset(transporter_id, {
@@ -32,7 +31,6 @@ class Redis:
 
         redis.zadd(sorted_set, {transporter_id: rate})
 
-      
         # redis.zadd(sorted_set, {transporter_id: (rate, current_timestamp)})
 
         log("SORTED SET APPEND IN REDIS", "OK")
@@ -104,10 +102,10 @@ class Redis:
                     redis.hdel(contained_id, field)
 
                 redis.zrem(sorted_set, contained_id)
-    
-    def position(self,sorted_set:str,key : str) -> (any,str):
+
+    def position(self, sorted_set: str, key: str) -> (any, str):
 
         try:
-            return (redis.zrank(name=sorted_set,value=key,withscore=False),"")
+            return (redis.zrank(name=sorted_set, value=key, withscore=False), "")
         except Exception as e:
-            return ({},str(e))
+            return ({}, str(e))

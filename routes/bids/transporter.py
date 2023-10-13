@@ -1,17 +1,17 @@
-from fastapi import APIRouter, Request
-import os
 import json
+import os
+
+from fastapi import APIRouter, Request
 
 from config.socket import manager
-from schemas.bidding import TransporterBidReq, TransporterLostBidsReq
 from data.bidding import valid_bid_status, valid_transporter_status
+from schemas.bidding import TransporterBidReq, TransporterLostBidsReq
 from utils.bids.bidding import Bid
-from utils.bids.transporters import Transporter
 from utils.bids.shipper import Shipper
+from utils.bids.transporters import Transporter
 from utils.redis import Redis
-from utils.response import ErrorResponse, SuccessResponse, ServerError
+from utils.response import ErrorResponse, ServerError, SuccessResponse
 from utils.utilities import log
-
 
 transporter_bidding_router: APIRouter = APIRouter(
     prefix="/transporter/bid", tags=["Transporter routes for bidding"])
@@ -168,7 +168,7 @@ async def provide_new_rate_for_bid(request: Request, bid_id: str, bid_req: Trans
 
         log("BID DETAILS", sorted_bid_details)
 
-        socket_successful = await manager.broadcast(bid_id=bid_id, message=json.dumps(sorted_bid_details))
+        await manager.broadcast(bid_id=bid_id, message=json.dumps(sorted_bid_details))
 
         log("SOCKET EVENT SENT", sorted_bid_details)
 

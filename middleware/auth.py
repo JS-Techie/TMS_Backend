@@ -1,13 +1,13 @@
+import os
+
 from fastapi import Request
-from starlette.middleware.base import BaseHTTPMiddleware
+from fastapi.responses import JSONResponse
 from jose import jwt
 from jose.exceptions import JWTError
-from fastapi.responses import JSONResponse
-import os
+from starlette.middleware.base import BaseHTTPMiddleware
 
 from utils.response import ErrorResponse
 from utils.utilities import log
-
 
 shp, trns, acu = os.getenv("SHIPPER"), os.getenv(
     "TRANSPORTER"), os.getenv("ACULEAD")
