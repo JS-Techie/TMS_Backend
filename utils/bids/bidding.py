@@ -513,7 +513,7 @@ class Bid:
             for bid in bids:
                 if convert_date_to_string(bid.bid_end_time) == current_time:
                     setattr(bid, "load_status", "pending")
-                    # redis.delete(sorted_set=bid)
+                    redis.delete(sorted_set=bid)
 
             session.commit()
 

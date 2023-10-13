@@ -93,15 +93,18 @@ class Redis:
         return True
 
     def delete(self, sorted_set: str):
-        contained_ids = self.get_all(sorted_set=sorted_set)
+        transporters = self.get_all(sorted_set=sorted_set)
 
-        if contained_ids:
-            for contained_id in contained_ids:
-                keys_of_contained_ids = redis.hkeys(contained_id)
-                for field in keys_of_contained_ids:
-                    redis.hdel(contained_id, field)
+        log("TRANSPORTERS TO DELETE",transporters)
 
-                redis.zrem(sorted_set, contained_id)
+        if not transporters:
+            return
+        
+        for transporter in transporters:
+            log("TRANSPORTER ID",transporter)
+            redis.delete(transporter)
+            redis.zrem(sorted_set,transporter)
+        
 
     def position(self, sorted_set: str, key: str) -> (any, str):
 
