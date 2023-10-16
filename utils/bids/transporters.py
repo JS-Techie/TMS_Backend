@@ -1,5 +1,5 @@
 import os
-from sqlalchemy import text
+from sqlalchemy import text, and_
 
 from config.db_config import Session
 from utils.response import ServerError, SuccessResponse
@@ -355,7 +355,7 @@ class Transporter:
             bids = (session
                     .query(BiddingLoad, ShipperModel, MapLoadSrcDestPair)
                     .outerjoin(ShipperModel, ShipperModel.shpr_id == BiddingLoad.bl_shipper_id)
-                    .outerjoin(MapLoadSrcDestPair, MapLoadSrcDestPair.mlsdp_bidding_load_id == BiddingLoad.bl_id)
+                    .outerjoin(MapLoadSrcDestPair, and_(MapLoadSrcDestPair.mlsdp_bidding_load_id == BiddingLoad.bl_id, MapLoadSrcDestPair.is_prime == True))
                     .filter(BiddingLoad.is_active == True, BiddingLoad.bl_id.in_(bid_ids))
                     .all()
                     )
@@ -395,7 +395,7 @@ class Transporter:
             bids = (session
                     .query(BiddingLoad, ShipperModel, MapLoadSrcDestPair)
                     .outerjoin(ShipperModel, ShipperModel.shpr_id == BiddingLoad.bl_shipper_id)
-                    .outerjoin(MapLoadSrcDestPair, MapLoadSrcDestPair.mlsdp_bidding_load_id == BiddingLoad.bl_id)
+                    .outerjoin(MapLoadSrcDestPair, and_(MapLoadSrcDestPair.mlsdp_bidding_load_id == BiddingLoad.bl_id, MapLoadSrcDestPair.is_prime == True))
                     .filter(BiddingLoad.is_active == True, BiddingLoad.bl_id.in_(bid_ids))
                     .all()
                     )
@@ -428,7 +428,7 @@ class Transporter:
             bids = (session
                     .query(BiddingLoad, ShipperModel, MapLoadSrcDestPair)
                     .outerjoin(ShipperModel, ShipperModel.shpr_id == BiddingLoad.bl_shipper_id)
-                    .outerjoin(MapLoadSrcDestPair, MapLoadSrcDestPair.mlsdp_bidding_load_id == BiddingLoad.bl_id)
+                    .outerjoin(MapLoadSrcDestPair, and_(MapLoadSrcDestPair.mlsdp_bidding_load_id == BiddingLoad.bl_id,MapLoadSrcDestPair.is_prime == True))
                     .filter(BiddingLoad.is_active == True, BiddingLoad.bl_id.in_(bid_ids),BiddingLoad.load_status in ["completed","confirmed"])
                     .all()
                     )
@@ -583,7 +583,7 @@ class Transporter:
          bids = (session
                     .query(BiddingLoad, ShipperModel, MapLoadSrcDestPair)
                     .outerjoin(ShipperModel, ShipperModel.shpr_id == BiddingLoad.bl_shipper_id)
-                    .outerjoin(MapLoadSrcDestPair, MapLoadSrcDestPair.mlsdp_bidding_load_id == BiddingLoad.bl_id)
+                    .outerjoin(MapLoadSrcDestPair, and_(MapLoadSrcDestPair.mlsdp_bidding_load_id == BiddingLoad.bl_id, MapLoadSrcDestPair.is_prime == True))
                     .filter(BiddingLoad.is_active == True, BiddingLoad.bl_id.in_(bid_ids))
                     .all()
                     )

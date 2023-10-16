@@ -605,6 +605,7 @@ class MapLoadSrcDestPair(Base, Persistance):
     
     mlsdp_id = Column(UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()"), nullable=False)
     mlsdp_bidding_load_id = Column(UUID(as_uuid=True), ForeignKey("t_bidding_load.bl_id"), nullable = True)
+    mlsdp_tracking_fleet_id = Column(UUID(as_uuid=True), ForeignKey('t_tracking_fleet.tf_id'), nullable = True)
     src_street_address = Column(String, nullable= False)
     src_city = Column(String, nullable= False)
     src_state = Column(String, nullable= False)
@@ -619,3 +620,4 @@ class MapLoadSrcDestPair(Base, Persistance):
     dest_country = Column( String, nullable= False)
     dest_lat = Column(Double, nullable= True)
     dest_long = Column(Double, nullable= True)
+    is_prime = Column(Boolean, default=False)

@@ -3,7 +3,7 @@ import os
 from datetime import datetime
 from string import Template
 
-from sqlalchemy import func, text
+from sqlalchemy import func, text, and_
 
 from config.db_config import Session
 from config.redis import r as redis
@@ -602,7 +602,7 @@ class Bid:
             bids_query = (session
                           .query(BiddingLoad, ShipperModel, MapLoadSrcDestPair)
                           .outerjoin(ShipperModel, ShipperModel.shpr_id == BiddingLoad.bl_shipper_id)
-                          .outerjoin(MapLoadSrcDestPair, MapLoadSrcDestPair.mlsdp_bidding_load_id == BiddingLoad.bl_id)
+                          .outerjoin(MapLoadSrcDestPair, and_(MapLoadSrcDestPair.mlsdp_bidding_load_id == BiddingLoad.bl_id, MapLoadSrcDestPair.is_prime == True))
                           .filter(BiddingLoad.is_active == True, BiddingLoad.bid_mode == "open_market")
                           )
 
@@ -631,7 +631,7 @@ class Bid:
             bids_query = (session
                           .query(BiddingLoad, ShipperModel, MapLoadSrcDestPair)
                           .outerjoin(ShipperModel, ShipperModel.shpr_id == BiddingLoad.bl_shipper_id)
-                          .outerjoin(MapLoadSrcDestPair, MapLoadSrcDestPair.mlsdp_bidding_load_id == BiddingLoad.bl_id)
+                          .outerjoin(MapLoadSrcDestPair, and_(MapLoadSrcDestPair.mlsdp_bidding_load_id == BiddingLoad.bl_id, MapLoadSrcDestPair.is_prime == True))
                           .filter(BiddingLoad.is_active == True, BiddingLoad.bl_shipper_id.in_(shippers), BiddingLoad.bid_mode == "private_pool")
                           )
 
