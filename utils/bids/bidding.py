@@ -683,9 +683,6 @@ class Bid:
 
             bids = query.all()
 
-            if not bids:
-                return (bids, "")
-
             return (structurize_bidding_stats(bids=bids), "")
 
         except Exception as e:
