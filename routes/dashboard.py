@@ -64,7 +64,7 @@ async def get_transporter_analysis(request: Request, filter_criteria: FilterBids
 
         bid_details, error = await bid.transporter_analysis(filter=filter_criteria)
 
-        if not bid_details:
+        if error:
             return ErrorResponse(data=[], dev_msg=error, client_msg="Something went wrong while fetching transporter details")
 
         return SuccessResponse(data=bid_details, dev_msg="All bid stats fetched", client_msg="Requested stats fetched successfully")
