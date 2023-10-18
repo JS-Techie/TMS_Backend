@@ -240,7 +240,7 @@ class Transporter:
                             setattr(transporter_detail,"updated_at","NOW()")
                             setattr(transporter_detail,"updated_by",user_id)
 
-            log("Data changed for Update")
+            log("Data changed for Update ")
 
             session.bulk_save_objects(assigned_transporters)
             session.commit()
