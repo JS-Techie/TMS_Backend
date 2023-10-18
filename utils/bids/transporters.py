@@ -217,7 +217,7 @@ class Transporter:
                         pmr_comment = getattr(
                             transporter,"comment"
                         ),
-                        is_active=None,
+                        is_active=True,
                         updated_at = "NOW()",
                         created_by=user_id,
                         updated_by=user_id
@@ -229,14 +229,13 @@ class Transporter:
             for transporter_detail in transporter_details:
                 if getattr(transporter_detail, "la_transporter_id") in transporters_to_be_updated:
                     for transporter in transporters:
-                        if getattr(transporter, "transporter_id") == getattr(transporter_detail, "la_transporter_id"):
+                        if getattr(transporter_detail, "la_transporter_id") == getattr(transporter, "transporter_id"):
                             setattr(transporter_detail, "la_transporter_id",
                                     getattr(transporter, "transporter_id"))
                             setattr(transporter_detail, "pmr_price",
                                     getattr(transporter, "rate"))
                             setattr(transporter_detail, "trans_pos_in_bid",
                                     getattr(transporter, "trans_pos_in_bid"))
-                            setattr(transporter_detail, "is_active", getattr(transporter_detail,"is_active"))
                             setattr(transporter_detail, "pmr_comment", getattr(transporter,"comment"))
                             setattr(transporter_detail,"updated_at","NOW()")
                             setattr(transporter_detail,"updated_by",user_id)
@@ -267,6 +266,7 @@ class Transporter:
                            .query(LoadAssigned)
                            .filter(LoadAssigned.la_bidding_load_id == bid_id,
                                    LoadAssigned.la_transporter_id == transporter_id,
+                                   LoadAssigned.is_assigned == True,
                                    LoadAssigned.is_active == True)
                            .first()
                            )
@@ -274,7 +274,7 @@ class Transporter:
             if not transporter:
                 return ({}, "Transporter details could not be found")
 
-            transporter.is_active = False
+            transporter.is_assigned = False
             transporter.no_of_fleets_assigned = 0
 
             bid = (session

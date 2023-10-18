@@ -446,6 +446,7 @@ class Bid:
                             transporter, "price_difference_percent"),
                         no_of_fleets_assigned=getattr(
                             transporter, "no_of_fleets_assigned"),
+                        is_assigned = True,
                         is_active=True,
                         created_by=user_id
                     )
@@ -468,6 +469,7 @@ class Bid:
                                 transporter, "price_difference_percent"))
                             setattr(transporter_detail, "no_of_fleets_assigned", getattr(
                                 transporter, "no_of_fleets_assigned"))
+                            setattr(transporter_detail,"is_assigned",True)
                             setattr(transporter_detail, "is_active", True)
 
             bid_details = session.query(BiddingLoad).filter(

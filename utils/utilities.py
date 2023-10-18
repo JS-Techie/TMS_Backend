@@ -122,7 +122,7 @@ def structurize_assignment_data(data):
         elif transporter_id == entry["load_assigned"].la_transporter_id:
             transporter_entry["fleet_assigned"] = entry["load_assigned"].no_of_fleets_assigned
             transporter_entry["pmr_price"] = entry["load_assigned"].pmr_price
-            transporter_entry["assigned"] = entry["load_assigned"].is_active
+            transporter_entry["assigned"] = entry["load_assigned"].is_assigned
 
     # Sort the rates array for each transporter by rate
     for transporter_entry in transporter_data.values():

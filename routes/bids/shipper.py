@@ -179,7 +179,7 @@ async def fetch_all_rates_given_by_transporter(request: Request, bid_id: str, re
         return ServerError(err=err, errMsg=str(err))
 
 
-@shipper_bidding_router.delete("/cancel/{bid_id}")
+@shipper_bidding_router.post("/cancel/{bid_id}")
 async def cancel_bid(request: Request, bid_id: str, r: CancelBidReq):
 
     user_id = request.state.current_user["id"]
