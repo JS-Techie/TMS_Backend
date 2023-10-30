@@ -1,14 +1,16 @@
 import os
-from sqlalchemy import text, and_
+from sqlalchemy import text, and_, or_, func
+from uuid import UUID
 
 from config.db_config import Session
 from utils.response import ServerError, SuccessResponse
 from models.models import BidTransaction, TransporterModel, MapShipperTransporter, LoadAssigned, BiddingLoad, User, ShipperModel, MapLoadSrcDestPair
 from utils.bids.bidding import Bid
 from utils.utilities import log, structurize_transporter_bids
-from data.bidding import lost_participated_transporter_bids,particpated_and_lost_status
+from data.bidding import lost_participated_transporter_bids, particpated_and_lost_status
 
 bid = Bid()
+
 
 class Transporter:
 
@@ -41,37 +43,36 @@ class Transporter:
         log(bid_id)
         log("Notification to transporters will be sent here!")
 
-    async def historical_rates(self, transporter_id: str, bid_id: str) -> (any,str):
+    async def historical_rates(self, transporter_id: str, bid_id: str) -> (any, str):
 
         session = Session()
 
         try:
 
             historical_rates = (session
-                     .query(BidTransaction)
-                     .filter(BidTransaction.transporter_id == transporter_id, BidTransaction.bid_id == bid_id)
-                     .order_by(BidTransaction.created_at.desc())
-                     .all()
-                     )
-            
+                                .query(BidTransaction)
+                                .filter(BidTransaction.transporter_id == transporter_id, BidTransaction.bid_id == bid_id)
+                                .order_by(BidTransaction.created_at.desc())
+                                .all()
+                                )
+
             price_match_rates = (session
                                  .query(LoadAssigned)
                                  .filter(LoadAssigned.la_transporter_id == transporter_id, LoadAssigned.la_bidding_load_id == bid_id)
                                  .first()
                                  )
-            
-            return({
-                "historical" : historical_rates,
-                "pmr_price" : price_match_rates.pmr_price if price_match_rates else None,
-                "pmr_comment" : price_match_rates.pmr_comment if price_match_rates else None,
-                "pmr_date" : price_match_rates.updated_at if price_match_rates else None,
-                "no_of_fleets_assigned" : price_match_rates.no_of_fleets_assigned if price_match_rates else None,
-            },"")
-            
+
+            return ({
+                "historical": historical_rates,
+                "pmr_price": price_match_rates.pmr_price if price_match_rates else None,
+                "pmr_comment": price_match_rates.pmr_comment if price_match_rates else None,
+                "pmr_date": price_match_rates.updated_at if price_match_rates else None,
+                "no_of_fleets_assigned": price_match_rates.no_of_fleets_assigned if price_match_rates else None,
+            }, "")
 
         except Exception as err:
             session.rollback()
-            return ([],str(err))
+            return ([], str(err))
 
         finally:
             session.close()
@@ -99,7 +100,7 @@ class Transporter:
         try:
             no_of_tries = session.query(BidTransaction).filter(
                 BidTransaction.transporter_id == transporter_id, BidTransaction.bid_id == bid_id).count()
-            
+
             log("NUMBER OF TRIES", no_of_tries)
 
             return (no_of_tries, "")
@@ -124,8 +125,8 @@ class Transporter:
                                )
 
             if not transporter_bid:
-                return (0.0,"")
-                        
+                return (0.0, "")
+
             return (transporter_bid.rate, "")
 
         except Exception as e:
@@ -173,7 +174,7 @@ class Transporter:
         finally:
             session.close()
 
-    async def bid_match(self, bid_id: str, transporters: any,user_id : str) -> (any, str):
+    async def bid_match(self, bid_id: str, transporters: any, user_id: str) -> (any, str):
         session = Session()
 
         try:
@@ -188,7 +189,7 @@ class Transporter:
 
             transporter_details = session.query(LoadAssigned).filter(
                 LoadAssigned.la_bidding_load_id == bid_id, LoadAssigned.la_transporter_id.in_(transporter_ids)).all()
-            
+
             log("Fetched Transporter Detail ", transporter_details)
             for transporter_detail in transporter_details:
                 fetched_transporter_ids.append(
@@ -210,15 +211,15 @@ class Transporter:
                         trans_pos_in_bid=getattr(
                             transporter, "trans_pos_in_bid"
                         ),
-                        no_of_fleets_assigned = 0,
-                        price = getattr(transporter,"rate"),
+                        no_of_fleets_assigned=0,
+                        price=getattr(transporter, "rate"),
                         pmr_price=getattr(
                             transporter, "rate"),
-                        pmr_comment = getattr(
-                            transporter,"comment"
+                        pmr_comment=getattr(
+                            transporter, "comment"
                         ),
                         is_active=True,
-                        updated_at = "NOW()",
+                        updated_at="NOW()",
                         created_by=user_id,
                         updated_by=user_id
                     )
@@ -236,9 +237,10 @@ class Transporter:
                                     getattr(transporter, "rate"))
                             setattr(transporter_detail, "trans_pos_in_bid",
                                     getattr(transporter, "trans_pos_in_bid"))
-                            setattr(transporter_detail, "pmr_comment", getattr(transporter,"comment"))
-                            setattr(transporter_detail,"updated_at","NOW()")
-                            setattr(transporter_detail,"updated_by",user_id)
+                            setattr(transporter_detail, "pmr_comment",
+                                    getattr(transporter, "comment"))
+                            setattr(transporter_detail, "updated_at", "NOW()")
+                            setattr(transporter_detail, "updated_by", user_id)
 
             log("Data changed for Update ")
 
@@ -256,39 +258,50 @@ class Transporter:
         finally:
             session.close()
 
-    async def unassign(self, bid_id: str, transporter_id: str) -> (any, str):
+    async def unassign(self, bid_id: str, transporter_request: any) -> (any, str):
 
         session = Session()
 
         try:
 
-            transporter = (session
+            transporter_id= transporter_request.transporter_id
+            unassignment_reason= transporter_request.unassignment_reason
+            
+            transporters = (session
                            .query(LoadAssigned)
                            .filter(LoadAssigned.la_bidding_load_id == bid_id,
-                                   LoadAssigned.la_transporter_id == transporter_id,
                                    LoadAssigned.is_assigned == True,
                                    LoadAssigned.is_active == True)
-                           .first()
+                           .all()
                            )
 
-            if not transporter:
+            if not transporters:
                 return ({}, "Transporter details could not be found")
-
-            transporter.is_assigned = False
-            transporter.no_of_fleets_assigned = 0
+            
+            no_transporter_assigned = True
+            
+            for transporter in transporters:
+                if transporter.la_transporter_id == UUID(transporter_id):
+                    transporter.is_assigned = False
+                    transporter.no_of_fleets_assigned = 0
+                    transporter.unassignment_reason= unassignment_reason
+                
+                elif no_transporter_assigned and transporter.la_transporter_id != UUID(transporter_id):
+                    no_transporter_assigned = False
 
             bid = (session
                    .query(BiddingLoad)
                    .filter(BiddingLoad.bl_id == bid_id)
                    .first()
                    )
-            
-           
 
             if not bid:
                 return ({}, "Bid details could not be found")
 
-            bid.load_status = "partially_confirmed"
+            if no_transporter_assigned:
+                bid.load_status = "pending"
+            else:
+                bid.load_status = "partially_confirmed"
 
             session.commit()
 
@@ -343,7 +356,7 @@ class Transporter:
         try:
             bid_arr = (session
                        .query(LoadAssigned)
-                       .filter(LoadAssigned.la_transporter_id == transporter_id,LoadAssigned.is_active == True)
+                       .filter(LoadAssigned.la_transporter_id == transporter_id, LoadAssigned.is_active == True)
                        .all()
                        )
 
@@ -370,8 +383,8 @@ class Transporter:
             return [], str(e)
         finally:
             session.close()
-    
-    async def participated_bids(self,transporter_id : str) -> (any,str):
+
+    async def participated_bids(self, transporter_id: str) -> (any, str):
 
         session = Session()
 
@@ -382,15 +395,15 @@ class Transporter:
                        .filter(BidTransaction.transporter_id == transporter_id)
                        .all()
                        )
-            
+
             if not bid_arr:
                 return ([], "")
-            
-            log("PARTICIPATED AND NOT LOST",bid_arr)
+
+            log("PARTICIPATED AND NOT LOST", bid_arr)
 
             bid_ids = [str(bid.bid_id) for bid in bid_arr]
 
-            log("BID IDs OF NOT LOST AND PARTICPATED",bid_ids)
+            log("BID IDs OF NOT LOST AND PARTICPATED", bid_ids)
 
             bids = (session
                     .query(BiddingLoad, ShipperModel, MapLoadSrcDestPair)
@@ -428,8 +441,8 @@ class Transporter:
             bids = (session
                     .query(BiddingLoad, ShipperModel, MapLoadSrcDestPair)
                     .outerjoin(ShipperModel, ShipperModel.shpr_id == BiddingLoad.bl_shipper_id)
-                    .outerjoin(MapLoadSrcDestPair, and_(MapLoadSrcDestPair.mlsdp_bidding_load_id == BiddingLoad.bl_id,MapLoadSrcDestPair.is_prime == True))
-                    .filter(BiddingLoad.is_active == True, BiddingLoad.bl_id.in_(bid_ids),BiddingLoad.load_status in ["completed","confirmed"])
+                    .outerjoin(MapLoadSrcDestPair, and_(MapLoadSrcDestPair.mlsdp_bidding_load_id == BiddingLoad.bl_id, MapLoadSrcDestPair.is_prime == True))
+                    .filter(BiddingLoad.is_active == True, BiddingLoad.bl_id.in_(bid_ids), BiddingLoad.load_status in ["completed", "confirmed"])
                     .all()
                     )
 
@@ -452,30 +465,30 @@ class Transporter:
 
         try:
             all_bids, error = await self.bids_by_status(transporter_id=transporter_id)
-       
+
             if error:
                 return ([], "All bids for transporter could not be fetched")
-            
+
             _all = all_bids["all"]
 
-            log("ALL BIDS",_all)
+            log("ALL BIDS", _all)
 
             (participated_bids, error) = await self.participated_bids(transporter_id=transporter_id)
 
             if error:
                 return ([], "Participated bids for transporter could not be fetched")
-            
+
             log("PARTICIPATED")
 
             not_participated_bids = [
                 bid for bid in _all if bid not in participated_bids]
 
-            # and bid.load_status in particpated_and_lost_status 
+            # and bid.load_status in particpated_and_lost_status
 
             if not not_participated_bids:
                 return ([], "")
 
-            return not_participated_bids,""
+            return not_participated_bids, ""
 
         except Exception as e:
             session.rollback()
@@ -511,7 +524,7 @@ class Transporter:
         finally:
             session.close()
 
-    async def bid_details(self,bid_id :str,transporter_id : str | None = None) -> (any,str):
+    async def bid_details(self, bid_id: str, transporter_id: str | None = None) -> (any, str):
 
         session = Session()
 
@@ -524,63 +537,62 @@ class Transporter:
                 .query(BiddingLoad)
                 .filter(BiddingLoad.bl_id == bid_id)
                 .first()
-            )   
+            )
 
-
-            log("BID DETAILS AFTER QUERY",bid_details)
-
+            log("BID DETAILS AFTER QUERY", bid_details)
 
             if not bid_details:
-                return ([],"")
+                return ([], "")
 
-            return (bid_details,"")
-        
+            return (bid_details, "")
+
         except Exception as e:
             session.rollback()
-            return ({},str(e))
+            return ({}, str(e))
         finally:
             session.close()
 
-    async def assigned_bids(self,transporter_id : str) -> (any,str):
+    async def assigned_bids(self, transporter_id: str) -> (any, str):
 
         session = Session()
 
         try:
-        
-         _all,error = await self.bids_by_status(transporter_id=transporter_id)
 
-         if error:
-             return ([],error)
-         
-         all_bids = _all["all"]
+            _all, error = await self.bids_by_status(transporter_id=transporter_id)
 
-         if not all_bids:
-             return([],"")
-         
-         log("ALL BIDS FOR A TRANSPORTER",all_bids)
-         
-         ## Filtering all bids which are confirmed or partially confirmed
-         filtered_bid_ids = [str(bid["bid_id"]) for bid in all_bids if bid["load_status"] == "confirmed" or bid["load_status"] == "partially_confirmed"]
+            if error:
+                return ([], error)
 
-         log("BIDS WHICH ARE CONFIRMED OR PARTIALLY CONFIRMED ",filtered_bid_ids)
+            all_bids = _all["all"]
 
-         bids_which_transporter_has_been_assigned_to = (
-             session
-             .query(LoadAssigned)
-             .filter(LoadAssigned.la_bidding_load_id.in_(filtered_bid_ids),LoadAssigned.la_transporter_id == transporter_id,LoadAssigned.is_active == True)
-             .all()
-         )
-
-         if not bids_which_transporter_has_been_assigned_to:
+            if not all_bids:
                 return ([], "")
-         
-         log("BIDS WHICH TRANSPORTER IS ASSIGNED TO ",bids_which_transporter_has_been_assigned_to)
 
-         bid_ids = [str(bid.la_bidding_load_id) for bid in bids_which_transporter_has_been_assigned_to]
+            log("ALL BIDS FOR A TRANSPORTER", all_bids)
 
+            # Filtering all bids which are confirmed or partially confirmed
+            filtered_bid_ids = [str(bid["bid_id"]) for bid in all_bids if bid["load_status"]
+                                == "confirmed" or bid["load_status"] == "partially_confirmed"]
 
+            log("BIDS WHICH ARE CONFIRMED OR PARTIALLY CONFIRMED ", filtered_bid_ids)
 
-         bids = (session
+            bids_which_transporter_has_been_assigned_to = (
+                session
+                .query(LoadAssigned)
+                .filter(LoadAssigned.la_bidding_load_id.in_(filtered_bid_ids), LoadAssigned.la_transporter_id == transporter_id, LoadAssigned.is_active == True)
+                .all()
+            )
+
+            if not bids_which_transporter_has_been_assigned_to:
+                return ([], "")
+
+            log("BIDS WHICH TRANSPORTER IS ASSIGNED TO ",
+                bids_which_transporter_has_been_assigned_to)
+
+            bid_ids = [str(bid.la_bidding_load_id)
+                       for bid in bids_which_transporter_has_been_assigned_to]
+
+            bids = (session
                     .query(BiddingLoad, ShipperModel, MapLoadSrcDestPair)
                     .outerjoin(ShipperModel, ShipperModel.shpr_id == BiddingLoad.bl_shipper_id)
                     .outerjoin(MapLoadSrcDestPair, and_(MapLoadSrcDestPair.mlsdp_bidding_load_id == BiddingLoad.bl_id, MapLoadSrcDestPair.is_prime == True))
@@ -588,16 +600,15 @@ class Transporter:
                     .all()
                     )
 
-         if not bids:
+            if not bids:
                 return ([], "")
-         
-         log("ALL BIDS WHICH TRANSPORTER IS ASSIGNED TO ",bids)
 
+            log("ALL BIDS WHICH TRANSPORTER IS ASSIGNED TO ", bids)
 
-         return (structurize_transporter_bids(bids=bids), "")
-        
+            return (structurize_transporter_bids(bids=bids), "")
+
         except Exception as e:
             session.rollback()
-            return ([],str(e))
+            return ([], str(e))
         finally:
             session.close()

@@ -389,7 +389,7 @@ async def unassign_transporter_for_bid(request: Request, bid_id: str, tr: Transp
         if not valid_bid_id:
             return ErrorResponse(data=[], client_msg=os.getenv("INVALID_BID_ERROR"), dev_msg=error)
 
-        (unassigned_transporter, error) = await transporter.unassign(bid_id=bid_id, transporter_id=tr.transporter_id)
+        (unassigned_transporter, error) = await transporter.unassign(bid_id=bid_id, transporter_request=tr)
 
         if error:
             return ErrorResponse(data=[], client_msg=os.getenv("INVALID_BID_ERROR"), dev_msg=error)

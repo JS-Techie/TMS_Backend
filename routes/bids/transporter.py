@@ -4,6 +4,7 @@ import os
 from fastapi import APIRouter, Request
 
 from config.socket import manager
+from datetime import datetime
 from data.bidding import valid_bid_status, valid_transporter_status
 from schemas.bidding import TransporterBidReq, TransporterLostBidsReq
 from utils.bids.bidding import Bid
@@ -82,7 +83,7 @@ async def provide_new_rate_for_bid(request: Request, bid_id: str, bid_req: Trans
 
     transporter_id, user_id = request.state.current_user[
         "transporter_id"], request.state.current_user["id"]
-    
+
     # user_id = os.getenv("USERID")
 
     try:
@@ -109,7 +110,16 @@ async def provide_new_rate_for_bid(request: Request, bid_id: str, bid_req: Trans
         log("BID DETAILS LOAD STATUS", bid_details.load_status)
 
         if bid_details.load_status not in valid_bid_status:
-            return ErrorResponse(data=[], client_msg=f"This Load is not Accepting Bids yet, start time is {bid_details.bid_time}", dev_msg="Tried bidding, but bid is not live yet")
+            current_time = datetime.now()
+
+            if current_time < bid_details.bid_time and current_time < bid_details.bid_end_time:
+                return ErrorResponse(data=[], client_msg=f"This Load is not Accepting Bids yet, the start time is {bid_details.bid_time}", dev_msg="Tried bidding, but bid is not live yet")
+
+            elif current_time > bid_details.bid_time and current_time > bid_details.bid_end_time:
+                return ErrorResponse(data=[], client_msg=f"This Load is not Accepting Bids anymore, the end time was {bid_details.bid_end_time}", dev_msg="Tried bidding, but bid is not live anymore")
+
+            else:
+                return ErrorResponse(data=[], client_msg=os.getenv("GENERIC_ERROR"), dev_msg="Ambiguous Bid Time and Bid End Time")
 
         log("BID DETAILS FOUND", bid_id)
 

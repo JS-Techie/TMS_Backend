@@ -327,6 +327,7 @@ class LoadAssigned(Base, Persistance):
     is_assigned = Column(Boolean, default=None, nullable=True)
     pmr_price = Column(Double, nullable = True)
     pmr_comment = Column(String,nullable=True)
+    unassignment_reason = Column(String, nullable=True)
 
 
 class Notification(Base, Persistance):
@@ -337,7 +338,7 @@ class Notification(Base, Persistance):
     nt_sender_id = Column(UUID(as_uuid = True), ForeignKey("t_user.user_id"), nullable = True)
     nt_text = Column(String, nullable = False)
     nt_type = Column(String, nullable = False)
-    is_read = Column(String, nullable = False, default = False)
+    is_read = Column(Boolean, nullable = False, default = False)
     
 
 class BidParticipation (Base, Persistance):

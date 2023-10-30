@@ -32,6 +32,7 @@ def structurize(input_array):
                 "reporting_to_time": item["reporting_to_time"],
                 "bl_cancellation_reason": item["bl_cancellation_reason"],
                 "enable_tracking": item["enable_tracking"],
+                "total_no_of_fleets": item["no_of_fleets"],
                 "load_type": load_type_dict[item["bid_mode"]],
                 "src_city": item["src_city"],
                 "dest_city": item["dest_city"],
