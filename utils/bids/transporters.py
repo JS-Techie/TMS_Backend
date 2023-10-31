@@ -7,7 +7,7 @@ from utils.response import ServerError, SuccessResponse
 from models.models import BidTransaction, TransporterModel, MapShipperTransporter, LoadAssigned, BiddingLoad, User, ShipperModel, MapLoadSrcDestPair
 from utils.bids.bidding import Bid
 from utils.utilities import log, structurize_transporter_bids
-from data.bidding import lost_participated_transporter_bids, particpated_and_lost_status
+from data.bidding import lost_participated_transporter_bids, live_bid_details
 
 bid = Bid()
 
@@ -264,28 +264,28 @@ class Transporter:
 
         try:
 
-            transporter_id= transporter_request.transporter_id
-            unassignment_reason= transporter_request.unassignment_reason
-            
+            transporter_id = transporter_request.transporter_id
+            unassignment_reason = transporter_request.unassignment_reason
+
             transporters = (session
-                           .query(LoadAssigned)
-                           .filter(LoadAssigned.la_bidding_load_id == bid_id,
-                                   LoadAssigned.is_assigned == True,
-                                   LoadAssigned.is_active == True)
-                           .all()
-                           )
+                            .query(LoadAssigned)
+                            .filter(LoadAssigned.la_bidding_load_id == bid_id,
+                                    LoadAssigned.is_assigned == True,
+                                    LoadAssigned.is_active == True)
+                            .all()
+                            )
 
             if not transporters:
                 return ({}, "Transporter details could not be found")
-            
+
             no_transporter_assigned = True
-            
+
             for transporter in transporters:
                 if transporter.la_transporter_id == UUID(transporter_id):
                     transporter.is_assigned = False
                     transporter.no_of_fleets_assigned = 0
-                    transporter.unassignment_reason= unassignment_reason
-                
+                    transporter.unassignment_reason = unassignment_reason
+
                 elif no_transporter_assigned and transporter.la_transporter_id != UUID(transporter_id):
                     no_transporter_assigned = False
 
@@ -610,5 +610,28 @@ class Transporter:
         except Exception as e:
             session.rollback()
             return ([], str(e))
+        finally:
+            session.close()
+
+    async def position(self,transporter_id: str,bid_id : str) -> (any, str):
+        try:
+            session = Session()
+
+            bid_details = session.execute(text(live_bid_details), params={
+                "bid_id": bid_id})
+
+            if not bid_details:
+                return ({}, "Error While Fetching Bid Details")
+
+            _position = 0
+            
+            for index, bid_detail in enumerate(bid_details):
+                if str(bid_detail.transporter_id) == str(transporter_id):
+                    return (index, "")
+
+        except Exception as e:
+            session.rollback()
+            return ({}, str(e))
+
         finally:
             session.close()
