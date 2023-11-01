@@ -619,13 +619,16 @@ class Transporter:
 
             bid_details = session.execute(text(live_bid_details), params={
                 "bid_id": bid_id})
-
-            if not bid_details:
-                return ({}, "Error While Fetching Bid Details")
-
+            
+            bid_summary=[]
+            for row in bid_details:
+                bid_summary.append(row._mapping)
+            
+            if not bid_summary:
+                return (None, "")
             _position = 0
             
-            for index, bid_detail in enumerate(bid_details):
+            for index, bid_detail in enumerate(bid_summary):
                 if str(bid_detail.transporter_id) == str(transporter_id):
                     return (index, "")
 

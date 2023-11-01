@@ -221,7 +221,8 @@ async def fetch_lost_bids_for_transporter_based_on_participation(request: Reques
 @transporter_bidding_router.get("/lowest/{bid_id}")
 async def lowest_price_of_bid_and_transporter(request: Request, bid_id: str):
 
-    transporter_id = request.state.current_user["transporter_id"]
+    transporter_id = str(request.state.current_user["transporter_id"])
+    log("TRANSPORTER DATA TYPE :", type(transporter_id))
 
     try:
         if not transporter_id:
