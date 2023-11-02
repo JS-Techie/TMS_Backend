@@ -36,6 +36,7 @@ def structurize(input_array):
                 "load_type": load_type_dict[item["bid_mode"]],
                 "src_city": item["src_city"],
                 "dest_city": item["dest_city"],
+                "no_of_bids_placed":item["total_no_of_bids"],
                 "transporters": []  # Rename bid_items to transporters
             }
 
