@@ -633,6 +633,7 @@ class Transporter:
             for index, bid_detail in enumerate(sorted_bid_summary):
                 if str(bid_detail.transporter_id) == str(transporter_id):
                     return (index, "")
+            return (None,"")
 
         except Exception as e:
             session.rollback()
