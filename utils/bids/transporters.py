@@ -626,9 +626,11 @@ class Transporter:
             
             if not bid_summary:
                 return (None, "")
+            
+            sorted_bid_summary = sorted(bid_summary, key=lambda x: x['rate'])            
             _position = 0
             
-            for index, bid_detail in enumerate(bid_summary):
+            for index, bid_detail in enumerate(sorted_bid_summary):
                 if str(bid_detail.transporter_id) == str(transporter_id):
                     return (index, "")
 

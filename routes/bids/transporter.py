@@ -250,17 +250,17 @@ async def lowest_price_of_bid_and_transporter(request: Request, bid_id: str):
 
         log("FOUND BID LOWEST PRICE", bid_lowest_price)
 
-        transporter_position, error = redis.position(
-            sorted_set=bid_id, key=transporter_id)
+        # transporter_position, error = redis.position(
+        #     sorted_set=bid_id, key=transporter_id)
+
+        # if error:
+        #     return ErrorResponse(data=[], dev_msg=error, client_msg="Something went wrong file fetching bid details for transporter, please try again in sometime!")
+
+        # if not transporter_position:
+        (transporter_position, error) = await transporter.position(transporter_id=transporter_id, bid_id=bid_id)
 
         if error:
             return ErrorResponse(data=[], dev_msg=error, client_msg="Something went wrong file fetching bid details for transporter, please try again in sometime!")
-
-        if not transporter_position:
-            (transporter_position, error) = await transporter.position(transporter_id=transporter_id, bid_id=bid_id)
-
-            if error:
-                return ErrorResponse(data=[], dev_msg=error, client_msg="Something went wrong file fetching bid details for transporter, please try again in sometime!")
         log("TRANSPORTER POSITION ", transporter_position)
         return SuccessResponse(data={
             "bid_lowest_price": bid_lowest_price if bid_lowest_price != float("inf") else None,
