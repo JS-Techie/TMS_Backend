@@ -21,24 +21,31 @@ def structurize(input_array):
         "private_pool": "Private Pool",
         "open_market": "Open Market"
     }
-
+    
     for item in input_array:
         bl_id = item["bl_id"]
         if bl_id not in result_dict:
             result_dict[bl_id] = {
                 "bl_id": bl_id,
                 "bid_time": item["bid_time"],
+                "bid_mode": item["bid_mode"],
                 "reporting_from_time": item["reporting_from_time"],
                 "reporting_to_time": item["reporting_to_time"],
                 "bl_cancellation_reason": item["bl_cancellation_reason"],
                 "enable_tracking": item["enable_tracking"],
                 "total_no_of_fleets": item["no_of_fleets"],
+                "fleet_type": item["fleet_type"],
+                "bid_show": item["show_current_lowest_rate_transporter"],
                 "load_type": load_type_dict[item["bid_mode"]],
-                "src_city": item["src_city"],
-                "dest_city": item["dest_city"],
+                "prime_src_city": item["src_city"],
+                "prime_dest_city": item["dest_city"],
+                "src_cities": ','.join(item["src_cities"]),
+                "src_destinations": ','.join(item["src_destinations"]),
                 "no_of_bids_placed":item["total_no_of_bids"],
                 "transporters": []  # Rename bid_items to transporters
             }
+            
+            
 
         bid_item = {
             "la_transporter_id": item["la_transporter_id"],

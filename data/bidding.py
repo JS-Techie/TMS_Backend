@@ -23,8 +23,12 @@ status_wise_fetch_query = """
                 t_bidding_load.bl_cancellation_reason,
                 t_bidding_load.enable_tracking,
                 t_bidding_load.no_of_fleets,
+                t_bidding_load.fleet_type,
+                t_bidding_load.show_current_lowest_rate_transporter,
                 t_map_load_src_dest_pair.src_city,
                 t_map_load_src_dest_pair.dest_city,
+				(select array_agg(src_city) from t_map_load_src_dest_pair where t_map_load_src_dest_pair.mlsdp_bidding_load_id = t_bidding_load.bl_id and t_map_load_src_dest_pair.is_active=true) as src_cities,
+				(select array_agg(dest_city) from t_map_load_src_dest_pair where t_map_load_src_dest_pair.mlsdp_bidding_load_id = t_bidding_load.bl_id and t_map_load_src_dest_pair.is_active=true) as src_destinations,
                 t_load_assigned.la_transporter_id,
                 t_load_assigned.trans_pos_in_bid,
                 t_load_assigned.price,
@@ -43,7 +47,7 @@ status_wise_fetch_query = """
             FROM t_bidding_load
             LEFT JOIN t_load_assigned ON t_load_assigned.la_bidding_load_id = t_bidding_load.bl_id
             LEFT JOIN t_transporter ON t_transporter.trnsp_id = t_load_assigned.la_transporter_id
-            LEFT JOIN t_map_load_src_dest_pair ON (t_map_load_src_dest_pair.mlsdp_bidding_load_id = t_bidding_load.bl_id and t_map_load_src_dest_pair.is_prime = true)
+            LEFT JOIN t_map_load_src_dest_pair ON (t_map_load_src_dest_pair.mlsdp_bidding_load_id = t_bidding_load.bl_id and t_map_load_src_dest_pair.is_active=true and t_map_load_src_dest_pair.is_prime=true)
             LEFT JOIN t_tracking_fleet ON t_tracking_fleet.tf_transporter_id = t_load_assigned.la_transporter_id
             WHERE
                 t_bidding_load.is_active = true
@@ -61,8 +65,12 @@ filter_wise_fetch_query = """
                 t_bidding_load.bl_cancellation_reason,
                 t_bidding_load.enable_tracking,
                 t_bidding_load.no_of_fleets,
+                t_bidding_load.fleet_type,
+                t_bidding_load.show_current_lowest_rate_transporter,
                 t_map_load_src_dest_pair.src_city,
                 t_map_load_src_dest_pair.dest_city,
+				(select array_agg(src_city) from t_map_load_src_dest_pair where t_map_load_src_dest_pair.mlsdp_bidding_load_id = t_bidding_load.bl_id and t_map_load_src_dest_pair.is_active=true) as src_cities,
+				(select array_agg(dest_city) from t_map_load_src_dest_pair where t_map_load_src_dest_pair.mlsdp_bidding_load_id = t_bidding_load.bl_id and t_map_load_src_dest_pair.is_active=true) as src_destinations,
                 t_load_assigned.la_transporter_id,
                 t_load_assigned.trans_pos_in_bid,
                 t_load_assigned.price,
@@ -81,7 +89,7 @@ filter_wise_fetch_query = """
             FROM t_bidding_load
             LEFT JOIN t_load_assigned ON t_load_assigned.la_bidding_load_id = t_bidding_load.bl_id
             LEFT JOIN t_transporter ON t_transporter.trnsp_id = t_load_assigned.la_transporter_id
-            LEFT JOIN t_map_load_src_dest_pair ON (t_map_load_src_dest_pair.mlsdp_bidding_load_id = t_bidding_load.bl_id and t_map_load_src_dest_pair.is_prime = true)
+            LEFT JOIN t_map_load_src_dest_pair ON (t_map_load_src_dest_pair.mlsdp_bidding_load_id = t_bidding_load.bl_id and t_map_load_src_dest_pair.is_active=true and t_map_load_src_dest_pair.is_prime = true)
             LEFT JOIN t_tracking_fleet ON t_tracking_fleet.tf_transporter_id = t_load_assigned.la_transporter_id
             WHERE
                 t_bidding_load.is_active = true
