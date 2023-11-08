@@ -35,12 +35,15 @@ def structurize(input_array):
                 "enable_tracking": item["enable_tracking"],
                 "total_no_of_fleets": item["no_of_fleets"],
                 "fleet_type": item["fleet_type"],
+                "fleet_name": item["fleet_name"],
+                "shipper_id": item["bl_shipper_id"],
+                "shipper_name": item["shipper_name"],
                 "bid_show": item["show_current_lowest_rate_transporter"],
                 "load_type": load_type_dict[item["bid_mode"]],
                 "prime_src_city": item["src_city"],
                 "prime_dest_city": item["dest_city"],
                 "src_cities": ','.join(item["src_cities"]),
-                "src_destinations": ','.join(item["src_destinations"]),
+                "dest_cities": ','.join(item["dest_cities"]),
                 "no_of_bids_placed":item["total_no_of_bids"],
                 "transporters": []  # Rename bid_items to transporters
             }
