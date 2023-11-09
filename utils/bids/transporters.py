@@ -1,4 +1,4 @@
-import os
+import os, httpx
 from sqlalchemy import text, and_, or_, func
 from uuid import UUID
 
@@ -39,9 +39,58 @@ class Transporter:
         finally:
             session.close()
 
-    async def notify(self, bid_id: str):
-        log(bid_id)
-        log("Notification to transporters will be sent here!")
+    async def notify(self, bid_id: str, authtoken: any)->(bool,str):
+        
+        session = Session()
+        
+        try:
+            (bid_details, error)=await self.bid_details(bid_id=bid_id)
+            if error:
+                return("", error)
+            
+            login_url = "http://0.0.0.0:2000/api/secure/notification/"
+            headers = {
+                'Authorization': authtoken
+                    }            
+            payload=[]
+            
+            if bid_details.bid_mode == 'private_pool':
+                transporters=session.query(MapShipperTransporter).filter(MapShipperTransporter.mst_shipper_id == bid_details.bl_shipper_id, MapShipperTransporter.is_active == True).all()
+                for transporter in transporters:
+                    notification = {"nt_receiver_id" :transporter.mst_transporter_id,
+                                    "nt_text" :f"New Bid for a Load needing {bid_details.no_of_fleets} fleets is Available with Load id - {bid_details.bl_id}. The Bidding will start from {bid_details.bid_time}",
+                                    "nt_type" :"",
+                                    "nt_deep_link" :"transporter_dashboard_upcoming",
+                                    }
+                    payload.append(notification)
+            elif bid_details.bid_mode == 'open_market':
+                transporters=session.query(TransporterModel).filter(TransporterModel.is_active == True).all()
+                for transporter in transporters:
+                    notification = {"nt_receiver_id" :transporter.trnsp_id,
+                                    "nt_text" :f"New Bid for a Load needing {bid_details.no_of_fleets} fleets is Available with Load id - {bid_details.bl_id}. The Bidding will start from {bid_details.bid_time}",
+                                    "nt_type" :"",
+                                    "nt_deep_link" :"transporter_dashboard_upcoming",
+                                    }
+                    payload.append(notification)
+                    
+            log("PAYLOAD", payload)
+            log("HEADER",headers)
+            log("AFTER ASYNC ")
+            with httpx.Client() as client:
+                response = client.post(url=login_url, headers=headers, data=payload)
+            log("NOTIFICATION CREATE Response")
+            json_response= response.json()
+            
+            if json_response["success"]==False:
+                return (False,json_response["dev_message"])
+            return (True,"")
+            
+        except Exception as err:
+            session.rollback()
+            return("", str(err))
+        finally:
+            session.close()
+        
 
     async def historical_rates(self, transporter_id: str, bid_id: str) -> (any, str):
 

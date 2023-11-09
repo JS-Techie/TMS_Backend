@@ -95,9 +95,11 @@ async def publish_new_bid(request: Request, bid_id: str, bg_tasks: BackgroundTas
 
         if not update_successful:
             return ErrorResponse(data=bid_id, client_msg=os.getenv("BID_PUBLISH_ERROR"), dev_msg=error)
-        # This might have to be done in a separate thread
-        # bg_tasks.add_task(transporter.notify(bid_id))
-
+        
+        # (success, error)= await transporter.notify(bid_id=bid_id, authtoken=request.headers.get("authorization", ""))
+        # if not success:
+        #     return ErrorResponse(data=[], dev_msg=error)
+        
         return SuccessResponse(data=bid_id, client_msg=f"Bid-{bid_id} is now published!", dev_msg="Bid status was updated successfully!")
 
     except Exception as err:
