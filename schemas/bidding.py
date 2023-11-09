@@ -1,7 +1,8 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+from typing import Union
 
 
 class FilterBidsRequest(BaseModel):
@@ -45,3 +46,14 @@ class TransporterLostBidsReq(BaseModel):
 
 class CancelBidReq(BaseModel):
     reason : str
+    
+    
+class NotificationReq(BaseModel):
+    nt_receiver_id : str
+    nt_text : str=Field(..., min_length=1)
+    nt_type : Union[str, None] = Field(None, min_length=1)  
+    nt_deep_link : str=Field(..., min_length=1)
+    
+    class Config:
+        orm_mode=True
+        anystr_strip_whitespace = True

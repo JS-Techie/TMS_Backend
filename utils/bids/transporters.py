@@ -1,4 +1,4 @@
-import os, httpx
+import os, httpx, json
 from sqlalchemy import text, and_, or_, func
 from uuid import UUID
 
@@ -8,6 +8,7 @@ from models.models import BidTransaction, TransporterModel, MapShipperTransporte
 from utils.bids.bidding import Bid
 from utils.utilities import log, structurize_transporter_bids
 from data.bidding import lost_participated_transporter_bids, live_bid_details
+from schemas.bidding import NotificationReq
 
 bid = Bid()
 
@@ -48,7 +49,7 @@ class Transporter:
             if error:
                 return("", error)
             
-            login_url = "http://0.0.0.0:2000/api/secure/notification/"
+            login_url = "http://13.235.56.142:8000/api/secure/notification/"
             headers = {
                 'Authorization': authtoken
                     }            
@@ -57,28 +58,27 @@ class Transporter:
             if bid_details.bid_mode == 'private_pool':
                 transporters=session.query(MapShipperTransporter).filter(MapShipperTransporter.mst_shipper_id == bid_details.bl_shipper_id, MapShipperTransporter.is_active == True).all()
                 for transporter in transporters:
-                    notification = {"nt_receiver_id" :transporter.mst_transporter_id,
+                    notification = NotificationReq(**{"nt_receiver_id" :str(transporter.mst_transporter_id),
                                     "nt_text" :f"New Bid for a Load needing {bid_details.no_of_fleets} fleets is Available with Load id - {bid_details.bl_id}. The Bidding will start from {bid_details.bid_time}",
                                     "nt_type" :"",
                                     "nt_deep_link" :"transporter_dashboard_upcoming",
-                                    }
+                                    })
                     payload.append(notification)
             elif bid_details.bid_mode == 'open_market':
                 transporters=session.query(TransporterModel).filter(TransporterModel.is_active == True).all()
                 for transporter in transporters:
-                    notification = {"nt_receiver_id" :transporter.trnsp_id,
+                    notification = NotificationReq(**{"nt_receiver_id" :str(transporter.trnsp_id),
                                     "nt_text" :f"New Bid for a Load needing {bid_details.no_of_fleets} fleets is Available with Load id - {bid_details.bl_id}. The Bidding will start from {bid_details.bid_time}",
                                     "nt_type" :"",
                                     "nt_deep_link" :"transporter_dashboard_upcoming",
-                                    }
+                                    })
                     payload.append(notification)
                     
             log("PAYLOAD", payload)
             log("HEADER",headers)
-            log("AFTER ASYNC ")
             with httpx.Client() as client:
-                response = client.post(url=login_url, headers=headers, data=payload)
-            log("NOTIFICATION CREATE Response")
+                response = client.post(url=login_url, headers=headers, data=json.dumps(payload))
+            log("NOTIFICATION CREATE Response", response)
             json_response= response.json()
             
             if json_response["success"]==False:
@@ -559,7 +559,7 @@ class Transporter:
                         )
 
             if not shippers:
-                return ([], "This transporter is not mapped to any shipper")
+                return ([], "")
 
             shipper_ids = [shipper.mst_shipper_id for shipper in shippers]
 
