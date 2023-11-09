@@ -24,6 +24,10 @@ app.add_middleware(
     allow_headers= ['*']
 )
 
+@app.get("/")
+async def root():
+    return{'RESPONSE':'Transport Management System BIDDING ROOT!!!'}
+
 # schedule_jobs()
 
 @app.websocket("/ws/{bid_id}")
