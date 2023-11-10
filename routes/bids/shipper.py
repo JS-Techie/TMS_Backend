@@ -96,9 +96,9 @@ async def publish_new_bid(request: Request, bid_id: str, bg_tasks: BackgroundTas
         if not update_successful:
             return ErrorResponse(data=bid_id, client_msg=os.getenv("BID_PUBLISH_ERROR"), dev_msg=error)
         
-        # (success, error)= await transporter.notify(bid_id=bid_id, authtoken=request.headers.get("authorization", ""))
-        # if not success:
-        #     return ErrorResponse(data=[], dev_msg=error)
+        (success, error)= await transporter.notify(bid_id=bid_id, authtoken=request.headers.get("authorization", ""))
+        if not success:
+            return ErrorResponse(data=[], dev_msg=error)
         
         return SuccessResponse(data=bid_id, client_msg=f"Bid-{bid_id} is now published!", dev_msg="Bid status was updated successfully!")
 
@@ -262,7 +262,7 @@ async def assign_to_transporter(request: Request, bid_id: str, transporters: Lis
         (assigned_loads, error) = await bid.assign(bid_id=bid_id, transporters=transporters, split=load_split, status=load_status, user_id=user_id)
 
         if error:
-            return ErrorResponse(data=[], client_msg="Something Went Wrong While Assigning Transporters", dev_msg=error)
+            return ErrorResponse(data=[], client_msg="Something Went Wrong While Assigning Transporters", dev_msg="ERROR WHILE SENDING NOTIFICATION !!! ERROR :::"+error)
 
         return SuccessResponse(data=assigned_loads, dev_msg="Load Assigned Successfully", client_msg=f"Load-{bid_id} assignment was successful!")
 

@@ -1,6 +1,7 @@
-import os, httpx, json
+import os, httpx, json, requests
 from sqlalchemy import text, and_, or_, func
 from uuid import UUID
+from typing import List
 
 from config.db_config import Session
 from utils.response import ServerError, SuccessResponse
@@ -8,7 +9,7 @@ from models.models import BidTransaction, TransporterModel, MapShipperTransporte
 from utils.bids.bidding import Bid
 from utils.utilities import log, structurize_transporter_bids
 from data.bidding import lost_participated_transporter_bids, live_bid_details
-from schemas.bidding import NotificationReq
+
 
 bid = Bid()
 
@@ -49,36 +50,42 @@ class Transporter:
             if error:
                 return("", error)
             
+            transporter_ids=[]
+            user_ids=[]
+            
+            if bid_details.bid_mode == 'private_pool':
+                transporters=session.query(MapShipperTransporter).filter(MapShipperTransporter.mst_shipper_id == bid_details.bl_shipper_id, MapShipperTransporter.is_active == True).all()
+                for transporter  in transporters:
+                    transporter_ids.append(transporter.mst_transporter_id)                  
+                    
+            elif bid_details.bid_mode == 'open_market':
+                transporters=session.query(TransporterModel).filter(TransporterModel.is_active == True).all()
+                for transporter  in transporters:
+                    transporter_ids.append(transporter.trnsp_id)
+            
+            user_details= session.query(User).filter(User.user_transporter_id.in_(transporter_ids), User.is_active == True).all()
+            
             login_url = "http://13.235.56.142:8000/api/secure/notification/"
             headers = {
                 'Authorization': authtoken
                     }            
-            payload=[]
             
-            if bid_details.bid_mode == 'private_pool':
-                transporters=session.query(MapShipperTransporter).filter(MapShipperTransporter.mst_shipper_id == bid_details.bl_shipper_id, MapShipperTransporter.is_active == True).all()
-                for transporter in transporters:
-                    notification = NotificationReq(**{"nt_receiver_id" :str(transporter.mst_transporter_id),
-                                    "nt_text" :f"New Bid for a Load needing {bid_details.no_of_fleets} fleets is Available with Load id - {bid_details.bl_id}. The Bidding will start from {bid_details.bid_time}",
-                                    "nt_type" :"",
-                                    "nt_deep_link" :"transporter_dashboard_upcoming",
-                                    })
-                    payload.append(notification)
-            elif bid_details.bid_mode == 'open_market':
-                transporters=session.query(TransporterModel).filter(TransporterModel.is_active == True).all()
-                for transporter in transporters:
-                    notification = NotificationReq(**{"nt_receiver_id" :str(transporter.trnsp_id),
-                                    "nt_text" :f"New Bid for a Load needing {bid_details.no_of_fleets} fleets is Available with Load id - {bid_details.bl_id}. The Bidding will start from {bid_details.bid_time}",
-                                    "nt_type" :"",
-                                    "nt_deep_link" :"transporter_dashboard_upcoming",
-                                    })
-                    payload.append(notification)
+            for user_detail in user_details:
+                user_ids.append(str(user_detail.user_id))
+                
+            payload = {"nt_receiver_id" :user_ids,
+                        "nt_text" :f"New Bid for a Load needing {bid_details.no_of_fleets} fleets is Available with Load id - {bid_details.bl_id}. The Bidding will start from {bid_details.bid_time}",
+                        "nt_type" :"PUBLISH NOTIFICATION",
+                        "nt_deep_link" :"transporter_dashboard_upcoming",
+                        }
                     
             log("PAYLOAD", payload)
             log("HEADER",headers)
+            
             with httpx.Client() as client:
                 response = client.post(url=login_url, headers=headers, data=json.dumps(payload))
-            log("NOTIFICATION CREATE Response", response)
+            
+            log("NOTIFICATION CREATE Response", response.json())
             json_response= response.json()
             
             if json_response["success"]==False:

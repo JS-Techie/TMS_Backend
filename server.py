@@ -28,7 +28,7 @@ app.add_middleware(
 async def root():
     return{'RESPONSE':'Transport Management System BIDDING ROOT!!!'}
 
-# schedule_jobs()
+schedule_jobs()
 
 @app.websocket("/ws/{bid_id}")
 async def websocket_endpoint(websocket: WebSocket, bid_id: str):
