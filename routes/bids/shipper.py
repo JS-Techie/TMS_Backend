@@ -430,7 +430,7 @@ async def details_of_a_bid(request: Request, bid_id: str):
         return ServerError(err=err, errMsg=str(err))
 
 
-@shipper_bidding_router.get("/history/assignment/{bid_id}")
+@shipper_bidding_router.post("/history/assignment/{bid_id}")
 async def fetch_transporter_specific_bid_assingment_history(request:Request, bid_id: str, req:AssignmentHistoryReq):
 
     try:
