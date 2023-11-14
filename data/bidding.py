@@ -51,7 +51,7 @@ status_wise_fetch_query = """
             LEFT JOIN t_load_assigned ON t_load_assigned.la_bidding_load_id = t_bidding_load.bl_id
             LEFT JOIN t_transporter ON t_transporter.trnsp_id = t_load_assigned.la_transporter_id
             LEFT JOIN t_map_load_src_dest_pair ON (t_map_load_src_dest_pair.mlsdp_bidding_load_id = t_bidding_load.bl_id and t_map_load_src_dest_pair.is_active=true and t_map_load_src_dest_pair.is_prime=true)
-            LEFT JOIN t_tracking_fleet ON t_tracking_fleet.tf_transporter_id = t_load_assigned.la_transporter_id
+            LEFT JOIN t_tracking_fleet ON (t_tracking_fleet.tf_transporter_id = t_load_assigned.la_transporter_id and t_tracking_fleet.tf_bidding_load_id = t_load_assigned.la_bidding_load_id and t_tracking_fleet.is_active = true)
             WHERE
                 t_bidding_load.is_active = true
                 AND t_bidding_load.load_status = :load_status
@@ -96,7 +96,7 @@ filter_wise_fetch_query = """
             LEFT JOIN t_load_assigned ON t_load_assigned.la_bidding_load_id = t_bidding_load.bl_id
             LEFT JOIN t_transporter ON t_transporter.trnsp_id = t_load_assigned.la_transporter_id
             LEFT JOIN t_map_load_src_dest_pair ON (t_map_load_src_dest_pair.mlsdp_bidding_load_id = t_bidding_load.bl_id and t_map_load_src_dest_pair.is_active=true and t_map_load_src_dest_pair.is_prime = true)
-            LEFT JOIN t_tracking_fleet ON t_tracking_fleet.tf_transporter_id = t_load_assigned.la_transporter_id
+            LEFT JOIN t_tracking_fleet ON (t_tracking_fleet.tf_transporter_id = t_load_assigned.la_transporter_id and t_tracking_fleet.tf_bidding_load_id = t_load_assigned.la_bidding_load_id and t_tracking_fleet.is_active = true)
             WHERE
                 t_bidding_load.is_active = true
                 AND t_bidding_load.load_status = :load_status

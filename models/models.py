@@ -328,6 +328,7 @@ class LoadAssigned(Base, Persistance):
     pmr_price = Column(Double, nullable = True)
     pmr_comment = Column(String,nullable=True)
     unassignment_reason = Column(String, nullable=True)
+    history = Column(String, nullable=True)
 
 
 class Notification(Base, Persistance):

@@ -47,3 +47,5 @@ class TransporterLostBidsReq(BaseModel):
 class CancelBidReq(BaseModel):
     reason : str
     
+class AssignmentHistoryReq(BaseModel):
+    transporter_id: UUID

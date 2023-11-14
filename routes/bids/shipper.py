@@ -12,7 +12,7 @@ from data.bidding import (valid_assignment_status, valid_cancel_status,
 from schemas.bidding import (CancelBidReq, FilterBidsRequest,
                              HistoricalRatesReq, TransporterAssignReq,
                              TransporterBidMatchRequest,
-                             TransporterUnassignRequest)
+                             TransporterUnassignRequest, AssignmentHistoryReq)
 from services.mail import Email
 from utils.bids.bidding import Bid
 from utils.bids.shipper import Shipper
@@ -262,7 +262,7 @@ async def assign_to_transporter(request: Request, bid_id: str, transporters: Lis
         (assigned_loads, error) = await bid.assign(bid_id=bid_id, transporters=transporters, split=load_split, status=load_status, user_id=user_id)
 
         if error:
-            return ErrorResponse(data=[], client_msg="Something Went Wrong While Assigning Transporters", dev_msg="ERROR WHILE SENDING NOTIFICATION !!! ERROR :::"+error)
+            return ErrorResponse(data=[], client_msg="Something Went Wrong While Assigning Transporters", dev_msg=error)
 
         return SuccessResponse(data=assigned_loads, dev_msg="Load Assigned Successfully", client_msg=f"Load-{bid_id} assignment was successful!")
 
@@ -425,6 +425,27 @@ async def details_of_a_bid(request: Request, bid_id: str):
                                      },
                                client_msg=f"Successfully unassigned transporter for Bid-{bid_id}",
                                dev_msg="Unassigned requested transporter from bid")
+
+    except Exception as err:
+        return ServerError(err=err, errMsg=str(err))
+
+
+@shipper_bidding_router.get("/history/assignment/{bid_id}")
+async def fetch_transporter_specific_bid_assingment_history(request:Request, bid_id: str, req:AssignmentHistoryReq):
+
+    try:
+
+        (valid_bid_id, error) = await bid.is_valid(bid_id)
+
+        if not valid_bid_id:
+            return ErrorResponse(data=bid_id, client_msg=os.getenv("INVALID_BID_ERROR"), dev_msg=error)
+
+        (rates, error) = await transporter.assignment_history(transporter_id=req.transporter_id, bid_id=bid_id)
+
+        if error:
+            return ErrorResponse(data=[], client_msg="Something went wrong while fetching assignment history, please try again in sometime", dev_msg=error)
+
+        return SuccessResponse(data=rates, client_msg="Fetched assignment history successfully", dev_msg="Fetched assignment history")
 
     except Exception as err:
         return ServerError(err=err, errMsg=str(err))

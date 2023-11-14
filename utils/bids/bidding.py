@@ -1,5 +1,6 @@
 import math
 import os
+import ast
 from datetime import datetime
 from string import Template
 
@@ -446,14 +447,16 @@ class Bid:
                             transporter, "price_difference_percent"),
                         no_of_fleets_assigned=getattr(
                             transporter, "no_of_fleets_assigned"),
-                        is_assigned = True,
+                        history=str(
+                            [(getattr(transporter, "no_of_fleets_assigned"), str(datetime.now()), None)]),
+                        is_assigned=True,
                         is_active=True,
                         created_by=user_id
                     )
                     assigned_transporters.append(assign_detail)
 
             for transporter_detail in transporter_details:
-
+                log("TRANSPORTERS TO BE UPDATED", transporters_to_be_updated)
                 if getattr(transporter_detail, "la_transporter_id") in transporters_to_be_updated:
 
                     for transporter in transporters:
@@ -469,8 +472,18 @@ class Bid:
                                 transporter, "price_difference_percent"))
                             setattr(transporter_detail, "no_of_fleets_assigned", getattr(
                                 transporter, "no_of_fleets_assigned"))
-                            setattr(transporter_detail,"is_assigned",True)
+                            setattr(transporter_detail, "is_assigned", True)
                             setattr(transporter_detail, "is_active", True)
+                            setattr(transporter_detail, "updated_at", str(datetime.now()))
+                            setattr(transporter_detail, "updated_by", user_id)
+                            if not transporter_detail.history:
+                                setattr(transporter_detail, "history", str([(getattr(transporter, "no_of_fleets_assigned"), str(datetime.now()), None)]))
+                            else:
+                                history_fetched = ast.literal_eval(getattr(transporter_detail, "history"))
+                                task = (transporter.no_of_fleets_assigned, str(datetime.now()), None)
+                                history_fetched.append(task)
+                                setattr(transporter_detail, "history", str(history_fetched))
+                                
 
             bid_details = session.query(BiddingLoad).filter(
                 BiddingLoad.bl_id == bid_id).first()

@@ -1,4 +1,5 @@
-import os, httpx, json, requests
+import os, httpx, json, requests, ast
+from datetime import datetime
 from sqlalchemy import text, and_, or_, func
 from uuid import UUID
 from typing import List
@@ -276,8 +277,7 @@ class Transporter:
                         ),
                         is_active=True,
                         updated_at="NOW()",
-                        created_by=user_id,
-                        updated_by=user_id
+                        created_by=user_id
                     )
                     assigned_transporters.append(assign_detail)
 
@@ -340,7 +340,15 @@ class Transporter:
                 if transporter.la_transporter_id == UUID(transporter_id):
                     transporter.is_assigned = False
                     transporter.no_of_fleets_assigned = 0
-                    transporter.unassignment_reason = unassignment_reason
+                    transporter.unassignment_reason = unassignment_reason   
+                    if transporter.history:
+                        task = (0, str(datetime.now()), unassignment_reason)
+                        fetched_history = ast.literal_eval(transporter.history)
+                        fetched_history.append(task)
+                        transporter.history= str(fetched_history)
+                    else:
+                        transporter.history= str([(0,str(datetime.now()), unassignment_reason)])
+                    
 
                 elif no_transporter_assigned and transporter.la_transporter_id != UUID(transporter_id):
                     no_transporter_assigned = False
@@ -694,6 +702,45 @@ class Transporter:
         except Exception as e:
             session.rollback()
             return ({}, str(e))
+
+        finally:
+            session.close()
+
+    async def assignment_history(self, transporter_id: str, bid_id: str) -> (any, str):
+
+        session = Session()
+
+        try:
+
+            transporter_detail = (session.query(LoadAssigned).filter(LoadAssigned.la_bidding_load_id == bid_id, LoadAssigned.la_transporter_id == transporter_id, LoadAssigned.is_active == True).first())
+            
+            log("TRANSPORTER DETAILS", transporter_detail)
+            if not transporter_detail.history:
+                return([],"")
+            
+            log("ASSIGNMENT HISTORY", transporter_detail.history)
+            log("TYPE", type(transporter_detail.history))
+            
+            assignment_history= ast.literal_eval(transporter_detail.history)
+            
+            log("ASSIGNMENT HISTORY", assignment_history)
+            log("TYPE", type(assignment_history))
+            
+            history = []
+            
+            for task_snapshot in assignment_history:
+                (assigned_no_of_fleets, created_at, unassignment_reason) = task_snapshot
+                history.append({
+                            "assigned_no_of_fleets":assigned_no_of_fleets,
+                            "created_at":created_at,
+                            "unassignment_reason":unassignment_reason
+                        })
+
+            return (history, "")
+
+        except Exception as err:
+            session.rollback()
+            return ([], str(err))
 
         finally:
             session.close()
