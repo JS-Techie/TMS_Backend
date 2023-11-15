@@ -1,6 +1,7 @@
 import math
 import os
 import ast
+import pytz
 from datetime import datetime
 from string import Template
 
@@ -32,8 +33,8 @@ class Bid:
     def initiate(self):
 
         session = Session()
-        current_time = convert_date_to_string(
-            datetime.now())
+        ist_timezone = pytz.timezone("Asia/Kolkata")
+        current_time = convert_date_to_string(datetime.now(ist_timezone))
 
         try:
 
@@ -512,8 +513,8 @@ class Bid:
     def close(self):
 
         session = Session()
-        current_time = convert_date_to_string(
-            datetime.now())
+        ist_timezone = pytz.timezone("Asia/Kolkata")
+        current_time = convert_date_to_string(datetime.now(ist_timezone))
 
         try:
 
