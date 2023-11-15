@@ -11,7 +11,7 @@ def log(key: str, value: str | None = None):
 
 def convert_date_to_string(date: datetime):
 
-    return (str(date.year)+"-"+str(date.month)+"-"+str(date.hour)+" "+str(date.hour)+":"+str(date.minute))
+    return (str(date.year)+"-"+str(date.month)+"-"+str(date.day)+" "+str(date.hour)+":"+str(date.minute))
 
 
 def structurize(input_array):
