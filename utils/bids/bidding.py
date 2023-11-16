@@ -34,7 +34,7 @@ class Bid:
 
         session = Session()
         ist_timezone = pytz.timezone("Asia/Kolkata")
-        current_time = convert_date_to_string(datetime.now(ist_timezone)+timedelta(minutes=1))
+        current_time = convert_date_to_string(datetime.now(ist_timezone))
 
         try:
 
@@ -514,7 +514,7 @@ class Bid:
 
         session = Session()
         ist_timezone = pytz.timezone("Asia/Kolkata")
-        current_time = convert_date_to_string(datetime.now(ist_timezone)+timedelta(minutes=1))
+        current_time = convert_date_to_string(datetime.now(ist_timezone))
 
         try:
 
