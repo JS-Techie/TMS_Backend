@@ -28,12 +28,16 @@ def structurize(input_array):
             result_dict[bl_id] = {
                 "bl_id": bl_id,
                 "bid_time": item["bid_time"],
+                "bid_end_time": item["bid_end_time"],
+                "bid_extended_time": item["bid_extended_time"],
                 "bid_mode": item["bid_mode"],
                 "reporting_from_time": item["reporting_from_time"],
                 "reporting_to_time": item["reporting_to_time"],
                 "bl_cancellation_reason": item["bl_cancellation_reason"],
                 "enable_tracking": item["enable_tracking"],
                 "total_no_of_fleets": item["no_of_fleets"],
+                "total_no_of_fleets_assigned":0,
+                "pending_vehicle_count":item["no_of_fleets"],
                 "fleet_type": item["fleet_type"],
                 "fleet_name": item["fleet_name"],
                 "shipper_id": item["bl_shipper_id"],
@@ -86,6 +90,8 @@ def structurize(input_array):
                 bid_item["fleets"].append(fleet_item)
             if item["tr_active"] and item["la_active"]:
                 result_dict[bl_id]["transporters"].append(bid_item)
+                result_dict[bl_id]["total_no_of_fleets_assigned"]=result_dict[bl_id]["total_no_of_fleets_assigned"] + bid_item["no_of_fleets_assigned"]
+                result_dict[bl_id]["pending_vehicle_count"]=result_dict[bl_id]["total_no_of_fleets"] - result_dict[bl_id]["total_no_of_fleets_assigned"]
     return list(result_dict.values())
 
 
@@ -107,7 +113,7 @@ def structurize_assignment_data(data):
                 "pmr_price": None,
                 "assigned": None,
                 "lowest_price": float('inf'),
-                "lowest_price_comment": None,
+                "last_price_comment": None,
                 "rates": [],
                 "fleet_assigned": None
             }
@@ -119,7 +125,11 @@ def structurize_assignment_data(data):
 
         if rate < transporter_entry["lowest_price"]:
             transporter_entry["lowest_price"] = rate
-            transporter_entry["lowest_price_comment"] = comment
+            log("COMMENT ::", comment)
+            if comment:
+                log("LAST PRICE COMMENT",transporter_entry["last_price_comment"])
+                transporter_entry["last_price_comment"] = comment
+                log("AFTER ADDITION LAST PRICE COMMENT",transporter_entry["last_price_comment"])
 
         existing_entry = next(
             (item for item in transporter_entry["rates"] if item["rate"] == rate and item["comment"] == comment), None)
@@ -158,7 +168,9 @@ def structurize_transporter_bids(bids):
     bid_details = []
 
     for bid_load, shipper, src_dest_pair in bids:
-
+        print("BID_LOAD ", bid_load)
+        print("SHIPPER ", shipper)
+        print("SRC DEST", src_dest_pair)
         bid_detail = {
             "bid_id": bid_load.bl_id,
             "shipper_name": shipper.name,
@@ -166,11 +178,13 @@ def structurize_transporter_bids(bids):
             "src_city": src_dest_pair.src_city if src_dest_pair else None,
             "dest_city": src_dest_pair.dest_city if src_dest_pair else None,
             "bid_time": bid_load.bid_time,
+            "bid_end_time": bid_load.bid_end_time,
+            "bid_extended_time": bid_load.bid_extended_time,
             "load_status": bid_load.load_status,
         }
 
         bid_details.append(bid_detail)
-
+    log("BID DETAILS", bid_details)
     return bid_details
 
 

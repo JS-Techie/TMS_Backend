@@ -47,8 +47,50 @@ async def fetch_bids_for_transporter_by_status(request: Request, status: str | N
 
         if error:
             return ErrorResponse(data=[], dev_msg=error, client_msg=os.getenv("GENERIC_ERROR"))
+        
+        updated_bids = None
+        
+        if status != "assigned":
+            updated_private_bids = []
+            updated_public_bids = []
 
-        return SuccessResponse(data=bids, dev_msg="Fetched bids successfully", client_msg=f"Fetched all {status} bids successfully!")
+            for private_bid in bids["private"]:
+                
+                lowest_price_response = await lowest_price_of_bid_and_transporter(request=request, bid_id=private_bid["bid_id"])
+                if lowest_price_response["data"] == []:
+                    return lowest_price_response
+                
+                lowest_price_data = lowest_price_response["data"]
+                updated_private_bids.append({**private_bid, **lowest_price_data})
+                
+            for public_bid in bids["public"]:
+                
+                lowest_price_response = await lowest_price_of_bid_and_transporter(request=request, bid_id=public_bid["bid_id"])
+                if lowest_price_response["data"] == []:
+                    return lowest_price_response
+                
+                lowest_price_data = lowest_price_response["data"]
+                updated_public_bids.append({**public_bid, **lowest_price_data})
+            
+            updated_bids = {
+                "all":updated_private_bids+updated_public_bids,
+                "private":updated_private_bids,
+                "public":updated_public_bids
+            }
+            
+        else:
+            
+            updated_bids=[]
+            for bid in bids:
+                
+                lowest_price_response = await lowest_price_of_bid_and_transporter(request=request, bid_id=bid["bid_id"])
+                if lowest_price_response["data"] == []:
+                    return lowest_price_response
+                
+                lowest_price_data = lowest_price_response["data"]
+                updated_bids.append({**bid, **lowest_price_data})
+
+        return SuccessResponse(data=updated_bids, dev_msg="Fetched bids successfully", client_msg=f"Fetched all {status} bids successfully!")
 
     except Exception as err:
         return ServerError(err=err, errMsg=str(err))

@@ -1,5 +1,6 @@
 
 import os
+import pytz
 from datetime import datetime, timedelta
 from typing import List
 
@@ -95,11 +96,11 @@ async def publish_new_bid(request: Request, bid_id: str, bg_tasks: BackgroundTas
 
         if not update_successful:
             return ErrorResponse(data=bid_id, client_msg=os.getenv("BID_PUBLISH_ERROR"), dev_msg=error)
-        
+
         # (success, error)= await transporter.notify(bid_id=bid_id, authtoken=request.headers.get("authorization", ""))
         # if not success:
         #     return ErrorResponse(data=[], dev_msg=error)
-        
+
         return SuccessResponse(data=bid_id, client_msg=f"Bid-{bid_id} is now published!", dev_msg="Bid status was updated successfully!")
 
     except Exception as err:
@@ -109,7 +110,8 @@ async def publish_new_bid(request: Request, bid_id: str, bg_tasks: BackgroundTas
 @shipper_bidding_router.get("/increment/{bid_id}")
 async def increment_time_of_bid(request: Request, bid_id: str):
 
-    current_time = datetime.now()
+    ist_timezone = pytz.timezone("Asia/Kolkata")
+    current_time = datetime.now(ist_timezone)
 
     try:
         (valid_bid_id, error) = await bid.is_valid(bid_id=bid_id)
@@ -123,13 +125,13 @@ async def increment_time_of_bid(request: Request, bid_id: str):
         if not error:
             return ErrorResponse(data=[], client_msg="Something went wrong while trying to increment Bid Time", dev_msg=error)
 
-        current_time_object = datetime.strptime(
-            current_time, '%Y-%m-%d %H:%M:%S.%f')
-
-        if (bid_details.bid_end_time-current_time_object).total_seconds()/60 > setting_details.bid_increment_time:
+        if (bid_details.bid_end_time-current_time).total_seconds()/60 > setting_details.bid_increment_time:
             return SuccessNoContentResponse(dev_msg="No Increment Needed", client_msg="No Increment Needed.")
 
-        (bid_end_time_update, error) = await bid.update_bid_end_time(bid_id=bid_id, bid_end_time=(bid_details.bid_end_time+timedelta(minutes=setting_details.bid_increment_duration)))
+        extended_bid_end_time = bid_details.bid_end_time + timedelta(minutes=setting_details.bid_increment_duration)
+        extended_time = bid_details.bid_extended_time + setting_details.bid_increment_duration
+        
+        (bid_end_time_update, error) = await bid.update_bid_end_time(bid_id=bid_id, bid_end_time=extended_bid_end_time, extended_time=extended_time)
 
         if not bid_end_time_update:
             return ErrorResponse(data=bid_id, client_msg="Something Went Wrong While Incrementing Bid Time", dev_msg=error)
@@ -431,7 +433,7 @@ async def details_of_a_bid(request: Request, bid_id: str):
 
 
 @shipper_bidding_router.post("/history/assignment/{bid_id}")
-async def fetch_transporter_specific_bid_assingment_history(request:Request, bid_id: str, req:AssignmentHistoryReq):
+async def fetch_transporter_specific_bid_assingment_history(request: Request, bid_id: str, req: AssignmentHistoryReq):
 
     try:
 

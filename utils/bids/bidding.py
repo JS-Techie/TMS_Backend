@@ -529,7 +529,7 @@ class Bid:
             for bid in bids:
                 if convert_date_to_string(bid.bid_end_time) == current_time:
                     setattr(bid, "load_status", "pending")
-                    redis.delete(sorted_set=bid)
+                    # redis.delete(sorted_set=bid)
 
             session.commit()
 
@@ -564,7 +564,7 @@ class Bid:
         finally:
             session.close()
 
-    async def update_bid_end_time(self, bid_id: str, bid_end_time: datetime) -> (any, str):
+    async def update_bid_end_time(self, bid_id: str, bid_end_time: datetime, extended_time: int) -> (any, str):
 
         session = Session()
 
@@ -576,6 +576,7 @@ class Bid:
                 return False, "Error While Fetching Bid Details"
 
             setattr(bid_details, "bid_end_time", bid_end_time)
+            setattr(bid_details, "bid_extended_time", extended_time)
 
             session.commit()
 

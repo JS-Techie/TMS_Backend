@@ -569,7 +569,7 @@ class Transporter:
 
             shippers = (session
                         .query(MapShipperTransporter)
-                        .filter(MapShipperTransporter.mst_transporter_id == transporter_id)
+                        .filter(MapShipperTransporter.mst_transporter_id == transporter_id, MapShipperTransporter.is_active == True)
                         .all()
                         )
 

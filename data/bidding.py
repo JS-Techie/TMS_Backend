@@ -17,6 +17,8 @@ status_wise_fetch_query = """
             SELECT
                 t_bidding_load.bl_id,
                 t_bidding_load.bid_time,
+                t_bidding_load.bid_end_time,
+                t_bidding_load.bid_extended_time,
                 t_bidding_load.reporting_from_time,
                 t_bidding_load.reporting_to_time,
                 t_bidding_load.bid_mode,
@@ -62,6 +64,8 @@ filter_wise_fetch_query = """
             SELECT
                 t_bidding_load.bl_id,
                 t_bidding_load.bid_time,
+                t_bidding_load.bid_end_time,
+                t_bidding_load.bid_extended_time,
                 t_bidding_load.reporting_from_time,
                 t_bidding_load.reporting_to_time,
                 t_bidding_load.bid_mode,
