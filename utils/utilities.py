@@ -49,6 +49,7 @@ def structurize(input_array):
                 "src_cities": ','.join(item["src_cities"]),
                 "dest_cities": ','.join(item["dest_cities"]),
                 "no_of_bids_placed":item["total_no_of_bids"],
+                "completion_reason":item["completion_reason"],
                 "transporters": []  # Rename bid_items to transporters
             }
             
@@ -179,7 +180,8 @@ def structurize_transporter_bids(bids):
             "bid_extended_time": bid_load.bid_extended_time,
             "load_status": bid_load.load_status,
             "reporting_from_time":bid_load.reporting_from_time,
-            "reporting_to_time":bid_load.reporting_to_time
+            "reporting_to_time":bid_load.reporting_to_time,
+            "completion_reason":bid_load.completion_reason
         }
 
         bid_details.append(bid_detail)

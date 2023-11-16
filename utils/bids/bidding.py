@@ -2,7 +2,7 @@ import math
 import os
 import ast
 import pytz
-from datetime import datetime
+from datetime import datetime, timedelta
 from string import Template
 
 from sqlalchemy import func, text, and_
@@ -34,7 +34,7 @@ class Bid:
 
         session = Session()
         ist_timezone = pytz.timezone("Asia/Kolkata")
-        current_time = convert_date_to_string(datetime.now(ist_timezone))
+        current_time = convert_date_to_string(datetime.now(ist_timezone)+timedelta(minutes=1))
 
         try:
 
@@ -514,7 +514,7 @@ class Bid:
 
         session = Session()
         ist_timezone = pytz.timezone("Asia/Kolkata")
-        current_time = convert_date_to_string(datetime.now(ist_timezone))
+        current_time = convert_date_to_string(datetime.now(ist_timezone)+timedelta(minutes=1))
 
         try:
 

@@ -313,6 +313,8 @@ class BiddingLoad(Base, Persistance):
     is_cancelled  = Column(Boolean, default=False)
     bl_cancellation_reason =  Column(String, nullable = True) 
     is_published = Column(Boolean, default=False)
+    completion_reason = Column(String, nullable=True)
+
 
 
 class LoadAssigned(Base, Persistance):
