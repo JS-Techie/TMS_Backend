@@ -113,7 +113,7 @@ def structurize_assignment_data(data):
                 "pmr_price": None,
                 "assigned": None,
                 "lowest_price": float('inf'),
-                "last_price_comment": None,
+                "last_comment": None,
                 "rates": [],
                 "fleet_assigned": None
             }
@@ -125,11 +125,8 @@ def structurize_assignment_data(data):
 
         if rate < transporter_entry["lowest_price"]:
             transporter_entry["lowest_price"] = rate
-            log("COMMENT ::", comment)
             if comment:
-                log("LAST PRICE COMMENT",transporter_entry["last_price_comment"])
-                transporter_entry["last_price_comment"] = comment
-                log("AFTER ADDITION LAST PRICE COMMENT",transporter_entry["last_price_comment"])
+                transporter_entry["last_comment"] = comment
 
         existing_entry = next(
             (item for item in transporter_entry["rates"] if item["rate"] == rate and item["comment"] == comment), None)
@@ -181,6 +178,8 @@ def structurize_transporter_bids(bids):
             "bid_end_time": bid_load.bid_end_time,
             "bid_extended_time": bid_load.bid_extended_time,
             "load_status": bid_load.load_status,
+            "reporting_from_time":bid_load.reporting_from_time,
+            "reporting_to_time":bid_load.reporting_to_time
         }
 
         bid_details.append(bid_detail)
