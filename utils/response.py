@@ -15,7 +15,7 @@ def SuccessNoContentResponse(dev_msg: str = "Data deleted successfully", client_
     Response.status_code = status.HTTP_204_NO_CONTENT
     return {
         "success": True,
-        "data": None,
+        "data": [],
         "clientMessage": client_msg,
         "devMessage": dev_msg
     }

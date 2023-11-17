@@ -1,10 +1,10 @@
 import json
 import os
-
+from datetime import datetime
 from fastapi import APIRouter, Request
 
 from config.socket import manager
-from datetime import datetime
+from routes.bids.shipper import increment_time_of_bid
 from data.bidding import valid_bid_status, valid_transporter_status
 from schemas.bidding import TransporterBidReq, TransporterLostBidsReq
 from utils.bids.bidding import Bid
@@ -47,46 +47,47 @@ async def fetch_bids_for_transporter_by_status(request: Request, status: str | N
 
         if error:
             return ErrorResponse(data=[], dev_msg=error, client_msg=os.getenv("GENERIC_ERROR"))
-        
+
         updated_bids = None
-        
+
         if status != "assigned":
             updated_private_bids = []
             updated_public_bids = []
 
             for private_bid in bids["private"]:
-                
+
                 lowest_price_response = await lowest_price_of_bid_and_transporter(request=request, bid_id=private_bid["bid_id"])
                 if lowest_price_response["data"] == []:
                     return lowest_price_response
-                
+
                 lowest_price_data = lowest_price_response["data"]
-                updated_private_bids.append({**private_bid, **lowest_price_data})
-                
+                updated_private_bids.append(
+                    {**private_bid, **lowest_price_data})
+
             for public_bid in bids["public"]:
-                
+
                 lowest_price_response = await lowest_price_of_bid_and_transporter(request=request, bid_id=public_bid["bid_id"])
                 if lowest_price_response["data"] == []:
                     return lowest_price_response
-                
+
                 lowest_price_data = lowest_price_response["data"]
                 updated_public_bids.append({**public_bid, **lowest_price_data})
-            
+
             updated_bids = {
-                "all":updated_private_bids+updated_public_bids,
-                "private":updated_private_bids,
-                "public":updated_public_bids
+                "all": updated_private_bids+updated_public_bids,
+                "private": updated_private_bids,
+                "public": updated_public_bids
             }
-            
+
         else:
-            
-            updated_bids=[]
+
+            updated_bids = []
             for bid in bids:
-                
+
                 lowest_price_response = await lowest_price_of_bid_and_transporter(request=request, bid_id=bid["bid_id"])
                 if lowest_price_response["data"] == []:
                     return lowest_price_response
-                
+
                 lowest_price_data = lowest_price_response["data"]
                 updated_bids.append({**bid, **lowest_price_data})
 
@@ -223,6 +224,8 @@ async def provide_new_rate_for_bid(request: Request, bid_id: str, bid_req: Trans
         await manager.broadcast(bid_id=bid_id, message=json.dumps(sorted_bid_details))
 
         log("SOCKET EVENT SENT", sorted_bid_details)
+
+        bid_duration_increment = await increment_time_of_bid(request=request, bid_id=bid_id)
 
         return SuccessResponse(data=sorted_bid_details, dev_msg="Bid submitted successfully", client_msg=f"Bid for Bid-{bid_id} submitted!")
 

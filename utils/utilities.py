@@ -46,13 +46,16 @@ def structurize(input_array):
                 "load_type": load_type_dict[item["bid_mode"]],
                 "prime_src_city": item["src_city"],
                 "prime_dest_city": item["dest_city"],
-                "src_cities": ','.join(item["src_cities"]),
-                "dest_cities": ','.join(item["dest_cities"]),
+                "src_cities": item["src_city"],
+                "dest_cities": item["dest_city"],
                 "no_of_bids_placed":item["total_no_of_bids"],
                 "completion_reason":item["completion_reason"],
                 "transporters": []  # Rename bid_items to transporters
             }
-            
+            if item["src_cities"]:
+                result_dict[bl_id]["src_cities"]= ','.join(item["src_cities"])
+            if item["dest_cities"]:
+                result_dict[bl_id]["dest_cities"]= ','.join(item["dest_cities"])
             
 
         bid_item = {

@@ -112,6 +112,7 @@ async def increment_time_of_bid(request: Request, bid_id: str):
 
     ist_timezone = pytz.timezone("Asia/Kolkata")
     current_time = datetime.now(ist_timezone)
+    current_time = current_time.replace(tzinfo=None)
 
     try:
         (valid_bid_id, error) = await bid.is_valid(bid_id=bid_id)
@@ -128,9 +129,11 @@ async def increment_time_of_bid(request: Request, bid_id: str):
         if (bid_details.bid_end_time-current_time).total_seconds()/60 > setting_details.bid_increment_time:
             return SuccessNoContentResponse(dev_msg="No Increment Needed", client_msg="No Increment Needed.")
 
-        extended_bid_end_time = bid_details.bid_end_time + timedelta(minutes=setting_details.bid_increment_duration)
-        extended_time = bid_details.bid_extended_time + setting_details.bid_increment_duration
-        
+        extended_bid_end_time = bid_details.bid_end_time + \
+            timedelta(minutes=setting_details.bid_increment_duration)
+        extended_time = bid_details.bid_extended_time + \
+            setting_details.bid_increment_duration
+
         (bid_end_time_update, error) = await bid.update_bid_end_time(bid_id=bid_id, bid_end_time=extended_bid_end_time, extended_time=extended_time)
 
         if not bid_end_time_update:
