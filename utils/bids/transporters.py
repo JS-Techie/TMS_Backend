@@ -98,7 +98,6 @@ class Transporter:
             return("", str(err))
         finally:
             session.close()
-        
 
     async def historical_rates(self, transporter_id: str, bid_id: str) -> (any, str):
 
@@ -496,17 +495,19 @@ class Transporter:
             bid_arr = session.execute(text(lost_participated_transporter_bids), params={
                 "transporter_id": transporter_id
             })
-
+            log("BID ARRAY ", bid_arr)
             bid_ids = [bid._mapping["bid_id"] for bid in bid_arr]
-
+            log("BID IDS", bid_ids)
             if not bid_ids:
                 return ([], "")
 
+            load_status_for_lost_participated = ["completed", "confirmed"]
+            
             bids = (session
                     .query(BiddingLoad, ShipperModel, MapLoadSrcDestPair)
                     .outerjoin(ShipperModel, ShipperModel.shpr_id == BiddingLoad.bl_shipper_id)
                     .outerjoin(MapLoadSrcDestPair, and_(MapLoadSrcDestPair.mlsdp_bidding_load_id == BiddingLoad.bl_id, MapLoadSrcDestPair.is_prime == True))
-                    .filter(BiddingLoad.is_active == True, BiddingLoad.bl_id.in_(bid_ids), BiddingLoad.load_status in ["completed", "confirmed"])
+                    .filter(BiddingLoad.is_active == True, BiddingLoad.bl_id.in_(bid_ids), BiddingLoad.load_status.in_(load_status_for_lost_participated))
                     .all()
                     )
 

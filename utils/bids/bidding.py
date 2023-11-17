@@ -216,7 +216,7 @@ class Bid:
                 BiddingLoad.bl_id == bid_id).first()
             log("BID DETIALS >>", bid_details)
             if not bid_details:
-                return (False, {})
+                return (False, "Bid Details Not Found")
 
             return (True, bid_details)
 
@@ -553,7 +553,7 @@ class Bid:
                 BidSettings.bdsttng_shipper_id == shipper_id).first()
 
             if not setting_details:
-                return False, ""
+                return (False, "Setting Details not Found")
 
             return (True, setting_details)
 
