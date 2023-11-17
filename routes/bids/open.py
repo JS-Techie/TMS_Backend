@@ -10,7 +10,7 @@ open_router = APIRouter(prefix="", tags=["Open routes"])
 
 bid=Bid()
 
-@open_router.get("bid/increment/{bid_id}")
+@open_router.get("/bid/increment/{bid_id}")
 async def increment_time_of_bid(bid_id: str):
 
     ist_timezone = pytz.timezone("Asia/Kolkata")
