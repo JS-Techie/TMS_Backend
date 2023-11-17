@@ -4,7 +4,6 @@ from datetime import datetime
 from fastapi import APIRouter, Request
 
 from config.socket import manager
-from routes.bids.shipper import increment_time_of_bid
 from data.bidding import valid_bid_status, valid_transporter_status
 from schemas.bidding import TransporterBidReq, TransporterLostBidsReq
 from utils.bids.bidding import Bid
