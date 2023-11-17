@@ -225,8 +225,6 @@ async def provide_new_rate_for_bid(request: Request, bid_id: str, bid_req: Trans
 
         log("SOCKET EVENT SENT", sorted_bid_details)
 
-        bid_duration_increment = await increment_time_of_bid(request=request, bid_id=bid_id)
-
         return SuccessResponse(data=sorted_bid_details, dev_msg="Bid submitted successfully", client_msg=f"Bid for Bid-{bid_id} submitted!")
 
     except Exception as err:

@@ -108,7 +108,7 @@ async def publish_new_bid(request: Request, bid_id: str, bg_tasks: BackgroundTas
 
 
 @shipper_bidding_router.get("/increment/{bid_id}")
-async def increment_time_of_bid(request: Request, bid_id: str):
+async def increment_time_of_bid(bid_id: str):
 
     ist_timezone = pytz.timezone("Asia/Kolkata")
     current_time = datetime.now(ist_timezone)
