@@ -419,7 +419,7 @@ class Transporter:
         try:
             bid_arr = (session
                        .query(LoadAssigned)
-                       .filter(LoadAssigned.la_transporter_id == transporter_id, LoadAssigned.is_active == True)
+                       .filter(LoadAssigned.la_transporter_id == transporter_id, LoadAssigned.is_active == True, LoadAssigned.is_assigned == True)
                        .all()
                        )
 
@@ -644,7 +644,7 @@ class Transporter:
             bids_which_transporter_has_been_assigned_to = (
                 session
                 .query(LoadAssigned)
-                .filter(LoadAssigned.la_bidding_load_id.in_(filtered_bid_ids), LoadAssigned.la_transporter_id == transporter_id, LoadAssigned.is_active == True)
+                .filter(LoadAssigned.la_bidding_load_id.in_(filtered_bid_ids), LoadAssigned.la_transporter_id == transporter_id, LoadAssigned.is_active == True, LoadAssigned.is_assigned == True)
                 .all()
             )
 
