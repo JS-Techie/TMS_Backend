@@ -58,6 +58,8 @@ status_wise_fetch_query = """
             WHERE
                 t_bidding_load.is_active = true
                 AND t_bidding_load.load_status = :load_status
+            ORDER BY
+                t_bidding_load.created_at DESC
                 """
 
 
@@ -111,6 +113,8 @@ filter_wise_fetch_query = """
                 $branch_id_filter
                 $from_date_filter
                 $to_date_filter
+            ORDER BY
+                t_bidding_load.created_at DESC
                 ;"""
 
 
@@ -118,6 +122,7 @@ live_bid_details = '''
 SELECT
     t_transporter.name AS transporter_name,
     t_bid_transaction.transporter_id,
+    t_bid_transaction.created_at,
     MIN(t_bid_transaction.rate) AS rate,
     t_bid_transaction.comment AS comment,
     MAX(t_bid_transaction.attempt_number) AS attempts
@@ -130,7 +135,8 @@ where
 GROUP BY
     t_transporter.name,
     t_bid_transaction.transporter_id,
-    t_bid_transaction.comment;
+    t_bid_transaction.comment,
+    t_bid_transaction.created_at;
 '''
 
 lost_participated_transporter_bids = '''
@@ -138,7 +144,7 @@ SELECT DISTINCT bt.bid_id
 FROM t_bid_transaction bt
 LEFT JOIN t_load_assigned la
 ON bt.bid_id = la.la_bidding_load_id AND bt.transporter_id = la.la_transporter_id
-WHERE bt.transporter_id = :transporter_id  AND la.la_id IS NULL OR (la.is_active = true AND (la.is_assigned = false OR la.is_assigned is NULL ))
+WHERE bt.transporter_id = :transporter_id  AND (la.la_id IS NULL OR (la.is_active = true AND (la.is_assigned = false OR la.is_assigned is NULL )))
 '''
 
 transporter_analysis = '''SELECT

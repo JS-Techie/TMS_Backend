@@ -113,8 +113,18 @@ async def fetch_selected_bids(request: Request):
 
         if not bids:
             return SuccessResponse(data=[], client_msg="You have not been selected in any bids yet", dev_msg="Not selected in any bids")
+        
+        updated_bids = []
+        for bid in bids:
 
-        return SuccessResponse(data=bids, dev_msg="Fetched bids successfully", client_msg="Fetched all selected bids successfully!")
+            lowest_price_response = await lowest_price_of_bid_and_transporter(request=request, bid_id=bid["bid_id"])
+            if lowest_price_response["data"] == []:
+                return lowest_price_response
+
+            lowest_price_data = lowest_price_response["data"]
+            updated_bids.append({**bid, **lowest_price_data})
+
+        return SuccessResponse(data=updated_bids, dev_msg="Fetched bids successfully", client_msg="Fetched all selected bids successfully!")
 
     except Exception as err:
         return ServerError(err=err, errMsg=str(err))
@@ -254,7 +264,17 @@ async def fetch_lost_bids_for_transporter_based_on_participation(request: Reques
         if not bids:
             return SuccessResponse(data=[], dev_msg="Not lost any bid", client_msg="No lost bids to show right now!")
 
-        return SuccessResponse(data=bids, dev_msg="Fetched lost bids successfully", client_msg="Fetched all lost bids successfully!")
+        updated_bids = []
+        for bid in bids:
+
+            lowest_price_response = await lowest_price_of_bid_and_transporter(request=request, bid_id=bid["bid_id"])
+            if lowest_price_response["data"] == []:
+                return lowest_price_response
+
+            lowest_price_data = lowest_price_response["data"]
+            updated_bids.append({**bid, **lowest_price_data})
+
+        return SuccessResponse(data=updated_bids, dev_msg="Fetched lost bids successfully", client_msg="Fetched all lost bids successfully!")
 
     except Exception as err:
         return ServerError(err=err, errMsg=str(err))

@@ -53,9 +53,10 @@ def structurize(input_array):
                 "transporters": []  # Rename bid_items to transporters
             }
             if item["src_cities"]:
-                result_dict[bl_id]["src_cities"]= ','.join(item["src_cities"])
+                log("SRC CITIES", item["src_cities"])
+                result_dict[bl_id]["src_cities"]= ','.join(set(city for city in item["src_cities"] if city is not None))
             if item["dest_cities"]:
-                result_dict[bl_id]["dest_cities"]= ','.join(item["dest_cities"])
+                result_dict[bl_id]["dest_cities"]= ','.join(set(city for city in item["dest_cities"] if city is not None))
             
 
         bid_item = {
@@ -168,16 +169,17 @@ def structurize_transporter_bids(bids):
 
     bid_details = []
 
-    for bid_load, shipper, src_dest_pair in bids:
+    for bid_load, shipper, src, dest in bids:
         print("BID_LOAD ", bid_load)
         print("SHIPPER ", shipper)
-        print("SRC DEST", src_dest_pair)
+        print("SRC ", src)
+        print("DEST ", dest)
         bid_detail = {
             "bid_id": bid_load.bl_id,
             "shipper_name": shipper.name,
             "contact_number": shipper.contact_no,
-            "src_city": src_dest_pair.src_city if src_dest_pair else None,
-            "dest_city": src_dest_pair.dest_city if src_dest_pair else None,
+            "src_city": ','.join(set(city for city in src if city is not None)) if src else None,
+            "dest_city": ','.join(set(city for city in dest if city is not None)) if dest else None,
             "bid_time": bid_load.bid_time,
             "bid_end_time": bid_load.bid_end_time,
             "bid_extended_time": bid_load.bid_extended_time,

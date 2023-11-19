@@ -617,18 +617,23 @@ class Bid:
         try:
 
             bids_query = (session
-                          .query(BiddingLoad, ShipperModel, MapLoadSrcDestPair)
-                          .outerjoin(ShipperModel, ShipperModel.shpr_id == BiddingLoad.bl_shipper_id)
-                          .outerjoin(MapLoadSrcDestPair, and_(MapLoadSrcDestPair.mlsdp_bidding_load_id == BiddingLoad.bl_id, MapLoadSrcDestPair.is_prime == True))
-                          .filter(BiddingLoad.is_active == True, BiddingLoad.bid_mode == "open_market")
-                          )
+                    .query(BiddingLoad, 
+                            ShipperModel, 
+                            func.array_agg(MapLoadSrcDestPair.src_city),
+                            func.array_agg(MapLoadSrcDestPair.dest_city),
+                            )
+                    .outerjoin(ShipperModel, ShipperModel.shpr_id == BiddingLoad.bl_shipper_id)
+                    .outerjoin(MapLoadSrcDestPair, and_(MapLoadSrcDestPair.mlsdp_bidding_load_id == BiddingLoad.bl_id, MapLoadSrcDestPair.is_active == True))
+                    .filter(BiddingLoad.is_active == True,  BiddingLoad.bid_mode == "open_market")
+                    )
+                            
 
             if status:
                 bids_query = bids_query.filter(
                     BiddingLoad.load_status == status)
 
-            bids = bids_query.all()
-
+            bids = bids_query.group_by(BiddingLoad.bl_id, ShipperModel.shpr_id).all()
+            log("BIDS IN PUBLIC",bids)
             if not bids:
                 return (bids, "")
             return (structurize_transporter_bids(bids=bids), "")
@@ -646,17 +651,22 @@ class Bid:
         try:
 
             bids_query = (session
-                          .query(BiddingLoad, ShipperModel, MapLoadSrcDestPair)
-                          .outerjoin(ShipperModel, ShipperModel.shpr_id == BiddingLoad.bl_shipper_id)
-                          .outerjoin(MapLoadSrcDestPair, and_(MapLoadSrcDestPair.mlsdp_bidding_load_id == BiddingLoad.bl_id, MapLoadSrcDestPair.is_prime == True))
-                          .filter(BiddingLoad.is_active == True, BiddingLoad.bl_shipper_id.in_(shippers), BiddingLoad.bid_mode == "private_pool")
-                          )
+                        .query(BiddingLoad, 
+                                ShipperModel, 
+                                func.array_agg(MapLoadSrcDestPair.src_city),
+                                func.array_agg(MapLoadSrcDestPair.dest_city),
+                                )
+                        .outerjoin(ShipperModel, ShipperModel.shpr_id == BiddingLoad.bl_shipper_id)
+                        .outerjoin(MapLoadSrcDestPair, and_(MapLoadSrcDestPair.mlsdp_bidding_load_id == BiddingLoad.bl_id, MapLoadSrcDestPair.is_active == True))
+                        .filter(BiddingLoad.is_active == True, BiddingLoad.bl_shipper_id.in_(shippers), BiddingLoad.bid_mode == "private_pool")
+                        )
+                        
 
             if status:
                 bids_query = bids_query.filter(
                     BiddingLoad.load_status == status)
 
-            bids = bids_query.all()
+            bids = bids_query.group_by(BiddingLoad.bl_id, ShipperModel.shpr_id).all()
 
             if not bids:
                 return (bids, "")

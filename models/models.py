@@ -16,27 +16,27 @@ class Persistance:
 class ShipperModel(Base, Persistance):
     __tablename__ = "t_shipper"
 
-    shpr_id = Column(UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()"))
+    shpr_id = Column(UUID(as_uuid=True), primary_key=True, server_default=text('gen_random_uuid()'))
     name = Column(String, nullable=False)
-    email = Column(String, nullable = False)
+    email = Column(String, nullable = True)
     contact_person = Column(String, nullable=False)
     contact_no = Column(String, nullable=False)
     corporate_address = Column(String, nullable=False)
     corporate_city = Column(String, nullable=False)
-    corporate_state = Column(String, nullable=False)
-    corporate_country = Column(String, nullable= False)
+    corporate_state = Column(UUID(as_uuid=True), ForeignKey('t_lkp_state.id'), nullable=False)
+    corporate_country = Column(UUID(as_uuid=True), ForeignKey('t_lkp_country.id'), nullable= False)
     corporate_postal_code= Column(String, nullable=True)
     billing_address = Column(String, nullable = False)
     billing_city = Column(String, nullable=False)
-    billing_state = Column(String, nullable=False)
-    billing_country = Column(String, nullable= False)
+    billing_state = Column(UUID(as_uuid=True), ForeignKey('t_lkp_state.id'), nullable=False)
+    billing_country = Column(UUID(as_uuid=True), ForeignKey('t_lkp_country.id'), nullable= False)
     billing_postal_code= Column(String, nullable=True)
     logo = Column(String, nullable=True)
     pan = Column(String, nullable = False)
-    tan = Column(String, nullable = False)
+    tan = Column(String, nullable = True)
     gstin = Column(String, nullable = True)
     inc_cert = Column(String, nullable = True)
-    cin = Column(String, nullable = True)
+    cin = Column(String, nullable = False)
     trade_license = Column(String, nullable = True)
     doc_path= Column(String, nullable=True)
     has_region = Column(Boolean, default = False, nullable = False)
@@ -45,7 +45,8 @@ class ShipperModel(Base, Persistance):
     registration_step = Column(Integer, nullable=False, default=0)
     colour_scheme = Column(JSON, nullable = True)
     status = Column(Enum('verified', 'approved', 'pending', 'rejected', 'blocked' , name = 'approval_status'), default = 'pending')
-    license = relationship("MapShipperLicense", uselist=False)
+    threshold_limit = Column(Integer, nullable = True)
+    
     #some issue in enum naming consistency
 
 class MapShipperRegionCluster(Base, Persistance):

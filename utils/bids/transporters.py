@@ -388,6 +388,7 @@ class Transporter:
             log("FETCHED SHIPPERS ATTACHED TO TRANSPORTERS", shippers)
 
             public_bids, error = await bid.public(status=status)
+
             if error:
                 return [], error
 
@@ -428,18 +429,37 @@ class Transporter:
 
             bid_ids = [bid.la_bidding_load_id for bid in bid_arr]
 
+            log("BID IDS ", bid_ids)
             bids = (session
-                    .query(BiddingLoad, ShipperModel, MapLoadSrcDestPair)
+                    .query(BiddingLoad, 
+                            ShipperModel, 
+                            func.array_agg(MapLoadSrcDestPair.src_city),
+                            func.array_agg(MapLoadSrcDestPair.dest_city),
+                            )
                     .outerjoin(ShipperModel, ShipperModel.shpr_id == BiddingLoad.bl_shipper_id)
-                    .outerjoin(MapLoadSrcDestPair, and_(MapLoadSrcDestPair.mlsdp_bidding_load_id == BiddingLoad.bl_id, MapLoadSrcDestPair.is_prime == True))
+                    .outerjoin(MapLoadSrcDestPair, and_(MapLoadSrcDestPair.mlsdp_bidding_load_id == BiddingLoad.bl_id, MapLoadSrcDestPair.is_active == True))
                     .filter(BiddingLoad.is_active == True, BiddingLoad.bl_id.in_(bid_ids))
+                    .group_by(BiddingLoad.bl_id, ShipperModel.shpr_id)
                     .all()
                     )
 
+            log("BIDS ", bids)
             if not bids:
                 return ([], "")
+            
+            structured_bids = structurize_transporter_bids(bids=bids)
+            updated_bid = []
+            
+            for bid in structured_bids:
+                assigned_fleet=0
+                if bid["bid_id"] in bid_ids:
+                    for load_assigned in bid_arr:
+                        if load_assigned.la_bidding_load_id == bid["bid_id"] :
+                            assigned_fleet = load_assigned.no_of_fleets_assigned
+                            break
+                updated_bid.append({**bid, "no_of_fleets_assigned":assigned_fleet})
 
-            return (structurize_transporter_bids(bids=bids), "")
+            return (updated_bid, "")
 
         except Exception as e:
             session.rollback()
@@ -469,12 +489,18 @@ class Transporter:
             log("BID IDs OF NOT LOST AND PARTICPATED", bid_ids)
 
             bids = (session
-                    .query(BiddingLoad, ShipperModel, MapLoadSrcDestPair)
+                    .query(BiddingLoad, 
+                            ShipperModel, 
+                            func.array_agg(MapLoadSrcDestPair.src_city),
+                            func.array_agg(MapLoadSrcDestPair.dest_city),
+                            )
                     .outerjoin(ShipperModel, ShipperModel.shpr_id == BiddingLoad.bl_shipper_id)
-                    .outerjoin(MapLoadSrcDestPair, and_(MapLoadSrcDestPair.mlsdp_bidding_load_id == BiddingLoad.bl_id, MapLoadSrcDestPair.is_prime == True))
+                    .outerjoin(MapLoadSrcDestPair, and_(MapLoadSrcDestPair.mlsdp_bidding_load_id == BiddingLoad.bl_id, MapLoadSrcDestPair.is_active == True))
                     .filter(BiddingLoad.is_active == True, BiddingLoad.bl_id.in_(bid_ids))
+                    .group_by(BiddingLoad.bl_id, ShipperModel.shpr_id)
                     .all()
                     )
+                    
 
             if not bids:
                 return ([], "")
@@ -504,12 +530,18 @@ class Transporter:
             load_status_for_lost_participated = ["completed", "confirmed"]
             
             bids = (session
-                    .query(BiddingLoad, ShipperModel, MapLoadSrcDestPair)
+                    .query(BiddingLoad, 
+                            ShipperModel, 
+                            func.array_agg(MapLoadSrcDestPair.src_city),
+                            func.array_agg(MapLoadSrcDestPair.dest_city),
+                            )
                     .outerjoin(ShipperModel, ShipperModel.shpr_id == BiddingLoad.bl_shipper_id)
-                    .outerjoin(MapLoadSrcDestPair, and_(MapLoadSrcDestPair.mlsdp_bidding_load_id == BiddingLoad.bl_id, MapLoadSrcDestPair.is_prime == True))
+                    .outerjoin(MapLoadSrcDestPair, and_(MapLoadSrcDestPair.mlsdp_bidding_load_id == BiddingLoad.bl_id, MapLoadSrcDestPair.is_active == True))
                     .filter(BiddingLoad.is_active == True, BiddingLoad.bl_id.in_(bid_ids), BiddingLoad.load_status.in_(load_status_for_lost_participated))
+                    .group_by(BiddingLoad.bl_id, ShipperModel.shpr_id)
                     .all()
                     )
+                    
 
             if not bids:
                 return ([], "")
@@ -532,11 +564,9 @@ class Transporter:
             all_bids, error = await self.bids_by_status(transporter_id=transporter_id)
 
             if error:
-                return ([], "All bids for transporter could not be fetched")
+                return ([], error)
 
             _all = all_bids["all"]
-
-            log("ALL BIDS", _all)
 
             (participated_bids, error) = await self.participated_bids(transporter_id=transporter_id)
 
@@ -658,12 +688,18 @@ class Transporter:
                        for bid in bids_which_transporter_has_been_assigned_to]
 
             bids = (session
-                    .query(BiddingLoad, ShipperModel, MapLoadSrcDestPair)
+                    .query(BiddingLoad, 
+                            ShipperModel, 
+                            func.array_agg(MapLoadSrcDestPair.src_city),
+                            func.array_agg(MapLoadSrcDestPair.dest_city),
+                            )
                     .outerjoin(ShipperModel, ShipperModel.shpr_id == BiddingLoad.bl_shipper_id)
-                    .outerjoin(MapLoadSrcDestPair, and_(MapLoadSrcDestPair.mlsdp_bidding_load_id == BiddingLoad.bl_id, MapLoadSrcDestPair.is_prime == True))
+                    .outerjoin(MapLoadSrcDestPair, and_(MapLoadSrcDestPair.mlsdp_bidding_load_id == BiddingLoad.bl_id, MapLoadSrcDestPair.is_active == True))
                     .filter(BiddingLoad.is_active == True, BiddingLoad.bl_id.in_(bid_ids))
+                    .group_by(BiddingLoad.bl_id, ShipperModel.shpr_id)
                     .all()
                     )
+                    
 
             if not bids:
                 return ([], "")
@@ -692,7 +728,10 @@ class Transporter:
             if not bid_summary:
                 return (None, "")
             
-            sorted_bid_summary = sorted(bid_summary, key=lambda x: x['rate'])            
+            log("BID SUMMARY", bid_summary)
+            # sorted_bid_summary = sorted(bid_summary, key=lambda x: x['rate'])
+            sorted_bid_summary = sorted(bid_summary, key=lambda x: (x['rate'], x['created_at'].timestamp()))
+            
             _position = 0
             
             for index, bid_detail in enumerate(sorted_bid_summary):
