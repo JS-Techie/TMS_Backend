@@ -763,6 +763,8 @@ class Transporter:
             transporter_detail = (session.query(LoadAssigned).filter(LoadAssigned.la_bidding_load_id == bid_id, LoadAssigned.la_transporter_id == transporter_id, LoadAssigned.is_active == True).first())
             
             log("TRANSPORTER DETAILS", transporter_detail)
+            if not transporter_detail:
+                return([],"")
             if not transporter_detail.history:
                 return([],"")
             
