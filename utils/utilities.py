@@ -169,15 +169,15 @@ def structurize_transporter_bids(bids):
 
     bid_details = []
 
-    for bid_load, shipper, src, dest in bids:
+    for bid_load, shipper_name, shipper_contact_no, src, dest in bids:
         print("BID_LOAD ", bid_load)
-        print("SHIPPER ", shipper)
+        print("SHIPPER ", shipper_name)
         print("SRC ", src)
         print("DEST ", dest)
         bid_detail = {
             "bid_id": bid_load.bl_id,
-            "shipper_name": shipper.name,
-            "contact_number": shipper.contact_no,
+            "shipper_name": shipper_name,
+            "contact_number": shipper_contact_no,
             "src_city": ','.join(set(city for city in src if city is not None)) if src else None,
             "dest_city": ','.join(set(city for city in dest if city is not None)) if dest else None,
             "bid_time": bid_load.bid_time,

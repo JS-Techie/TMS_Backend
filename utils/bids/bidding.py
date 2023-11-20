@@ -622,7 +622,8 @@ class Bid:
 
             bids_query = (session
                     .query(BiddingLoad, 
-                            ShipperModel, 
+                            ShipperModel.name, 
+                            ShipperModel.contact_no,
                             func.array_agg(MapLoadSrcDestPair.src_city),
                             func.array_agg(MapLoadSrcDestPair.dest_city),
                             )
@@ -636,7 +637,7 @@ class Bid:
                 bids_query = bids_query.filter(
                     BiddingLoad.load_status == status)
 
-            bids = bids_query.group_by(BiddingLoad.bl_id, ShipperModel.shpr_id).all()
+            bids = bids_query.group_by(BiddingLoad, *BiddingLoad.__table__.c, ShipperModel.name, ShipperModel.contact_no).all()
             log("BIDS IN PUBLIC",bids)
             if not bids:
                 return (bids, "")
@@ -656,7 +657,8 @@ class Bid:
 
             bids_query = (session
                         .query(BiddingLoad, 
-                                ShipperModel, 
+                                ShipperModel.name, 
+                                ShipperModel.contact_no, 
                                 func.array_agg(MapLoadSrcDestPair.src_city),
                                 func.array_agg(MapLoadSrcDestPair.dest_city),
                                 )
@@ -670,7 +672,7 @@ class Bid:
                 bids_query = bids_query.filter(
                     BiddingLoad.load_status == status)
 
-            bids = bids_query.group_by(BiddingLoad.bl_id, ShipperModel.shpr_id).all()
+            bids = bids_query.group_by(BiddingLoad, *BiddingLoad.__table__.c, ShipperModel.name, ShipperModel.contact_no).all()
 
             if not bids:
                 return (bids, "")

@@ -436,14 +436,15 @@ class Transporter:
             log("BID IDS ", bid_ids)
             bids = (session
                     .query(BiddingLoad, 
-                            ShipperModel, 
+                            ShipperModel.name, 
+                            ShipperModel.contact_no,
                             func.array_agg(MapLoadSrcDestPair.src_city),
                             func.array_agg(MapLoadSrcDestPair.dest_city),
                             )
                     .outerjoin(ShipperModel, ShipperModel.shpr_id == BiddingLoad.bl_shipper_id)
                     .outerjoin(MapLoadSrcDestPair, and_(MapLoadSrcDestPair.mlsdp_bidding_load_id == BiddingLoad.bl_id, MapLoadSrcDestPair.is_active == True))
                     .filter(BiddingLoad.is_active == True, BiddingLoad.bl_id.in_(bid_ids))
-                    .group_by(BiddingLoad.bl_id, ShipperModel.shpr_id)
+                    .group_by(BiddingLoad, *BiddingLoad.__table__.c, ShipperModel.name, ShipperModel.contact_no)
                     .all()
                     )
 
@@ -494,14 +495,15 @@ class Transporter:
 
             bids = (session
                     .query(BiddingLoad, 
-                            ShipperModel, 
+                            ShipperModel.name, 
+                            ShipperModel.contact_no,
                             func.array_agg(MapLoadSrcDestPair.src_city),
                             func.array_agg(MapLoadSrcDestPair.dest_city),
                             )
                     .outerjoin(ShipperModel, ShipperModel.shpr_id == BiddingLoad.bl_shipper_id)
                     .outerjoin(MapLoadSrcDestPair, and_(MapLoadSrcDestPair.mlsdp_bidding_load_id == BiddingLoad.bl_id, MapLoadSrcDestPair.is_active == True))
                     .filter(BiddingLoad.is_active == True, BiddingLoad.bl_id.in_(bid_ids))
-                    .group_by(BiddingLoad.bl_id, ShipperModel.shpr_id)
+                    .group_by(BiddingLoad, *BiddingLoad.__table__.c, ShipperModel.name, ShipperModel.contact_no)
                     .all()
                     )
                     
@@ -535,14 +537,15 @@ class Transporter:
             
             bids = (session
                     .query(BiddingLoad, 
-                            ShipperModel, 
+                            ShipperModel.name, 
+                            ShipperModel.contact_no,
                             func.array_agg(MapLoadSrcDestPair.src_city),
                             func.array_agg(MapLoadSrcDestPair.dest_city),
                             )
                     .outerjoin(ShipperModel, ShipperModel.shpr_id == BiddingLoad.bl_shipper_id)
                     .outerjoin(MapLoadSrcDestPair, and_(MapLoadSrcDestPair.mlsdp_bidding_load_id == BiddingLoad.bl_id, MapLoadSrcDestPair.is_active == True))
                     .filter(BiddingLoad.is_active == True, BiddingLoad.bl_id.in_(bid_ids), BiddingLoad.load_status.in_(load_status_for_lost_participated))
-                    .group_by(BiddingLoad.bl_id, ShipperModel.shpr_id)
+                    .group_by(BiddingLoad, *BiddingLoad.__table__.c, ShipperModel.name, ShipperModel.contact_no)
                     .all()
                     )
                     
@@ -693,14 +696,15 @@ class Transporter:
 
             bids = (session
                     .query(BiddingLoad, 
-                            ShipperModel, 
+                            ShipperModel.name, 
+                            ShipperModel.contact_no,
                             func.array_agg(MapLoadSrcDestPair.src_city),
                             func.array_agg(MapLoadSrcDestPair.dest_city),
                             )
                     .outerjoin(ShipperModel, ShipperModel.shpr_id == BiddingLoad.bl_shipper_id)
                     .outerjoin(MapLoadSrcDestPair, and_(MapLoadSrcDestPair.mlsdp_bidding_load_id == BiddingLoad.bl_id, MapLoadSrcDestPair.is_active == True))
                     .filter(BiddingLoad.is_active == True, BiddingLoad.bl_id.in_(bid_ids))
-                    .group_by(BiddingLoad.bl_id, ShipperModel.shpr_id)
+                    .group_by(BiddingLoad, *BiddingLoad.__table__.c, ShipperModel.name, ShipperModel.contact_no)
                     .all()
                     )
                     
