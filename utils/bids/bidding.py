@@ -435,6 +435,10 @@ class Bid:
             transporters_to_be_updated = list(
                 set(transporter_ids).intersection(set(fetched_transporter_ids)))
 
+            ist_timezone = pytz.timezone("Asia/Kolkata")
+            current_time = datetime.now(ist_timezone)
+            current_time = current_time.replace(tzinfo=None, second=0, microsecond=0)
+            
             for transporter in transporters:
                 if getattr(transporter, "la_transporter_id") in transporters_not_assigned:
                     assign_detail = LoadAssigned(
@@ -449,7 +453,7 @@ class Bid:
                         no_of_fleets_assigned=getattr(
                             transporter, "no_of_fleets_assigned"),
                         history=str(
-                            [(getattr(transporter, "no_of_fleets_assigned"), str(datetime.now()), None)]),
+                            [(getattr(transporter, "no_of_fleets_assigned"), str(current_time), None)]),
                         is_assigned=True,
                         is_active=True,
                         created_by=user_id
@@ -475,13 +479,13 @@ class Bid:
                                 transporter, "no_of_fleets_assigned"))
                             setattr(transporter_detail, "is_assigned", True)
                             setattr(transporter_detail, "is_active", True)
-                            setattr(transporter_detail, "updated_at", str(datetime.now()))
+                            setattr(transporter_detail, "updated_at", str(current_time))
                             setattr(transporter_detail, "updated_by", user_id)
                             if not transporter_detail.history:
-                                setattr(transporter_detail, "history", str([(getattr(transporter, "no_of_fleets_assigned"), str(datetime.now()), None)]))
+                                setattr(transporter_detail, "history", str([(getattr(transporter, "no_of_fleets_assigned"), str(current_time), None)]))
                             else:
                                 history_fetched = ast.literal_eval(getattr(transporter_detail, "history"))
-                                task = (transporter.no_of_fleets_assigned, str(datetime.now()), None)
+                                task = (transporter.no_of_fleets_assigned, str(current_time), None)
                                 history_fetched.append(task)
                                 setattr(transporter_detail, "history", str(history_fetched))
                                 

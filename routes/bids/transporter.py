@@ -1,5 +1,5 @@
 import json
-import os
+import os, pytz
 from datetime import datetime
 from fastapi import APIRouter, Request
 
@@ -162,7 +162,9 @@ async def provide_new_rate_for_bid(request: Request, bid_id: str, bid_req: Trans
         log("BID DETAILS LOAD STATUS", bid_details.load_status)
 
         if bid_details.load_status not in valid_bid_status:
-            current_time = datetime.now()
+            ist_timezone = pytz.timezone("Asia/Kolkata")
+            current_time = datetime.now(ist_timezone)
+            current_time = current_time.replace(tzinfo=None, second=0, microsecond=0)
 
             if current_time < bid_details.bid_time and current_time < bid_details.bid_end_time:
                 return ErrorResponse(data=[], client_msg=f"This Load is not Accepting Bids yet, the start time is {bid_details.bid_time}", dev_msg="Tried bidding, but bid is not live yet")

@@ -1,4 +1,4 @@
-import os, httpx, json, requests, ast
+import os, httpx, json, requests, ast, pytz
 from datetime import datetime
 from sqlalchemy import text, and_, or_, func
 from uuid import UUID
@@ -335,18 +335,22 @@ class Transporter:
 
             no_transporter_assigned = True
 
+            ist_timezone = pytz.timezone("Asia/Kolkata")
+            current_time = datetime.now(ist_timezone)
+            current_time = current_time.replace(tzinfo=None, second=0, microsecond=0)
+
             for transporter in transporters:
                 if transporter.la_transporter_id == UUID(transporter_id):
                     transporter.is_assigned = False
                     transporter.no_of_fleets_assigned = 0
                     transporter.unassignment_reason = unassignment_reason   
                     if transporter.history:
-                        task = (0, str(datetime.now()), unassignment_reason)
+                        task = (0, str(current_time), unassignment_reason)
                         fetched_history = ast.literal_eval(transporter.history)
                         fetched_history.append(task)
                         transporter.history= str(fetched_history)
                     else:
-                        transporter.history= str([(0,str(datetime.now()), unassignment_reason)])
+                        transporter.history= str([(0,str(current_time), unassignment_reason)])
                     
 
                 elif no_transporter_assigned and transporter.la_transporter_id != UUID(transporter_id):
