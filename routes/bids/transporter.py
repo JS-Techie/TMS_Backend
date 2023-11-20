@@ -161,19 +161,19 @@ async def provide_new_rate_for_bid(request: Request, bid_id: str, bid_req: Trans
             return ErrorResponse(data=[], client_msg=os.getenv("BID_RATE_ERROR"), dev_msg=error)
         log("BID DETAILS LOAD STATUS", bid_details.load_status)
 
-        if bid_details.load_status not in valid_bid_status:
-            ist_timezone = pytz.timezone("Asia/Kolkata")
-            current_time = datetime.now(ist_timezone)
-            current_time = current_time.replace(tzinfo=None, second=0, microsecond=0)
+        
+        ist_timezone = pytz.timezone("Asia/Kolkata")
+        current_time = datetime.now(ist_timezone)
+        current_time = current_time.replace(tzinfo=None, second=0, microsecond=0)
 
-            if current_time < bid_details.bid_time and current_time < bid_details.bid_end_time:
-                return ErrorResponse(data=[], client_msg=f"This Load is not Accepting Bids yet, the start time is {bid_details.bid_time}", dev_msg="Tried bidding, but bid is not live yet")
+        if current_time < bid_details.bid_time and current_time < bid_details.bid_end_time:
+            return ErrorResponse(data=[], client_msg=f"This Load is not Accepting Bids yet, the start time is {bid_details.bid_time}", dev_msg="Tried bidding, but bid is not live yet")
 
-            elif current_time > bid_details.bid_time and current_time > bid_details.bid_end_time:
-                return ErrorResponse(data=[], client_msg=f"This Load is not Accepting Bids anymore, the end time was {bid_details.bid_end_time}", dev_msg="Tried bidding, but bid is not live anymore")
+        elif current_time > bid_details.bid_time and current_time > bid_details.bid_end_time:
+            return ErrorResponse(data=[], client_msg=f"This Load is not Accepting Bids anymore, the end time was {bid_details.bid_end_time}", dev_msg="Tried bidding, but bid is not live anymore")
 
-            else:
-                return ErrorResponse(data=[], client_msg=os.getenv("GENERIC_ERROR"), dev_msg="Ambiguous Bid Time and Bid End Time")
+        else:
+            return ErrorResponse(data=[], client_msg=os.getenv("GENERIC_ERROR"), dev_msg="Ambiguous Bid Time and Bid End Time")
 
         log("BID DETAILS FOUND", bid_id)
 
