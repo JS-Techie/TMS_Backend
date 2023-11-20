@@ -86,11 +86,23 @@ async def publish_new_bid(request: Request, bid_id: str, bg_tasks: BackgroundTas
     user_id = request.state.current_user["id"]
 
     try:
+        ist_timezone = pytz.timezone("Asia/Kolkata")
+        current_time = datetime.now(ist_timezone)
+        current_time = current_time.replace(tzinfo=None, second =0, microsecond =0)
 
         (valid_bid_id, error) = await bid.is_valid(bid_id)
 
         if not valid_bid_id:
             return ErrorResponse(data=[], client_msg=os.getenv("NOT_FOUND_ERROR"), dev_msg=error)
+        
+        (success, bid_details) = await bid.details(bid_id=bid_id)
+
+        if not success:
+            return ErrorResponse(data=bid_id, dev_msg=success)
+
+        if current_time > bid_details.bid_time:
+            return ErrorResponse(data=[], client_msg=f"Bid Time was {bid_details.bid_time.replace(second =0, microsecond =0)}. Bid could not be published Anymore.", dev_msg="Already Crossed Bid Time. Bid Couldnot be published.")
+
 
         (update_successful, error) = await bid.update_status(bid_id=bid_id, status="not_started", user_id=user_id)
 
