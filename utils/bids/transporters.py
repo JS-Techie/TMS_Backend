@@ -1,4 +1,9 @@
-import os, httpx, json, requests, ast, pytz
+import os
+import httpx
+import json
+import requests
+import ast
+import pytz
 from datetime import datetime
 from sqlalchemy import text, and_, or_, func
 from uuid import UUID
@@ -42,60 +47,64 @@ class Transporter:
         finally:
             session.close()
 
-    async def notify(self, bid_id: str, authtoken: any)->(bool,str):
-        
+    async def notify(self, bid_id: str, authtoken: any) -> (bool, str):
+
         session = Session()
-        
+
         try:
-            (bid_details, error)=await self.bid_details(bid_id=bid_id)
+            (bid_details, error) = await self.bid_details(bid_id=bid_id)
             if error:
-                return("", error)
-            
-            transporter_ids=[]
-            user_ids=[]
-            
+                return ("", error)
+
+            transporter_ids = []
+            user_ids = []
+
             if bid_details.bid_mode == 'private_pool':
-                transporters=session.query(MapShipperTransporter).filter(MapShipperTransporter.mst_shipper_id == bid_details.bl_shipper_id, MapShipperTransporter.is_active == True).all()
-                for transporter  in transporters:
-                    transporter_ids.append(transporter.mst_transporter_id)                  
-                    
+                transporters = session.query(MapShipperTransporter).filter(
+                    MapShipperTransporter.mst_shipper_id == bid_details.bl_shipper_id, MapShipperTransporter.is_active == True).all()
+                for transporter in transporters:
+                    transporter_ids.append(transporter.mst_transporter_id)
+
             elif bid_details.bid_mode == 'open_market':
-                transporters=session.query(TransporterModel).filter(TransporterModel.is_active == True).all()
-                for transporter  in transporters:
+                transporters = session.query(TransporterModel).filter(
+                    TransporterModel.is_active == True).all()
+                for transporter in transporters:
                     transporter_ids.append(transporter.trnsp_id)
-            
-            user_details= session.query(User).filter(User.user_transporter_id.in_(transporter_ids), User.is_active == True).all()
-            
+
+            user_details = session.query(User).filter(
+                User.user_transporter_id.in_(transporter_ids), User.is_active == True).all()
+
             login_url = "http://13.235.56.142:8000/api/secure/notification/"
             headers = {
                 'Authorization': authtoken
-                    }            
-            
+            }
+
             for user_detail in user_details:
                 user_ids.append(str(user_detail.user_id))
-                
-            payload = {"nt_receiver_id" :user_ids,
-                        "nt_text" :f"New Bid for a Load needing {bid_details.no_of_fleets} fleets is Available with Load id - {bid_details.bl_id}. The Bidding will start from {bid_details.bid_time}",
-                        "nt_type" :"PUBLISH NOTIFICATION",
-                        "nt_deep_link" :"transporter_dashboard_upcoming",
-                        }
-                    
+
+            payload = {"nt_receiver_id": user_ids,
+                       "nt_text": f"New Bid for a Load needing {bid_details.no_of_fleets} fleets is Available with Load id - {bid_details.bl_id}. The Bidding will start from {bid_details.bid_time}",
+                       "nt_type": "PUBLISH NOTIFICATION",
+                       "nt_deep_link": "transporter_dashboard_upcoming",
+                       }
+
             log("PAYLOAD", payload)
-            log("HEADER",headers)
-            
+            log("HEADER", headers)
+
             with httpx.Client() as client:
-                response = client.post(url=login_url, headers=headers, data=json.dumps(payload))
-            
+                response = client.post(
+                    url=login_url, headers=headers, data=json.dumps(payload))
+
             log("NOTIFICATION CREATE Response", response.json())
-            json_response= response.json()
-            
-            if json_response["success"]==False:
-                return (False,json_response["dev_message"])
-            return (True,"")
-            
+            json_response = response.json()
+
+            if json_response["success"] == False:
+                return (False, json_response["dev_message"])
+            return (True, "")
+
         except Exception as err:
             session.rollback()
-            return("", str(err))
+            return ("", str(err))
         finally:
             session.close()
 
@@ -337,21 +346,22 @@ class Transporter:
 
             ist_timezone = pytz.timezone("Asia/Kolkata")
             current_time = datetime.now(ist_timezone)
-            current_time = current_time.replace(tzinfo=None, second=0, microsecond=0)
+            current_time = current_time.replace(
+                tzinfo=None, second=0, microsecond=0)
 
             for transporter in transporters:
                 if transporter.la_transporter_id == UUID(transporter_id):
                     transporter.is_assigned = False
                     transporter.no_of_fleets_assigned = 0
-                    transporter.unassignment_reason = unassignment_reason   
+                    transporter.unassignment_reason = unassignment_reason
                     if transporter.history:
                         task = (0, str(current_time), unassignment_reason)
                         fetched_history = ast.literal_eval(transporter.history)
                         fetched_history.append(task)
-                        transporter.history= str(fetched_history)
+                        transporter.history = str(fetched_history)
                     else:
-                        transporter.history= str([(0,str(current_time), unassignment_reason)])
-                    
+                        transporter.history = str(
+                            [(0, str(current_time), unassignment_reason)])
 
                 elif no_transporter_assigned and transporter.la_transporter_id != UUID(transporter_id):
                     no_transporter_assigned = False
@@ -435,12 +445,12 @@ class Transporter:
 
             log("BID IDS ", bid_ids)
             bids = (session
-                    .query(BiddingLoad, 
-                            ShipperModel.name, 
-                            ShipperModel.contact_no,
-                            func.array_agg(MapLoadSrcDestPair.src_city),
-                            func.array_agg(MapLoadSrcDestPair.dest_city),
-                            )
+                    .query(BiddingLoad,
+                           ShipperModel.name,
+                           ShipperModel.contact_no,
+                           func.array_agg(MapLoadSrcDestPair.src_city),
+                           func.array_agg(MapLoadSrcDestPair.dest_city),
+                           )
                     .outerjoin(ShipperModel, ShipperModel.shpr_id == BiddingLoad.bl_shipper_id)
                     .outerjoin(MapLoadSrcDestPair, and_(MapLoadSrcDestPair.mlsdp_bidding_load_id == BiddingLoad.bl_id, MapLoadSrcDestPair.is_active == True))
                     .filter(BiddingLoad.is_active == True, BiddingLoad.bl_id.in_(bid_ids))
@@ -451,18 +461,19 @@ class Transporter:
             log("BIDS ", bids)
             if not bids:
                 return ([], "")
-            
+
             structured_bids = structurize_transporter_bids(bids=bids)
             updated_bid = []
-            
+
             for bid in structured_bids:
-                assigned_fleet=0
+                assigned_fleet = 0
                 if bid["bid_id"] in bid_ids:
                     for load_assigned in bid_arr:
-                        if load_assigned.la_bidding_load_id == bid["bid_id"] :
+                        if load_assigned.la_bidding_load_id == bid["bid_id"]:
                             assigned_fleet = load_assigned.no_of_fleets_assigned
                             break
-                updated_bid.append({**bid, "no_of_fleets_assigned":assigned_fleet})
+                updated_bid.append(
+                    {**bid, "no_of_fleets_assigned": assigned_fleet})
 
             return (updated_bid, "")
 
@@ -494,19 +505,18 @@ class Transporter:
             log("BID IDs OF NOT LOST AND PARTICPATED", bid_ids)
 
             bids = (session
-                    .query(BiddingLoad, 
-                            ShipperModel.name, 
-                            ShipperModel.contact_no,
-                            func.array_agg(MapLoadSrcDestPair.src_city),
-                            func.array_agg(MapLoadSrcDestPair.dest_city),
-                            )
+                    .query(BiddingLoad,
+                           ShipperModel.name,
+                           ShipperModel.contact_no,
+                           func.array_agg(MapLoadSrcDestPair.src_city),
+                           func.array_agg(MapLoadSrcDestPair.dest_city),
+                           )
                     .outerjoin(ShipperModel, ShipperModel.shpr_id == BiddingLoad.bl_shipper_id)
                     .outerjoin(MapLoadSrcDestPair, and_(MapLoadSrcDestPair.mlsdp_bidding_load_id == BiddingLoad.bl_id, MapLoadSrcDestPair.is_active == True))
                     .filter(BiddingLoad.is_active == True, BiddingLoad.bl_id.in_(bid_ids))
                     .group_by(BiddingLoad, *BiddingLoad.__table__.c, ShipperModel.name, ShipperModel.contact_no)
                     .all()
                     )
-                    
 
             if not bids:
                 return ([], "")
@@ -534,21 +544,20 @@ class Transporter:
                 return ([], "")
 
             load_status_for_lost_participated = ["completed", "confirmed"]
-            
+
             bids = (session
-                    .query(BiddingLoad, 
-                            ShipperModel.name, 
-                            ShipperModel.contact_no,
-                            func.array_agg(MapLoadSrcDestPair.src_city),
-                            func.array_agg(MapLoadSrcDestPair.dest_city),
-                            )
+                    .query(BiddingLoad,
+                           ShipperModel.name,
+                           ShipperModel.contact_no,
+                           func.array_agg(MapLoadSrcDestPair.src_city),
+                           func.array_agg(MapLoadSrcDestPair.dest_city),
+                           )
                     .outerjoin(ShipperModel, ShipperModel.shpr_id == BiddingLoad.bl_shipper_id)
                     .outerjoin(MapLoadSrcDestPair, and_(MapLoadSrcDestPair.mlsdp_bidding_load_id == BiddingLoad.bl_id, MapLoadSrcDestPair.is_active == True))
                     .filter(BiddingLoad.is_active == True, BiddingLoad.bl_id.in_(bid_ids), BiddingLoad.load_status.in_(load_status_for_lost_participated))
                     .group_by(BiddingLoad, *BiddingLoad.__table__.c, ShipperModel.name, ShipperModel.contact_no)
                     .all()
                     )
-                    
 
             if not bids:
                 return ([], "")
@@ -695,19 +704,18 @@ class Transporter:
                        for bid in bids_which_transporter_has_been_assigned_to]
 
             bids = (session
-                    .query(BiddingLoad, 
-                            ShipperModel.name, 
-                            ShipperModel.contact_no,
-                            func.array_agg(MapLoadSrcDestPair.src_city),
-                            func.array_agg(MapLoadSrcDestPair.dest_city),
-                            )
+                    .query(BiddingLoad,
+                           ShipperModel.name,
+                           ShipperModel.contact_no,
+                           func.array_agg(MapLoadSrcDestPair.src_city),
+                           func.array_agg(MapLoadSrcDestPair.dest_city),
+                           )
                     .outerjoin(ShipperModel, ShipperModel.shpr_id == BiddingLoad.bl_shipper_id)
                     .outerjoin(MapLoadSrcDestPair, and_(MapLoadSrcDestPair.mlsdp_bidding_load_id == BiddingLoad.bl_id, MapLoadSrcDestPair.is_active == True))
                     .filter(BiddingLoad.is_active == True, BiddingLoad.bl_id.in_(bid_ids))
                     .group_by(BiddingLoad, *BiddingLoad.__table__.c, ShipperModel.name, ShipperModel.contact_no)
                     .all()
                     )
-                    
 
             if not bids:
                 return ([], "")
@@ -722,30 +730,49 @@ class Transporter:
         finally:
             session.close()
 
-    async def position(self,transporter_id: str,bid_id : str) -> (any, str):
+    async def position(self, transporter_id: str, bid_id: str) -> (any, str):
         try:
             session = Session()
 
             bid_details = session.execute(text(live_bid_details), params={
                 "bid_id": bid_id})
-            
-            bid_summary=[]
+
+            bid_summary = []
             for row in bid_details:
                 bid_summary.append(row._mapping)
-            
+
             if not bid_summary:
                 return (None, "")
-            
+
             log("BID SUMMARY", bid_summary)
             # sorted_bid_summary = sorted(bid_summary, key=lambda x: x['rate'])
-            sorted_bid_summary = sorted(bid_summary, key=lambda x: (x['rate'], x['created_at'].timestamp()))
-            
+
+            transporter_lowest_rate_bid_dict = {}
+            for bid in bid_summary:
+
+                id = bid.transporter_id
+                if id in transporter_lowest_rate_bid_dict.keys():
+                    if transporter_lowest_rate_bid_dict[id].rate > bid.rate:
+                        transporter_lowest_rate_bid_dict[id] = bid
+
+                if id not in transporter_lowest_rate_bid_dict.keys():
+                    transporter_lowest_rate_bid_dict[id] = bid
+
+
+            lowest_rate_bid_summary = [
+                lowest_rate_bid_details for lowest_rate_bid_details in transporter_lowest_rate_bid_dict.values()]
+
+            sorted_bid_summary = sorted(lowest_rate_bid_summary, key=lambda x: (
+                x['rate'], x['created_at'].timestamp()))
+
+            log("SORTED BID SUMMARY ", sorted_bid_summary)
+
             _position = 0
-            
+
             for index, bid_detail in enumerate(sorted_bid_summary):
                 if str(bid_detail.transporter_id) == str(transporter_id):
                     return (index, "")
-            return (None,"")
+            return (None, "")
 
         except Exception as e:
             session.rollback()
@@ -760,31 +787,33 @@ class Transporter:
 
         try:
 
-            transporter_detail = (session.query(LoadAssigned).filter(LoadAssigned.la_bidding_load_id == bid_id, LoadAssigned.la_transporter_id == transporter_id, LoadAssigned.is_active == True).first())
-            
+            transporter_detail = (session.query(LoadAssigned).filter(LoadAssigned.la_bidding_load_id == bid_id,
+                                  LoadAssigned.la_transporter_id == transporter_id, LoadAssigned.is_active == True).first())
+
             log("TRANSPORTER DETAILS", transporter_detail)
             if not transporter_detail:
-                return([],"")
+                return ([], "")
             if not transporter_detail.history:
-                return([],"")
-            
+                return ([], "")
+
             log("ASSIGNMENT HISTORY", transporter_detail.history)
             log("TYPE", type(transporter_detail.history))
-            
-            assignment_history= ast.literal_eval(transporter_detail.history)
-            
+
+            assignment_history = ast.literal_eval(transporter_detail.history)
+
             log("ASSIGNMENT HISTORY", assignment_history)
             log("TYPE", type(assignment_history))
-            
+
             history = []
-            
+
             for task_snapshot in assignment_history:
-                (assigned_no_of_fleets, created_at, unassignment_reason) = task_snapshot
+                (assigned_no_of_fleets, created_at,
+                 unassignment_reason) = task_snapshot
                 history.append({
-                            "assigned_no_of_fleets":assigned_no_of_fleets,
-                            "created_at":created_at,
-                            "unassignment_reason":unassignment_reason
-                        })
+                    "assigned_no_of_fleets": assigned_no_of_fleets,
+                    "created_at": created_at,
+                    "unassignment_reason": unassignment_reason
+                })
 
             return (history, "")
 
