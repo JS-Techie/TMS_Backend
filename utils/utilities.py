@@ -169,7 +169,7 @@ def structurize_transporter_bids(bids):
 
     bid_details = []
 
-    for bid_load, shipper_name, shipper_contact_no, src, dest in bids:
+    for bid_load, shipper_id, shipper_name, shipper_contact_no, src, dest in bids:
         print("BID_LOAD ", bid_load)
         print("SHIPPER ", shipper_name)
         print("SRC ", src)
@@ -186,7 +186,8 @@ def structurize_transporter_bids(bids):
             "load_status": bid_load.load_status,
             "reporting_from_time":bid_load.reporting_from_time,
             "reporting_to_time":bid_load.reporting_to_time,
-            "completion_reason":bid_load.completion_reason
+            "completion_reason":bid_load.completion_reason,
+            "no_of_fleets_assigned":0
         }
 
         bid_details.append(bid_detail)

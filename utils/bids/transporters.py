@@ -11,7 +11,7 @@ from typing import List
 
 from config.db_config import Session
 from utils.response import ServerError, SuccessResponse
-from models.models import BidTransaction, TransporterModel, MapShipperTransporter, LoadAssigned, BiddingLoad, User, ShipperModel, MapLoadSrcDestPair
+from models.models import BidTransaction, TransporterModel, MapShipperTransporter, LoadAssigned, BiddingLoad, User, ShipperModel, MapLoadSrcDestPair, BlacklistTransporter
 from utils.bids.bidding import Bid
 from utils.utilities import log, structurize_transporter_bids
 from data.bidding import lost_participated_transporter_bids, live_bid_details
@@ -401,7 +401,7 @@ class Transporter:
 
             log("FETCHED SHIPPERS ATTACHED TO TRANSPORTERS", shippers)
 
-            public_bids, error = await bid.public(status=status)
+            public_bids, error = await bid.public(blocked_shippers=shippers["blocked_shipper_ids"], status=status)
 
             if error:
                 return [], error
@@ -409,8 +409,8 @@ class Transporter:
             log("FETCHED PUBLIC BIDS", public_bids)
 
             private_bids = []
-            if shippers:
-                private_bids, error = await bid.private(shippers=shippers, status=status)
+            if shippers["shipper_ids"]:
+                private_bids, error = await bid.private(shippers=shippers["shipper_ids"], status=status)
                 if error:
                     return [], error
                 log("FETCHED PRIVATE BIDS", private_bids)
@@ -446,6 +446,7 @@ class Transporter:
             log("BID IDS ", bid_ids)
             bids = (session
                     .query(BiddingLoad,
+                           ShipperModel.shpr_id,
                            ShipperModel.name,
                            ShipperModel.contact_no,
                            func.array_agg(MapLoadSrcDestPair.src_city),
@@ -454,7 +455,7 @@ class Transporter:
                     .outerjoin(ShipperModel, ShipperModel.shpr_id == BiddingLoad.bl_shipper_id)
                     .outerjoin(MapLoadSrcDestPair, and_(MapLoadSrcDestPair.mlsdp_bidding_load_id == BiddingLoad.bl_id, MapLoadSrcDestPair.is_active == True))
                     .filter(BiddingLoad.is_active == True, BiddingLoad.bl_id.in_(bid_ids))
-                    .group_by(BiddingLoad, *BiddingLoad.__table__.c, ShipperModel.name, ShipperModel.contact_no)
+                    .group_by(BiddingLoad, *BiddingLoad.__table__.c, ShipperModel.name, ShipperModel.contact_no, ShipperModel.shpr_id)
                     .all()
                     )
 
@@ -463,19 +464,17 @@ class Transporter:
                 return ([], "")
 
             structured_bids = structurize_transporter_bids(bids=bids)
-            updated_bid = []
+
+            load_assigned_dict = {
+                load.la_bidding_load_id: load for load in bid_arr}
 
             for bid in structured_bids:
-                assigned_fleet = 0
                 if bid["bid_id"] in bid_ids:
-                    for load_assigned in bid_arr:
-                        if load_assigned.la_bidding_load_id == bid["bid_id"]:
-                            assigned_fleet = load_assigned.no_of_fleets_assigned
-                            break
-                updated_bid.append(
-                    {**bid, "no_of_fleets_assigned": assigned_fleet})
+                    load_assigned = load_assigned_dict.get(bid["bid_id"])
+                    if load_assigned:
+                        bid["no_of_fleets_assigned"] = load_assigned.no_of_fleets_assigned
 
-            return (updated_bid, "")
+            return (structured_bids, "")
 
         except Exception as e:
             session.rollback()
@@ -506,6 +505,7 @@ class Transporter:
 
             bids = (session
                     .query(BiddingLoad,
+                           ShipperModel.shpr_id,
                            ShipperModel.name,
                            ShipperModel.contact_no,
                            func.array_agg(MapLoadSrcDestPair.src_city),
@@ -514,7 +514,7 @@ class Transporter:
                     .outerjoin(ShipperModel, ShipperModel.shpr_id == BiddingLoad.bl_shipper_id)
                     .outerjoin(MapLoadSrcDestPair, and_(MapLoadSrcDestPair.mlsdp_bidding_load_id == BiddingLoad.bl_id, MapLoadSrcDestPair.is_active == True))
                     .filter(BiddingLoad.is_active == True, BiddingLoad.bl_id.in_(bid_ids))
-                    .group_by(BiddingLoad, *BiddingLoad.__table__.c, ShipperModel.name, ShipperModel.contact_no)
+                    .group_by(BiddingLoad, *BiddingLoad.__table__.c, ShipperModel.name, ShipperModel.contact_no, ShipperModel.shpr_id)
                     .all()
                     )
 
@@ -547,6 +547,7 @@ class Transporter:
 
             bids = (session
                     .query(BiddingLoad,
+                           ShipperModel.shpr_id,
                            ShipperModel.name,
                            ShipperModel.contact_no,
                            func.array_agg(MapLoadSrcDestPair.src_city),
@@ -555,7 +556,7 @@ class Transporter:
                     .outerjoin(ShipperModel, ShipperModel.shpr_id == BiddingLoad.bl_shipper_id)
                     .outerjoin(MapLoadSrcDestPair, and_(MapLoadSrcDestPair.mlsdp_bidding_load_id == BiddingLoad.bl_id, MapLoadSrcDestPair.is_active == True))
                     .filter(BiddingLoad.is_active == True, BiddingLoad.bl_id.in_(bid_ids), BiddingLoad.load_status.in_(load_status_for_lost_participated))
-                    .group_by(BiddingLoad, *BiddingLoad.__table__.c, ShipperModel.name, ShipperModel.contact_no)
+                    .group_by(BiddingLoad, *BiddingLoad.__table__.c, ShipperModel.name, ShipperModel.contact_no, ShipperModel.shpr_id)
                     .all()
                     )
 
@@ -613,25 +614,49 @@ class Transporter:
         shipper_ids = []
 
         try:
+            shipper_and_blacklist_details = (
+                session.query(MapShipperTransporter,
+                              TransporterModel,
+                              BlacklistTransporter
+                              )
+                .join(TransporterModel, and_(MapShipperTransporter.mst_transporter_id == TransporterModel.trnsp_id, TransporterModel.is_active == True))
+                .outerjoin(BlacklistTransporter, and_(BlacklistTransporter.bt_shipper_id == MapShipperTransporter.mst_shipper_id, BlacklistTransporter.bt_transporter_id == MapShipperTransporter.mst_transporter_id, BlacklistTransporter.is_active == True))
+                .filter(MapShipperTransporter.mst_transporter_id == transporter_id, MapShipperTransporter.is_active == True)
+                .all()
+            )
+            if not shipper_and_blacklist_details:
+                return ({}, "")
 
-            shippers = (session
-                        .query(MapShipperTransporter)
-                        .filter(MapShipperTransporter.mst_transporter_id == transporter_id, MapShipperTransporter.is_active == True)
-                        .all()
-                        )
+            shipper_ids = []
+            blocked_shipper_ids = []
 
-            if not shippers:
-                return ([], "")
+            for shipper_and_blacklist_detail in shipper_and_blacklist_details:
+                (shipper, transporter_details,
+                 blacklist_details) = shipper_and_blacklist_detail
 
-            shipper_ids = [shipper.mst_shipper_id for shipper in shippers]
+                if transporter_details.status == 'partially_blocked':
+                    if not blacklist_details:
+                        shipper_ids.append(shipper.mst_shipper_id)
+                    else:
+                        blocked_shipper_ids.append(shipper.mst_shipper_id)
+                log("SHIPPER :", shipper)
+                log("TRANSPORTER DETAILS :", transporter_details.trnsp_id)
+                log("BLACKLIST :", blacklist_details)
 
             log("SHIPPER IDs", shipper_ids)
+            log("BLOCKED SHIPPER IDS", blocked_shipper_ids)
 
-            return (shipper_ids, "")
+            all_shipper_ids = {
+                "shipper_ids": shipper_ids,
+                "blocked_shipper_ids": blocked_shipper_ids
+            }
+            log("ALL SHIPPER IDS ", all_shipper_ids)
+
+            return (all_shipper_ids, "")
 
         except Exception as e:
             session.rollback()
-            return ([], str(e))
+            return ({}, str(e))
         finally:
             session.close()
 
@@ -705,6 +730,7 @@ class Transporter:
 
             bids = (session
                     .query(BiddingLoad,
+                           ShipperModel.shpr_id,
                            ShipperModel.name,
                            ShipperModel.contact_no,
                            func.array_agg(MapLoadSrcDestPair.src_city),
@@ -713,7 +739,7 @@ class Transporter:
                     .outerjoin(ShipperModel, ShipperModel.shpr_id == BiddingLoad.bl_shipper_id)
                     .outerjoin(MapLoadSrcDestPair, and_(MapLoadSrcDestPair.mlsdp_bidding_load_id == BiddingLoad.bl_id, MapLoadSrcDestPair.is_active == True))
                     .filter(BiddingLoad.is_active == True, BiddingLoad.bl_id.in_(bid_ids))
-                    .group_by(BiddingLoad, *BiddingLoad.__table__.c, ShipperModel.name, ShipperModel.contact_no)
+                    .group_by(BiddingLoad, *BiddingLoad.__table__.c, ShipperModel.name, ShipperModel.contact_no, ShipperModel.shpr_id)
                     .all()
                     )
 
@@ -757,7 +783,6 @@ class Transporter:
 
                 if id not in transporter_lowest_rate_bid_dict.keys():
                     transporter_lowest_rate_bid_dict[id] = bid
-
 
             lowest_rate_bid_summary = [
                 lowest_rate_bid_details for lowest_rate_bid_details in transporter_lowest_rate_bid_dict.values()]

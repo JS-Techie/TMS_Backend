@@ -1,5 +1,6 @@
 import json
-import os, pytz
+import os
+import pytz
 from datetime import datetime
 from fastapi import APIRouter, Request
 
@@ -42,16 +43,74 @@ async def fetch_bids_for_transporter_by_status(request: Request, status: str | N
         if status == "assigned":
             (bids, error) = await transporter.assigned_bids(transporter_id=transporter_id)
         else:
-            (bids, error) = await transporter.bids_by_status(transporter_id=transporter_id, status=status)
+            if status == "active":
+                (bids, error) = await transporter.bids_by_status(transporter_id=transporter_id, status="not_started")
+            else:
+                (bids, error) = await transporter.bids_by_status(transporter_id=transporter_id, status=status)
 
         if error:
             return ErrorResponse(data=[], dev_msg=error, client_msg=os.getenv("GENERIC_ERROR"))
 
         updated_bids = None
-
+        log("STATUS ", status)
         if status != "assigned":
             updated_private_bids = []
             updated_public_bids = []
+
+            if status == "not_started":
+                (bids_participated, error) = await transporter.participated_bids(transporter_id=transporter_id)
+
+                if bids_participated:
+
+                    filtered_private_bids = [
+                        private_record for private_record in bids["private"]
+                        if not any(participated_bid["bid_id"] == private_record["bid_id"] and participated_bid["load_status"] == "not_started" for participated_bid in bids_participated)
+                    ]
+
+                    filtered_public_bids = [
+                        public_record for public_record in bids["public"]
+                        if not any(participated_bid["bid_id"] == public_record["bid_id"] and participated_bid["load_status"] == "not_started" for participated_bid in bids_participated)
+                    ]
+
+                    bids["private"] = filtered_private_bids
+                    bids["public"] = filtered_public_bids
+
+            if status == "active":
+                (bids_participated, error) = await transporter.participated_bids(transporter_id=transporter_id)
+
+                if bids_participated:
+
+                    filtered_private_bids = [
+                        private_record for private_record in bids["private"]
+                        if any(participated_bid["bid_id"] == private_record["bid_id"] and participated_bid["load_status"] == "not_started" for participated_bid in bids_participated)
+                    ]
+
+                    filtered_public_bids = [
+                        public_record for public_record in bids["public"]
+                        if any(participated_bid["bid_id"] == public_record["bid_id"] and participated_bid["load_status"] == "not_started" for participated_bid in bids_participated)
+                    ]
+
+                    bids["private"] = filtered_private_bids
+                    bids["public"] = filtered_public_bids
+                    log("BIDS PUBLIC :", bids["public"])
+
+            if status == "pending":
+                (bids_participated, error) = await transporter.participated_bids(transporter_id=transporter_id)
+
+                if bids_participated:
+
+                    filtered_private_bids = [
+                        private_record for private_record in bids["private"]
+                        if any(participated_bid["bid_id"] == private_record["bid_id"] and participated_bid["load_status"] == "pending" for participated_bid in bids_participated)
+                    ]
+
+                    filtered_public_bids = [
+                        public_record for public_record in bids["public"]
+                        if any(participated_bid["bid_id"] == public_record["bid_id"] and participated_bid["load_status"] == "pending" for participated_bid in bids_participated)
+                    ]
+
+                    bids["private"] = filtered_private_bids
+                    bids["public"] = filtered_public_bids
 
             for private_bid in bids["private"]:
 
@@ -113,7 +172,7 @@ async def fetch_selected_bids(request: Request):
 
         if not bids:
             return SuccessResponse(data=[], client_msg="You have not been selected in any bids yet", dev_msg="Not selected in any bids")
-        
+
         updated_bids = []
         for bid in bids:
 
@@ -163,13 +222,15 @@ async def provide_new_rate_for_bid(request: Request, bid_id: str, bid_req: Trans
 
         ist_timezone = pytz.timezone("Asia/Kolkata")
         current_time = datetime.now(ist_timezone)
-        current_time = current_time.replace(tzinfo=None, second=0, microsecond=0)
+        current_time = current_time.replace(
+            tzinfo=None, second=0, microsecond=0)
 
-        if current_time < bid_details.bid_time and current_time < bid_details.bid_end_time:
-            return ErrorResponse(data=[], client_msg=f"This Load is not Accepting Bids yet, the start time is {bid_details.bid_time}", dev_msg="Tried bidding, but bid is not live yet")
+        if bid_details.load_status not in valid_bid_status:
+            if current_time < bid_details.bid_time and current_time < bid_details.bid_end_time:
+                return ErrorResponse(data=[], client_msg=f"This Load is not Accepting Bids yet, the start time is {bid_details.bid_time}", dev_msg="Tried bidding, but bid is not live yet")
 
-        elif current_time > bid_details.bid_time and current_time > bid_details.bid_end_time:
-            return ErrorResponse(data=[], client_msg=f"This Load is not Accepting Bids anymore, the end time was {bid_details.bid_end_time}", dev_msg="Tried bidding, but bid is not live anymore")
+            elif current_time > bid_details.bid_time and current_time > bid_details.bid_end_time:
+                return ErrorResponse(data=[], client_msg=f"This Load is not Accepting Bids anymore, the end time was {bid_details.bid_end_time}", dev_msg="Tried bidding, but bid is not live anymore")
 
         log("BID DETAILS FOUND", bid_id)
 

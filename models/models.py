@@ -1,6 +1,6 @@
 from sqlalchemy import (JSON, BigInteger, Boolean, Column, DateTime, Double,
                         Enum, ForeignKey, Integer, String, text)
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import UUID, ARRAY
 from sqlalchemy.orm import relationship
 
 from config.db_config import Base
@@ -469,28 +469,35 @@ class TrackingFleet(Base, Persistance):
 class TransporterModel(Base,Persistance):
     __tablename__ = "t_transporter"
     
-    trnsp_id = Column(UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()"), nullable=False)
+    trnsp_id = Column(UUID(as_uuid=True), primary_key=True, server_default=text('gen_random_uuid()'), nullable=False)
     name = Column(String,nullable=False)
-    logo = Column(String,nullable=True)
-    corporate_address = Column(String,nullable=False)
-    corporate_city = Column(String,nullable=False)
-    corporate_state = Column(String,nullable=False)
-    corporate_postal_code = Column(String,nullable=False)
-    corporate_country = Column(String,nullable=False)
-    billing_address = Column(String,nullable=False)
-    billing_city = Column(String,nullable=False)
-    billing_state = Column(String,nullable=False)
-    billing_postal_code = Column(String,nullable=False)
-    billing_country = Column(String,nullable=False)
+    email = Column(String,nullable=False)
     contact_person = Column(String,nullable=False)
     contact_no = Column(String,nullable=False)
-    email = Column(String,nullable=False)
-    communicate_by = Column( Enum("sms", "email", "whatsapp","sms_email","sms_whatsapp","email_whatsapp","all", name = 'communication_medium'), default = 'whatsapp',nullable=False)
+    corporate_address = Column(String,nullable=False)
+    corporate_city = Column(String,nullable=False)
+    corporate_state = Column(UUID(as_uuid=True), ForeignKey('t_lkp_state.id'), nullable=False)
+    corporate_postal_code = Column(String,nullable=False)
+    corporate_country = Column(UUID(as_uuid=True), ForeignKey('t_lkp_country.id'), nullable=False)
+    billing_address = Column(String,nullable=False)
+    billing_city = Column(String,nullable=False)
+    billing_state = Column(UUID(as_uuid=True), ForeignKey('t_lkp_state.id'), nullable=False)
+    billing_postal_code = Column(String,nullable=False)
+    billing_country = Column(UUID(as_uuid=True), ForeignKey('t_lkp_country.id'), nullable=False)
+    communicate_by = Column(String, nullable=True, default=None)    #sms, email, whatsapp
     pan = Column(String,nullable=False)
     tan = Column(String,nullable=True)
     gstin = Column(String,nullable=False)
-    carriage_act_cert = Column(String,nullable=True)
+    gstin_file = Column(String, nullable=True)
+    roc_number = Column(String, nullable=True)
     iba_approved = Column(Boolean,default=False, nullable=True)
+    carriage_act_cert = Column(String,nullable=True)
+    bank_guarantee_date = Column(DateTime, nullable=True)
+    logo = Column(String,nullable=True)
+    doc_path = Column(String, nullable=True)
+    working_states = Column(ARRAY(UUID(as_uuid=True)), nullable=True)
+    onboarding_shipper_id = Column(UUID(as_uuid=True), ForeignKey('t_shipper.shpr_id'),nullable= True)
+    status = Column(Enum('active', 'blocked', 'partially_blocked' , name = 'trans_status'), default = 'active')
 
 
 

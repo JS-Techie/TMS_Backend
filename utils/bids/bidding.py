@@ -437,8 +437,9 @@ class Bid:
 
             ist_timezone = pytz.timezone("Asia/Kolkata")
             current_time = datetime.now(ist_timezone)
-            current_time = current_time.replace(tzinfo=None, second=0, microsecond=0)
-            
+            current_time = current_time.replace(
+                tzinfo=None, second=0, microsecond=0)
+
             for transporter in transporters:
                 if getattr(transporter, "la_transporter_id") in transporters_not_assigned:
                     assign_detail = LoadAssigned(
@@ -479,16 +480,20 @@ class Bid:
                                 transporter, "no_of_fleets_assigned"))
                             setattr(transporter_detail, "is_assigned", True)
                             setattr(transporter_detail, "is_active", True)
-                            setattr(transporter_detail, "updated_at", str(current_time))
+                            setattr(transporter_detail,
+                                    "updated_at", str(current_time))
                             setattr(transporter_detail, "updated_by", user_id)
                             if not transporter_detail.history:
-                                setattr(transporter_detail, "history", str([(getattr(transporter, "no_of_fleets_assigned"), str(current_time), None)]))
+                                setattr(transporter_detail, "history", str(
+                                    [(getattr(transporter, "no_of_fleets_assigned"), str(current_time), None)]))
                             else:
-                                history_fetched = ast.literal_eval(getattr(transporter_detail, "history"))
-                                task = (transporter.no_of_fleets_assigned, str(current_time), None)
+                                history_fetched = ast.literal_eval(
+                                    getattr(transporter_detail, "history"))
+                                task = (transporter.no_of_fleets_assigned,
+                                        str(current_time), None)
                                 history_fetched.append(task)
-                                setattr(transporter_detail, "history", str(history_fetched))
-                                
+                                setattr(transporter_detail, "history",
+                                        str(history_fetched))
 
             bid_details = session.query(BiddingLoad).filter(
                 BiddingLoad.bl_id == bid_id).first()
@@ -614,34 +619,42 @@ class Bid:
         finally:
             session.close()
 
-    async def public(self, status: str | None = None) -> (any, str):
+    async def public(self, blocked_shippers: list, status: str | None = None) -> (any, str):
 
         session = Session()
 
         try:
 
             bids_query = (session
-                    .query(BiddingLoad, 
-                            ShipperModel.name, 
-                            ShipperModel.contact_no,
-                            func.array_agg(MapLoadSrcDestPair.src_city),
-                            func.array_agg(MapLoadSrcDestPair.dest_city),
-                            )
-                    .outerjoin(ShipperModel, ShipperModel.shpr_id == BiddingLoad.bl_shipper_id)
-                    .outerjoin(MapLoadSrcDestPair, and_(MapLoadSrcDestPair.mlsdp_bidding_load_id == BiddingLoad.bl_id, MapLoadSrcDestPair.is_active == True))
-                    .filter(BiddingLoad.is_active == True,  BiddingLoad.bid_mode == "open_market")
-                    )
-                            
+                          .query(BiddingLoad,
+                                 ShipperModel.shpr_id,
+                                 ShipperModel.name,
+                                 ShipperModel.contact_no,
+                                 func.array_agg(MapLoadSrcDestPair.src_city),
+                                 func.array_agg(MapLoadSrcDestPair.dest_city),
+                                 )
+                          .outerjoin(ShipperModel, ShipperModel.shpr_id == BiddingLoad.bl_shipper_id)
+                          .outerjoin(MapLoadSrcDestPair, and_(MapLoadSrcDestPair.mlsdp_bidding_load_id == BiddingLoad.bl_id, MapLoadSrcDestPair.is_active == True))
+                          .filter(BiddingLoad.is_active == True,  BiddingLoad.bid_mode == "open_market")
+                          )
 
             if status:
                 bids_query = bids_query.filter(
                     BiddingLoad.load_status == status)
 
-            bids = bids_query.group_by(BiddingLoad, *BiddingLoad.__table__.c, ShipperModel.name, ShipperModel.contact_no).all()
-            log("BIDS IN PUBLIC",bids)
+            bids = bids_query.group_by(BiddingLoad, *BiddingLoad.__table__.c,
+                                       ShipperModel.name, ShipperModel.contact_no, ShipperModel.shpr_id).all()
+            log("BIDS IN PUBLIC", bids)
             if not bids:
                 return (bids, "")
-            return (structurize_transporter_bids(bids=bids), "")
+
+            filtered_bids = []
+            for bid in bids:
+                (_, shipper_id, _, _, _, _) = bid
+                if shipper_id not in blocked_shippers:
+                    filtered_bids.append(bid)
+
+            return (structurize_transporter_bids(bids=filtered_bids), "")
 
         except Exception as e:
             session.rollback()
@@ -656,23 +669,24 @@ class Bid:
         try:
 
             bids_query = (session
-                        .query(BiddingLoad, 
-                                ShipperModel.name, 
-                                ShipperModel.contact_no, 
-                                func.array_agg(MapLoadSrcDestPair.src_city),
-                                func.array_agg(MapLoadSrcDestPair.dest_city),
-                                )
-                        .outerjoin(ShipperModel, ShipperModel.shpr_id == BiddingLoad.bl_shipper_id)
-                        .outerjoin(MapLoadSrcDestPair, and_(MapLoadSrcDestPair.mlsdp_bidding_load_id == BiddingLoad.bl_id, MapLoadSrcDestPair.is_active == True))
-                        .filter(BiddingLoad.is_active == True, BiddingLoad.bl_shipper_id.in_(shippers), BiddingLoad.bid_mode == "private_pool")
-                        )
-                        
+                          .query(BiddingLoad,
+                                 ShipperModel.shpr_id,
+                                 ShipperModel.name,
+                                 ShipperModel.contact_no,
+                                 func.array_agg(MapLoadSrcDestPair.src_city),
+                                 func.array_agg(MapLoadSrcDestPair.dest_city),
+                                 )
+                          .outerjoin(ShipperModel, ShipperModel.shpr_id == BiddingLoad.bl_shipper_id)
+                          .outerjoin(MapLoadSrcDestPair, and_(MapLoadSrcDestPair.mlsdp_bidding_load_id == BiddingLoad.bl_id, MapLoadSrcDestPair.is_active == True))
+                          .filter(BiddingLoad.is_active == True, BiddingLoad.bl_shipper_id.in_(shippers), BiddingLoad.bid_mode == "private_pool")
+                          )
 
             if status:
                 bids_query = bids_query.filter(
                     BiddingLoad.load_status == status)
 
-            bids = bids_query.group_by(BiddingLoad, *BiddingLoad.__table__.c, ShipperModel.name, ShipperModel.contact_no).all()
+            bids = bids_query.group_by(BiddingLoad, *BiddingLoad.__table__.c,
+                                       ShipperModel.name, ShipperModel.contact_no, ShipperModel.shpr_id).all()
 
             if not bids:
                 return (bids, "")
