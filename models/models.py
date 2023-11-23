@@ -89,6 +89,7 @@ class Segment(Base, Persistance):
     seg_id = Column(UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()"), nullable=False)
     name = Column(String, nullable = False) 
     seg_shipper_id = Column(UUID(as_uuid = True), ForeignKey("t_shipper.shpr_id"), nullable = True) 
+    
 
 
 class Comment(Base, Persistance):
@@ -291,6 +292,7 @@ class BiddingLoad(Base, Persistance):
     load_type = Column(Enum('reverse', 'forward' , name = 'load_type'), default = 'reverse',nullable=False)
     bid_type = Column(Enum('spot', 'contractual' , name = 'bid_type'), default = 'spot',nullable=False)
     bid_mode = Column(Enum('private_pool', 'open_market' , name = 'bid_mode_type'), default = 'private_pool',nullable=False)
+    bl_segment_id = Column(UUID(as_uuid=True), ForeignKey('t_segment.seg_id'), nullable=True)
     show_current_lowest_rate_transporter = Column(Boolean, default=False)
     bid_price_decrement = Column(Double, default=1,nullable=False)
     no_of_tries = Column(Integer, default=9999)

@@ -186,6 +186,8 @@ def structurize_transporter_bids(bids):
             "load_status": bid_load.load_status,
             "reporting_from_time":bid_load.reporting_from_time,
             "reporting_to_time":bid_load.reporting_to_time,
+            "bid_mode": bid_load.bid_mode,
+            "show_current_lowest_rate_transporter" : bid_load.show_current_lowest_rate_transporter,
             "completion_reason":bid_load.completion_reason,
             "no_of_fleets_assigned":0
         }
