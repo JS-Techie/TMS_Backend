@@ -408,16 +408,22 @@ class Transporter:
 
             log("FETCHED PUBLIC BIDS", public_bids)
 
-            private_bids = []
+            unsegmented_private_bids = []
             if shippers["shipper_ids"]:
-                private_bids, error = await bid.private(shippers=shippers["shipper_ids"], status=status)
+                unsegmented_private_bids, error = await bid.private(shippers=shippers["shipper_ids"], status=status)
                 if error:
                     return [], error
-                log("FETCHED PRIVATE BIDS", private_bids)
-
+                log("FETCHED PRIVATE BIDS", unsegmented_private_bids)
+                
+                segment_bids, error = await bid.segment(shippers=shippers["shipper_ids"], status=status, transporter_id=transporter_id)
+                if error:
+                    return [],error
+                log("SEGMENTED PRIVATE BIDS", segment_bids)
+                
+                
             return {
-                "all": private_bids + public_bids,
-                "private": private_bids,
+                "all": unsegmented_private_bids + public_bids + segment_bids,
+                "private": unsegmented_private_bids + segment_bids,
                 "public": public_bids
             }, ""
 
@@ -628,27 +634,43 @@ class Transporter:
                 return ({}, "")
 
             shipper_ids = []
-            blocked_shipper_ids = []
+            mapped_blocked_shipper_ids = []
+            unmapped_blocked_shipper_ids = []
 
+            transporter_status = ''
+            
             for shipper_and_blacklist_detail in shipper_and_blacklist_details:
                 (shipper, transporter_details,
                  blacklist_details) = shipper_and_blacklist_detail
 
                 if transporter_details.status == 'partially_blocked':
+                    transporter_status = 'partially_blocked'
                     if not blacklist_details:
                         shipper_ids.append(shipper.mst_shipper_id)
                     else:
-                        blocked_shipper_ids.append(shipper.mst_shipper_id)
+                        mapped_blocked_shipper_ids.append(shipper.mst_shipper_id)
                 log("SHIPPER :", shipper)
                 log("TRANSPORTER DETAILS :", transporter_details.trnsp_id)
                 log("BLACKLIST :", blacklist_details)
 
             log("SHIPPER IDs", shipper_ids)
-            log("BLOCKED SHIPPER IDS", blocked_shipper_ids)
+            log("BLOCKED SHIPPER IDS", mapped_blocked_shipper_ids)
 
+            if transporter_status == 'partially_blocked':
+                unmapped_blocked_shippers = (
+                                            session.query(BlacklistTransporter)
+                                            .filter(BlacklistTransporter.is_active == True, ~BlacklistTransporter.bt_shipper_id.in_(mapped_blocked_shipper_ids), BlacklistTransporter.bt_transporter_id == transporter_id)
+                                            .all()
+                                        )
+                log("UNMAPPED BLOCKED SHIPPERS ", unmapped_blocked_shippers)
+                for unmapped_blocked_shipper in unmapped_blocked_shippers:
+                    unmapped_blocked_shipper_ids.append(unmapped_blocked_shipper.bt_shipper_id)
+                log("UNMAPPED BLOCKED SHIPPER IDS ", unmapped_blocked_shipper_ids)
+
+            
             all_shipper_ids = {
                 "shipper_ids": shipper_ids,
-                "blocked_shipper_ids": blocked_shipper_ids
+                "blocked_shipper_ids": mapped_blocked_shipper_ids + unmapped_blocked_shipper_ids
             }
             log("ALL SHIPPER IDS ", all_shipper_ids)
 

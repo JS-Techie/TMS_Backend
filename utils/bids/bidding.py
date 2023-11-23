@@ -14,7 +14,7 @@ from data.bidding import (filter_wise_fetch_query, live_bid_details,
                           status_wise_fetch_query, transporter_analysis)
 from models.models import (BiddingLoad, BidSettings, BidTransaction,
                            LoadAssigned, MapLoadSrcDestPair, ShipperModel,
-                           TransporterModel)
+                           TransporterModel, Segment, MapTransporterSegment)
 from schemas.bidding import FilterBidsRequest
 from utils.redis import Redis
 from utils.response import ErrorResponse
@@ -678,7 +678,7 @@ class Bid:
                                  )
                           .outerjoin(ShipperModel, ShipperModel.shpr_id == BiddingLoad.bl_shipper_id)
                           .outerjoin(MapLoadSrcDestPair, and_(MapLoadSrcDestPair.mlsdp_bidding_load_id == BiddingLoad.bl_id, MapLoadSrcDestPair.is_active == True))
-                          .filter(BiddingLoad.is_active == True, BiddingLoad.bl_shipper_id.in_(shippers), BiddingLoad.bid_mode == "private_pool")
+                          .filter(BiddingLoad.is_active == True, BiddingLoad.bl_shipper_id.in_(shippers), BiddingLoad.bid_mode == "private_pool", BiddingLoad.bl_segment_id == None)
                           )
 
             if status:
@@ -692,6 +692,90 @@ class Bid:
                 return (bids, "")
             return (structurize_transporter_bids(bids=bids), "")
 
+        except Exception as e:
+            session.rollback()
+            return ([], str(e))
+        finally:
+            session.close()
+
+    async def segment(self, shippers: any, transporter_id: str, status: str | None = None) -> (any, str):
+
+        session = Session()
+
+        try:
+
+            (transporter_allowed_segments, error) = await self.segments(shippers= shippers, transporter_id= transporter_id)
+            
+            log("ERROR ::", error)
+            if error:
+                return([], error)
+            
+            bids_query = (session
+                          .query(BiddingLoad,
+                                 ShipperModel.shpr_id,
+                                 ShipperModel.name,
+                                 ShipperModel.contact_no,
+                                 func.array_agg(MapLoadSrcDestPair.src_city),
+                                 func.array_agg(MapLoadSrcDestPair.dest_city),
+                                 )
+                          .outerjoin(ShipperModel, ShipperModel.shpr_id == BiddingLoad.bl_shipper_id)
+                          .outerjoin(MapLoadSrcDestPair, and_(MapLoadSrcDestPair.mlsdp_bidding_load_id == BiddingLoad.bl_id, MapLoadSrcDestPair.is_active == True))
+                          .filter(BiddingLoad.is_active == True, BiddingLoad.bl_segment_id.in_(transporter_allowed_segments), BiddingLoad.bid_mode == "private_pool")
+                          )
+
+            if status:
+                bids_query = bids_query.filter(
+                    BiddingLoad.load_status == status)
+
+            bids = bids_query.group_by(BiddingLoad, *BiddingLoad.__table__.c,
+                                       ShipperModel.name, ShipperModel.contact_no, ShipperModel.shpr_id).all()
+
+            if not bids:
+                return (bids, "")
+            return (structurize_transporter_bids(bids=bids), "")
+
+        except Exception as e:
+            session.rollback()
+            return ([], str(e))
+        finally:
+            session.close()
+
+    async def segments(self, shippers: any, transporter_id: str) -> (any, str):
+
+        session = Session()
+
+        try:
+
+            shipper_segments = (
+                            session.query(Segment)
+                            .filter(Segment.is_active == True, Segment.seg_shipper_id.in_(shippers))
+                            .all()
+                            )
+
+            shipper_segment_ids = []
+            for shipper_segment in shipper_segments:
+                shipper_segment_ids.append(shipper_segment.seg_id)
+
+            log("SHIPPER SEGMENTS ::", shipper_segment_ids)
+
+            transporter_allowed_segments = (
+                            session.query(MapTransporterSegment)
+                            .filter(MapTransporterSegment.is_active == True, MapTransporterSegment.mts_segment_id.in_(shipper_segment_ids), MapTransporterSegment.mts_transporter_id == transporter_id)
+                            .all()
+                            )
+
+            transporter_allowed_segment_ids = []
+
+            for transporter_allowed_segment in transporter_allowed_segments:
+                transporter_allowed_segment_ids.append(transporter_allowed_segment.mts_segment_id)
+
+            log("TRANSPORTED ALLOWED SEGMENTS :", transporter_allowed_segment_ids)
+
+            if not transporter_allowed_segment_ids:
+                return ([],"")
+
+            return (transporter_allowed_segment_ids, "")
+            
         except Exception as e:
             session.rollback()
             return ([], str(e))
