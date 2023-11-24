@@ -409,21 +409,22 @@ class Transporter:
             log("FETCHED PUBLIC BIDS", public_bids)
 
             unsegmented_private_bids = []
+            segmented_bids = []
             if shippers["shipper_ids"]:
                 unsegmented_private_bids, error = await bid.private(shippers=shippers["shipper_ids"], status=status)
                 if error:
                     return [], error
                 log("FETCHED PRIVATE BIDS", unsegmented_private_bids)
                 
-                segment_bids, error = await bid.segment(shippers=shippers["shipper_ids"], status=status, transporter_id=transporter_id)
+                segmented_bids, error = await bid.segment(shippers=shippers["shipper_ids"], status=status, transporter_id=transporter_id)
                 if error:
                     return [],error
-                log("SEGMENTED PRIVATE BIDS", segment_bids)
+                log("SEGMENTED PRIVATE BIDS", segmented_bids)
                 
                 
             return {
-                "all": unsegmented_private_bids + public_bids + segment_bids,
-                "private": unsegmented_private_bids + segment_bids,
+                "all": unsegmented_private_bids + public_bids + segmented_bids,
+                "private": unsegmented_private_bids + segmented_bids,
                 "public": public_bids
             }, ""
 
