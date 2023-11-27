@@ -10,7 +10,7 @@ valid_bid_status = ['live', 'not_started']
 
 particpated_and_lost_status = ['pending','confirmed','partially_confirmed','completed']
 
-valid_transporter_status = ['not_started','active', 'pending', 'assigned','live','completed']
+valid_transporter_status = ['not_started','active', 'pending', 'assigned','live']
 
 
 status_wise_fetch_query = """

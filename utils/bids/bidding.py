@@ -5,7 +5,7 @@ import pytz
 from datetime import datetime, timedelta
 from string import Template
 
-from sqlalchemy import func, text, and_
+from sqlalchemy import func, text, and_, select
 
 from config.db_config import Session
 from config.redis import r as redis
@@ -14,7 +14,7 @@ from data.bidding import (filter_wise_fetch_query, live_bid_details,
                           status_wise_fetch_query, transporter_analysis)
 from models.models import (BiddingLoad, BidSettings, BidTransaction,
                            LoadAssigned, MapLoadSrcDestPair, ShipperModel,
-                           TransporterModel, Segment, MapTransporterSegment)
+                           TransporterModel, Segment, MapTransporterSegment, TrackingFleet)
 from schemas.bidding import FilterBidsRequest
 from utils.redis import Redis
 from utils.response import ErrorResponse
@@ -619,7 +619,7 @@ class Bid:
         finally:
             session.close()
 
-    async def public(self, blocked_shippers: list, status: str | None = None) -> (any, str):
+    async def public(self, blocked_shippers: list, transporter_id: str, status: str | None = None) -> (any, str):
 
         session = Session()
 
@@ -630,8 +630,18 @@ class Bid:
                                  ShipperModel.shpr_id,
                                  ShipperModel.name,
                                  ShipperModel.contact_no,
+                                 BidSettings.bdsttng_rate_quote_type,
                                  func.array_agg(MapLoadSrcDestPair.src_city),
                                  func.array_agg(MapLoadSrcDestPair.dest_city),
+                                 func.array_agg(select(func.count())
+                                                            .where(
+                                                                TrackingFleet.tf_transporter_id == transporter_id,
+                                                                TrackingFleet.tf_bidding_load_id == BiddingLoad.bl_id,
+                                                                TrackingFleet.is_active == True  
+                                                            )
+                                                            .correlate(BiddingLoad)
+                                                            .subquery()
+                                                        ).label('tf_vehicle_count')
                                  )
                           .outerjoin(ShipperModel, ShipperModel.shpr_id == BiddingLoad.bl_shipper_id)
                           .outerjoin(MapLoadSrcDestPair, and_(MapLoadSrcDestPair.mlsdp_bidding_load_id == BiddingLoad.bl_id, MapLoadSrcDestPair.is_active == True))
@@ -643,14 +653,14 @@ class Bid:
                     BiddingLoad.load_status == status)
 
             bids = bids_query.group_by(BiddingLoad, *BiddingLoad.__table__.c,
-                                       ShipperModel.name, ShipperModel.contact_no, ShipperModel.shpr_id).all()
+                                       ShipperModel.name, ShipperModel.contact_no, ShipperModel.shpr_id, BidSettings.bdsttng_rate_quote_type).all()
             log("BIDS IN PUBLIC", bids)
             if not bids:
-                return (bids, "")
+                return ([], "")
 
             filtered_bids = []
             for bid in bids:
-                (_, shipper_id, _, _, _, _) = bid
+                (_, shipper_id, _, _, _, _, _, _) = bid
                 if shipper_id not in blocked_shippers:
                     filtered_bids.append(bid)
 
@@ -662,7 +672,7 @@ class Bid:
         finally:
             session.close()
 
-    async def private(self, shippers: any, status: str | None = None) -> (any, str):
+    async def private(self, shippers: any, transporter_id: str, status: str | None = None) -> (any, str):
 
         session = Session()
 
@@ -673,8 +683,18 @@ class Bid:
                                  ShipperModel.shpr_id,
                                  ShipperModel.name,
                                  ShipperModel.contact_no,
+                                 BidSettings.bdsttng_rate_quote_type,
                                  func.array_agg(MapLoadSrcDestPair.src_city),
                                  func.array_agg(MapLoadSrcDestPair.dest_city),
+                                 func.array_agg(select(func.count())
+                                                            .where(
+                                                                TrackingFleet.tf_transporter_id == transporter_id,
+                                                                TrackingFleet.tf_bidding_load_id == BiddingLoad.bl_id,
+                                                                TrackingFleet.is_active == True  
+                                                            )
+                                                            .correlate(BiddingLoad)
+                                                            .subquery()
+                                                        ).label('tf_vehicle_count')
                                  )
                           .outerjoin(ShipperModel, ShipperModel.shpr_id == BiddingLoad.bl_shipper_id)
                           .outerjoin(MapLoadSrcDestPair, and_(MapLoadSrcDestPair.mlsdp_bidding_load_id == BiddingLoad.bl_id, MapLoadSrcDestPair.is_active == True))
@@ -686,7 +706,7 @@ class Bid:
                     BiddingLoad.load_status == status)
 
             bids = bids_query.group_by(BiddingLoad, *BiddingLoad.__table__.c,
-                                       ShipperModel.name, ShipperModel.contact_no, ShipperModel.shpr_id).all()
+                                       ShipperModel.name, ShipperModel.contact_no, ShipperModel.shpr_id, BidSettings.bdsttng_rate_quote_type).all()
 
             if not bids:
                 return (bids, "")
@@ -715,8 +735,18 @@ class Bid:
                                  ShipperModel.shpr_id,
                                  ShipperModel.name,
                                  ShipperModel.contact_no,
+                                 BidSettings.bdsttng_rate_quote_type,
                                  func.array_agg(MapLoadSrcDestPair.src_city),
                                  func.array_agg(MapLoadSrcDestPair.dest_city),
+                                 func.array_agg(select(func.count())
+                                                            .where(
+                                                                TrackingFleet.tf_transporter_id == transporter_id,
+                                                                TrackingFleet.tf_bidding_load_id == BiddingLoad.bl_id,
+                                                                TrackingFleet.is_active == True  
+                                                            )
+                                                            .correlate(BiddingLoad)
+                                                            .subquery()
+                                                        ).label('tf_vehicle_count')
                                  )
                           .outerjoin(ShipperModel, ShipperModel.shpr_id == BiddingLoad.bl_shipper_id)
                           .outerjoin(MapLoadSrcDestPair, and_(MapLoadSrcDestPair.mlsdp_bidding_load_id == BiddingLoad.bl_id, MapLoadSrcDestPair.is_active == True))
@@ -728,7 +758,7 @@ class Bid:
                     BiddingLoad.load_status == status)
 
             bids = bids_query.group_by(BiddingLoad, *BiddingLoad.__table__.c,
-                                       ShipperModel.name, ShipperModel.contact_no, ShipperModel.shpr_id).all()
+                                       ShipperModel.name, ShipperModel.contact_no, ShipperModel.shpr_id, BidSettings.bdsttng_rate_quote_type).all()
 
             if not bids:
                 return (bids, "")

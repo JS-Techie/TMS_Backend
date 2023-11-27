@@ -169,15 +169,17 @@ def structurize_transporter_bids(bids):
 
     bid_details = []
 
-    for bid_load, shipper_id, shipper_name, shipper_contact_no, src, dest in bids:
+    for bid_load, shipper_id, shipper_name, shipper_contact_no, rate_qoute_type, src, dest, fleets_provided  in bids:
         print("BID_LOAD ", bid_load)
         print("SHIPPER ", shipper_name)
         print("SRC ", src)
         print("DEST ", dest)
+        print("NO OF FLEETS PROVIDED ", fleets_provided)
         bid_detail = {
             "bid_id": bid_load.bl_id,
             "shipper_name": shipper_name,
             "contact_number": shipper_contact_no,
+            "rate_qoute_type": rate_qoute_type,
             "src_city": ','.join(set(city for city in src if city is not None)) if src else None,
             "dest_city": ','.join(set(city for city in dest if city is not None)) if dest else None,
             "bid_time": bid_load.bid_time,
@@ -189,8 +191,11 @@ def structurize_transporter_bids(bids):
             "bid_mode": bid_load.bid_mode,
             "show_current_lowest_rate_transporter" : bid_load.show_current_lowest_rate_transporter,
             "completion_reason":bid_load.completion_reason,
-            "no_of_fleets_assigned":0
+            "no_of_fleets_assigned":0,
+            "no_of_fleets_provided":set(fleets_provided).pop(),
+            "pending_vehicles":0
         }
+        
 
         bid_details.append(bid_detail)
     log("BID DETAILS", bid_details)

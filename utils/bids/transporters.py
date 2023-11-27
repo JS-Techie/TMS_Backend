@@ -5,13 +5,13 @@ import requests
 import ast
 import pytz
 from datetime import datetime
-from sqlalchemy import text, and_, or_, func
+from sqlalchemy import text, and_, or_, func, select
 from uuid import UUID
 from typing import List
 
 from config.db_config import Session
 from utils.response import ServerError, SuccessResponse
-from models.models import BidTransaction, TransporterModel, MapShipperTransporter, LoadAssigned, BiddingLoad, User, ShipperModel, MapLoadSrcDestPair, BlacklistTransporter
+from models.models import BidTransaction, TransporterModel, MapShipperTransporter, LoadAssigned, BiddingLoad, User, ShipperModel, MapLoadSrcDestPair, BlacklistTransporter, TrackingFleet, BidSettings
 from utils.bids.bidding import Bid
 from utils.utilities import log, structurize_transporter_bids
 from data.bidding import lost_participated_transporter_bids, live_bid_details
@@ -401,7 +401,7 @@ class Transporter:
 
             log("FETCHED SHIPPERS ATTACHED TO TRANSPORTERS", shippers)
 
-            public_bids, error = await bid.public(blocked_shippers=shippers["blocked_shipper_ids"], status=status)
+            public_bids, error = await bid.public(blocked_shippers=shippers["blocked_shipper_ids"], transporter_id=transporter_id, status=status)
 
             if error:
                 return [], error
@@ -411,7 +411,7 @@ class Transporter:
             unsegmented_private_bids = []
             segmented_bids = []
             if shippers["shipper_ids"]:
-                unsegmented_private_bids, error = await bid.private(shippers=shippers["shipper_ids"], status=status)
+                unsegmented_private_bids, error = await bid.private(shippers=shippers["shipper_ids"], transporter_id=transporter_id, status=status)
                 if error:
                     return [], error
                 log("FETCHED PRIVATE BIDS", unsegmented_private_bids)
@@ -456,13 +456,24 @@ class Transporter:
                            ShipperModel.shpr_id,
                            ShipperModel.name,
                            ShipperModel.contact_no,
+                           BidSettings.bdsttng_rate_quote_type,
                            func.array_agg(MapLoadSrcDestPair.src_city),
                            func.array_agg(MapLoadSrcDestPair.dest_city),
-                           )
+                           func.array_agg(select(func.count())
+                                                            .where(
+                                                                TrackingFleet.tf_transporter_id == transporter_id,
+                                                                TrackingFleet.tf_bidding_load_id == BiddingLoad.bl_id,
+                                                                TrackingFleet.is_active == True  
+                                                            )
+                                                            .correlate(BiddingLoad)
+                                                            .subquery()
+                                                        ).label('tf_vehicle_count')
+                            )
                     .outerjoin(ShipperModel, ShipperModel.shpr_id == BiddingLoad.bl_shipper_id)
+                    .outerjoin(BidSettings, and_(BidSettings.bdsttng_shipper_id == ShipperModel.shpr_id, BidSettings.is_active == True))
                     .outerjoin(MapLoadSrcDestPair, and_(MapLoadSrcDestPair.mlsdp_bidding_load_id == BiddingLoad.bl_id, MapLoadSrcDestPair.is_active == True))
                     .filter(BiddingLoad.is_active == True, BiddingLoad.bl_id.in_(bid_ids))
-                    .group_by(BiddingLoad, *BiddingLoad.__table__.c, ShipperModel.name, ShipperModel.contact_no, ShipperModel.shpr_id)
+                    .group_by(BiddingLoad, *BiddingLoad.__table__.c, ShipperModel.name, ShipperModel.contact_no, ShipperModel.shpr_id, BidSettings.bdsttng_rate_quote_type)
                     .all()
                     )
 
@@ -480,6 +491,7 @@ class Transporter:
                     load_assigned = load_assigned_dict.get(bid["bid_id"])
                     if load_assigned:
                         bid["no_of_fleets_assigned"] = load_assigned.no_of_fleets_assigned
+                        bid["pending_vehicles"] = bid["no_of_fleets_assigned"] - bid["no_of_fleets_provided"]
 
             return (structured_bids, "")
 
@@ -488,6 +500,74 @@ class Transporter:
             return [], str(e)
         finally:
             session.close()
+
+    async def completed(self, transporter_id: str) -> (any, str):
+
+        session = Session()
+
+        try:
+            bid_arr = (session
+                       .query(LoadAssigned)
+                       .filter(LoadAssigned.la_transporter_id == transporter_id, LoadAssigned.is_active == True, LoadAssigned.is_assigned == True)
+                       .all()
+                       )
+
+            if not bid_arr:
+                return ([], "")
+
+            bid_ids = [bid.la_bidding_load_id for bid in bid_arr]
+
+            log("BID IDS ", bid_ids)
+            bids = (session
+                    .query(BiddingLoad,
+                           ShipperModel.shpr_id,
+                           ShipperModel.name,
+                           ShipperModel.contact_no,
+                           BidSettings.bdsttng_rate_quote_type,
+                           func.array_agg(MapLoadSrcDestPair.src_city),
+                           func.array_agg(MapLoadSrcDestPair.dest_city),
+                           func.array_agg(select(func.count())
+                                                            .where(
+                                                                TrackingFleet.tf_transporter_id == transporter_id,
+                                                                TrackingFleet.tf_bidding_load_id == BiddingLoad.bl_id,
+                                                                TrackingFleet.is_active == True  
+                                                            )
+                                                            .correlate(BiddingLoad)
+                                                            .subquery()
+                                                        ).label('tf_vehicle_count')
+                            )
+                    .outerjoin(ShipperModel, ShipperModel.shpr_id == BiddingLoad.bl_shipper_id)
+                    .outerjoin(BidSettings, and_(BidSettings.bdsttng_shipper_id == ShipperModel.shpr_id, BidSettings.is_active == True))
+                    .outerjoin(MapLoadSrcDestPair, and_(MapLoadSrcDestPair.mlsdp_bidding_load_id == BiddingLoad.bl_id, MapLoadSrcDestPair.is_active == True))
+                    .filter(BiddingLoad.is_active == True, BiddingLoad.bl_id.in_(bid_ids), BiddingLoad.load_status == "completed")
+                    .group_by(BiddingLoad, *BiddingLoad.__table__.c, ShipperModel.name, ShipperModel.contact_no, ShipperModel.shpr_id, BidSettings.bdsttng_rate_quote_type)
+                    .all()
+                    )
+
+            log("BIDS ", bids)
+            if not bids:
+                return ([], "")
+
+            structured_bids = structurize_transporter_bids(bids=bids)
+
+            load_assigned_dict = {
+                load.la_bidding_load_id: load for load in bid_arr}
+
+            for bid in structured_bids:
+                if bid["bid_id"] in bid_ids:
+                    load_assigned = load_assigned_dict.get(bid["bid_id"])
+                    if load_assigned:
+                        bid["no_of_fleets_assigned"] = load_assigned.no_of_fleets_assigned
+                        bid["pending_vehicles"] = bid["no_of_fleets_assigned"] - bid["no_of_fleets_provided"]
+
+            return (structured_bids, "")
+
+        except Exception as e:
+            session.rollback()
+            return [], str(e)
+        finally:
+            session.close()
+
 
     async def participated_bids(self, transporter_id: str) -> (any, str):
 
@@ -515,13 +595,23 @@ class Transporter:
                            ShipperModel.shpr_id,
                            ShipperModel.name,
                            ShipperModel.contact_no,
+                           BidSettings.bdsttng_rate_quote_type,
                            func.array_agg(MapLoadSrcDestPair.src_city),
                            func.array_agg(MapLoadSrcDestPair.dest_city),
+                           func.array_agg(select(func.count())
+                                                            .where(
+                                                                TrackingFleet.tf_transporter_id == transporter_id,
+                                                                TrackingFleet.tf_bidding_load_id == BiddingLoad.bl_id,
+                                                                TrackingFleet.is_active == True  
+                                                            )
+                                                            .correlate(BiddingLoad)
+                                                            .subquery()
+                                                        ).label('tf_vehicle_count')
                            )
                     .outerjoin(ShipperModel, ShipperModel.shpr_id == BiddingLoad.bl_shipper_id)
                     .outerjoin(MapLoadSrcDestPair, and_(MapLoadSrcDestPair.mlsdp_bidding_load_id == BiddingLoad.bl_id, MapLoadSrcDestPair.is_active == True))
                     .filter(BiddingLoad.is_active == True, BiddingLoad.bl_id.in_(bid_ids))
-                    .group_by(BiddingLoad, *BiddingLoad.__table__.c, ShipperModel.name, ShipperModel.contact_no, ShipperModel.shpr_id)
+                    .group_by(BiddingLoad, *BiddingLoad.__table__.c, ShipperModel.name, ShipperModel.contact_no, ShipperModel.shpr_id, BidSettings.bdsttng_rate_quote_type)
                     .all()
                     )
 
@@ -557,13 +647,23 @@ class Transporter:
                            ShipperModel.shpr_id,
                            ShipperModel.name,
                            ShipperModel.contact_no,
+                           BidSettings.bdsttng_rate_quote_type,
                            func.array_agg(MapLoadSrcDestPair.src_city),
                            func.array_agg(MapLoadSrcDestPair.dest_city),
+                           func.array_agg(select(func.count())
+                                                            .where(
+                                                                TrackingFleet.tf_transporter_id == transporter_id,
+                                                                TrackingFleet.tf_bidding_load_id == BiddingLoad.bl_id,
+                                                                TrackingFleet.is_active == True  
+                                                            )
+                                                            .correlate(BiddingLoad)
+                                                            .subquery()
+                                                        ).label('tf_vehicle_count')
                            )
                     .outerjoin(ShipperModel, ShipperModel.shpr_id == BiddingLoad.bl_shipper_id)
                     .outerjoin(MapLoadSrcDestPair, and_(MapLoadSrcDestPair.mlsdp_bidding_load_id == BiddingLoad.bl_id, MapLoadSrcDestPair.is_active == True))
                     .filter(BiddingLoad.is_active == True, BiddingLoad.bl_id.in_(bid_ids), BiddingLoad.load_status.in_(load_status_for_lost_participated))
-                    .group_by(BiddingLoad, *BiddingLoad.__table__.c, ShipperModel.name, ShipperModel.contact_no, ShipperModel.shpr_id)
+                    .group_by(BiddingLoad, *BiddingLoad.__table__.c, ShipperModel.name, ShipperModel.contact_no, ShipperModel.shpr_id, BidSettings.bdsttng_rate_quote_type)
                     .all()
                     )
 
@@ -631,14 +731,22 @@ class Transporter:
                 .filter(MapShipperTransporter.mst_transporter_id == transporter_id, MapShipperTransporter.is_active == True)
                 .all()
             )
+            
+            transporter_status = ''
             if not shipper_and_blacklist_details:
-                return ({}, "")
+                aculead_transporter_detail = (
+                                            session.query(TransporterModel)
+                                            .filter(TransporterModel.trnsp_id == transporter_id, TransporterModel.is_active == True)
+                                            .all()
+                                            )
+                
+                if aculead_transporter_detail:
+                    transporter_status = aculead_transporter_detail.status
 
             shipper_ids = []
             mapped_blocked_shipper_ids = []
             unmapped_blocked_shipper_ids = []
 
-            transporter_status = ''
             
             for shipper_and_blacklist_detail in shipper_and_blacklist_details:
                 (shipper, transporter_details,
@@ -756,13 +864,23 @@ class Transporter:
                            ShipperModel.shpr_id,
                            ShipperModel.name,
                            ShipperModel.contact_no,
+                           BidSettings.bdsttng_rate_quote_type,
                            func.array_agg(MapLoadSrcDestPair.src_city),
                            func.array_agg(MapLoadSrcDestPair.dest_city),
+                           func.array_agg(select(func.count())
+                                                            .where(
+                                                                TrackingFleet.tf_transporter_id == transporter_id,
+                                                                TrackingFleet.tf_bidding_load_id == BiddingLoad.bl_id,
+                                                                TrackingFleet.is_active == True  
+                                                            )
+                                                            .correlate(BiddingLoad)
+                                                            .subquery()
+                                                        ).label('tf_vehicle_count')
                            )
                     .outerjoin(ShipperModel, ShipperModel.shpr_id == BiddingLoad.bl_shipper_id)
                     .outerjoin(MapLoadSrcDestPair, and_(MapLoadSrcDestPair.mlsdp_bidding_load_id == BiddingLoad.bl_id, MapLoadSrcDestPair.is_active == True))
                     .filter(BiddingLoad.is_active == True, BiddingLoad.bl_id.in_(bid_ids))
-                    .group_by(BiddingLoad, *BiddingLoad.__table__.c, ShipperModel.name, ShipperModel.contact_no, ShipperModel.shpr_id)
+                    .group_by(BiddingLoad, *BiddingLoad.__table__.c, ShipperModel.name, ShipperModel.contact_no, ShipperModel.shpr_id, BidSettings.bdsttng_rate_quote_type)
                     .all()
                     )
 

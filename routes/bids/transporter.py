@@ -189,6 +189,51 @@ async def fetch_selected_bids(request: Request):
         return ServerError(err=err, errMsg=str(err))
 
 
+@transporter_bidding_router.get("/completed")
+async def fetch_completed_bids(request: Request):
+
+    transporter_id = request.state.current_user["transporter_id"]
+
+    try:
+
+        if not transporter_id:
+            return ErrorResponse(data=[], dev_msg=os.getenv("TRANSPORTER_ID_NOT_FOUND_ERROR"), client_msg=os.getenv("GENERIC_ERROR"))
+
+        (bids, error) = await transporter.completed(transporter_id=transporter_id)
+
+        if error:
+            return ErrorResponse(data=[], dev_msg=error, client_msg=os.getenv("GENERIC_ERROR"))
+
+        if not bids:
+            return SuccessResponse(data=[], client_msg="You dont have any completed bids yet", dev_msg="Not completed any bids")
+
+        private_bids = []
+        public_bids = []
+        for bid in bids:
+
+            lowest_price_response = await lowest_price_of_bid_and_transporter(request=request, bid_id=bid["bid_id"])
+            if lowest_price_response["data"] == []:
+                return lowest_price_response
+
+            lowest_price_data = lowest_price_response["data"]
+            
+            if bid["bid_mode"] == "private_pool":
+                private_bids.append({**bid, **lowest_price_data})
+            else:
+                public_bids.append({**bid, **lowest_price_data})
+                
+        bids = {
+                "all": private_bids + public_bids,
+                "private": private_bids,
+                "public": public_bids
+            }
+
+        return SuccessResponse(data=bids, dev_msg="Fetched bids successfully", client_msg="Fetched all completed bids successfully!")
+
+    except Exception as err:
+        return ServerError(err=err, errMsg=str(err))
+
+
 @transporter_bidding_router.post("/rate/{bid_id}", response_model=None)
 async def provide_new_rate_for_bid(request: Request, bid_id: str, bid_req: TransporterBidReq):
 
