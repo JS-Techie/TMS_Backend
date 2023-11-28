@@ -609,6 +609,7 @@ class Transporter:
                                                         ).label('tf_vehicle_count')
                            )
                     .outerjoin(ShipperModel, ShipperModel.shpr_id == BiddingLoad.bl_shipper_id)
+                    .outerjoin(BidSettings, and_(BidSettings.bdsttng_shipper_id == ShipperModel.shpr_id, BidSettings.is_active == True))
                     .outerjoin(MapLoadSrcDestPair, and_(MapLoadSrcDestPair.mlsdp_bidding_load_id == BiddingLoad.bl_id, MapLoadSrcDestPair.is_active == True))
                     .filter(BiddingLoad.is_active == True, BiddingLoad.bl_id.in_(bid_ids))
                     .group_by(BiddingLoad, *BiddingLoad.__table__.c, ShipperModel.name, ShipperModel.contact_no, ShipperModel.shpr_id, BidSettings.bdsttng_rate_quote_type)
@@ -661,6 +662,7 @@ class Transporter:
                                                         ).label('tf_vehicle_count')
                            )
                     .outerjoin(ShipperModel, ShipperModel.shpr_id == BiddingLoad.bl_shipper_id)
+                    .outerjoin(BidSettings, and_(BidSettings.bdsttng_shipper_id == ShipperModel.shpr_id, BidSettings.is_active == True))
                     .outerjoin(MapLoadSrcDestPair, and_(MapLoadSrcDestPair.mlsdp_bidding_load_id == BiddingLoad.bl_id, MapLoadSrcDestPair.is_active == True))
                     .filter(BiddingLoad.is_active == True, BiddingLoad.bl_id.in_(bid_ids), BiddingLoad.load_status.in_(load_status_for_lost_participated))
                     .group_by(BiddingLoad, *BiddingLoad.__table__.c, ShipperModel.name, ShipperModel.contact_no, ShipperModel.shpr_id, BidSettings.bdsttng_rate_quote_type)
@@ -758,6 +760,9 @@ class Transporter:
                         shipper_ids.append(shipper.mst_shipper_id)
                     else:
                         mapped_blocked_shipper_ids.append(shipper.mst_shipper_id)
+                        
+                else:
+                    shipper_ids.append(shipper.mst_shipper_id)
                 log("SHIPPER :", shipper)
                 log("TRANSPORTER DETAILS :", transporter_details.trnsp_id)
                 log("BLACKLIST :", blacklist_details)
@@ -878,6 +883,7 @@ class Transporter:
                                                         ).label('tf_vehicle_count')
                            )
                     .outerjoin(ShipperModel, ShipperModel.shpr_id == BiddingLoad.bl_shipper_id)
+                    .outerjoin(BidSettings, and_(BidSettings.bdsttng_shipper_id == ShipperModel.shpr_id, BidSettings.is_active == True))
                     .outerjoin(MapLoadSrcDestPair, and_(MapLoadSrcDestPair.mlsdp_bidding_load_id == BiddingLoad.bl_id, MapLoadSrcDestPair.is_active == True))
                     .filter(BiddingLoad.is_active == True, BiddingLoad.bl_id.in_(bid_ids))
                     .group_by(BiddingLoad, *BiddingLoad.__table__.c, ShipperModel.name, ShipperModel.contact_no, ShipperModel.shpr_id, BidSettings.bdsttng_rate_quote_type)
