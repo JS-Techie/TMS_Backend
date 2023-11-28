@@ -6,7 +6,9 @@ from models.models import BiddingLoad
 
 def log(key: str, value: str | None = None):
     if os.getenv("print") == "true":
+        print("------------------------------------------------------------------------")
         print(key, " : ", value)
+        print("=========================================================================")
 
 
 def convert_date_to_string(date: datetime):
@@ -170,11 +172,11 @@ def structurize_transporter_bids(bids):
     bid_details = []
 
     for bid_load, shipper_id, shipper_name, shipper_contact_no, rate_qoute_type, src, dest, fleets_provided  in bids:
-        print("BID_LOAD ", bid_load)
-        print("SHIPPER ", shipper_name)
-        print("SRC ", src)
-        print("DEST ", dest)
-        print("NO OF FLEETS PROVIDED ", fleets_provided)
+        log("BID_LOAD ", bid_load)
+        log("SHIPPER ", shipper_name)
+        log("SRC ", src)
+        log("DEST ", dest)
+        log("NO OF FLEETS PROVIDED ", fleets_provided)
         bid_detail = {
             "bid_id": bid_load.bl_id,
             "shipper_name": shipper_name,
