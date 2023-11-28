@@ -971,7 +971,7 @@ class Transporter:
             log("ASSIGNMENT HISTORY", transporter_detail.history)
             log("TYPE", type(transporter_detail.history))
 
-            assignment_history = ast.literal_eval(transporter_detail.history)
+            assignment_history = ast.literal_eval(transporter_detail.history)[::-1]
 
             log("ASSIGNMENT HISTORY", assignment_history)
             log("TYPE", type(assignment_history))
