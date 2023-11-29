@@ -747,7 +747,7 @@ class Transporter:
                 aculead_transporter_detail = (
                                             session.query(TransporterModel)
                                             .filter(TransporterModel.trnsp_id == transporter_id, TransporterModel.is_active == True)
-                                            .all()
+                                            .first()
                                             )
                 
                 if aculead_transporter_detail:
