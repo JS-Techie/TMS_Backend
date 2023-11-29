@@ -242,9 +242,9 @@ def add_filter(query: str, filter: FilterBidsRequest):
     if filter.branch_id is not None:
         query = query.filter(BiddingLoad.bl_branch_id == filter.branch_id)
     if filter.from_date is not None:
-        query = query.filter(BiddingLoad.created_at >= filter.from_date)
+        query = query.filter(BiddingLoad.bid_time >= filter.from_date)
     if filter.to_date is not None:
-        query = query.filter(BiddingLoad.created_at <= filter.to_date)
+        query = query.filter(BiddingLoad.bid_time <= filter.to_date)
 
     return query
 

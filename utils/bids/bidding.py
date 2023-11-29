@@ -107,8 +107,8 @@ class Bid:
                 'shipper_id_filter': ' AND t_bidding_load.bl_shipper_id = \'$shipper_id\'',
                 'regioncluster_id_filter': ' AND t_bidding_load.bl_region_cluster_id = \'$region_cluster_id\'',
                 'branch_id_filter': ' AND t_bidding_load.bl_branch_id = \'$branch_id\'',
-                'from_date_filter': ' AND t_bidding_load.created_at > \'$from_date\'',
-                'to_date_filter': ' AND t_bidding_load.created_at <= \'$to_date\''
+                'from_date_filter': ' AND t_bidding_load.bid_time > \'$from_date\'',
+                'to_date_filter': ' AND t_bidding_load.bid_time <= \'$to_date\''
             }
 
             filter_values["shipper_id_filter"] = Template(filter_values['shipper_id_filter']).safe_substitute(
