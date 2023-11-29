@@ -6,7 +6,7 @@ from models.models import BiddingLoad
 
 def log(key: str, value: str | None = None):
     if os.getenv("print") == "true":
-        print("------------------------------------------------------------------------")
+        print("-------------------------------------------------------------------------")
         print(key, " : ", value)
         print("=========================================================================")
 
@@ -171,17 +171,21 @@ def structurize_transporter_bids(bids):
 
     bid_details = []
 
-    for bid_load, shipper_id, shipper_name, shipper_contact_no, rate_qoute_type, src, dest, fleets_provided  in bids:
+    for bid_load, shipper_id, shipper_name, shipper_contact_no, rate_qoute_type, price_match_duration, enable_price_match, src, dest, fleets_provided  in bids:
         log("BID_LOAD ", bid_load)
         log("SHIPPER ", shipper_name)
         log("SRC ", src)
         log("DEST ", dest)
         log("NO OF FLEETS PROVIDED ", fleets_provided)
+        log("PRICE MATCH DURATION ", price_match_duration)
+        log("ENABLE PRICE MATCH ", enable_price_match)
         bid_detail = {
             "bid_id": bid_load.bl_id,
             "shipper_name": shipper_name,
             "contact_number": shipper_contact_no,
             "rate_qoute_type": rate_qoute_type,
+            "price_match_duration": price_match_duration,
+            "enable_price_match": enable_price_match,
             "src_city": ','.join(set(city for city in src if city is not None)) if src else None,
             "dest_city": ','.join(set(city for city in dest if city is not None)) if dest else None,
             "bid_time": bid_load.bid_time,
