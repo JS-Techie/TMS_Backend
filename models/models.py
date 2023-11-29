@@ -294,6 +294,7 @@ class BiddingLoad(Base, Persistance):
     show_current_lowest_rate_transporter = Column(Boolean, default=False)
     bid_price_decrement = Column(Double, default=1,nullable=False)
     no_of_tries = Column(Integer, default=9999)
+    rate_quote_type = Column( String, nullable=False)
     loading_contact_name = Column(String, nullable = False)
     loading_contact_no = Column(String, nullable = False)
     unloading_contact_name = Column(String, nullable = False)

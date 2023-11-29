@@ -171,7 +171,7 @@ def structurize_transporter_bids(bids):
 
     bid_details = []
 
-    for bid_load, shipper_id, shipper_name, shipper_contact_no, rate_qoute_type, price_match_duration, enable_price_match, src, dest, fleets_provided  in bids:
+    for bid_load, shipper_id, shipper_name, shipper_contact_no, price_match_duration, enable_price_match, src, dest, fleets_provided  in bids:
         log("BID_LOAD ", bid_load)
         log("SHIPPER ", shipper_name)
         log("SRC ", src)
@@ -182,8 +182,9 @@ def structurize_transporter_bids(bids):
         bid_detail = {
             "bid_id": bid_load.bl_id,
             "shipper_name": shipper_name,
+            "shipper_id": shipper_id,
             "contact_number": shipper_contact_no,
-            "rate_qoute_type": rate_qoute_type,
+            "rate_qoute_type": bid_load.rate_quote_type,
             "price_match_duration": price_match_duration,
             "enable_price_match": enable_price_match,
             "src_city": ','.join(set(city for city in src if city is not None)) if src else None,

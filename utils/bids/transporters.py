@@ -456,7 +456,6 @@ class Transporter:
                            ShipperModel.shpr_id,
                            ShipperModel.name,
                            ShipperModel.contact_no,
-                           BidSettings.bdsttng_rate_quote_type,
                            BidSettings.price_match_duration,
                            BidSettings.enable_price_match,
                            func.array_agg(MapLoadSrcDestPair.src_city),
@@ -475,7 +474,7 @@ class Transporter:
                     .outerjoin(BidSettings, and_(BidSettings.bdsttng_shipper_id == ShipperModel.shpr_id, BidSettings.is_active == True))
                     .outerjoin(MapLoadSrcDestPair, and_(MapLoadSrcDestPair.mlsdp_bidding_load_id == BiddingLoad.bl_id, MapLoadSrcDestPair.is_active == True))
                     .filter(BiddingLoad.is_active == True, BiddingLoad.bl_id.in_(bid_ids))
-                    .group_by(BiddingLoad, *BiddingLoad.__table__.c, ShipperModel.name, ShipperModel.contact_no, ShipperModel.shpr_id, BidSettings.bdsttng_rate_quote_type, BidSettings.enable_price_match, BidSettings.price_match_duration)
+                    .group_by(BiddingLoad, *BiddingLoad.__table__.c, ShipperModel.name, ShipperModel.contact_no, ShipperModel.shpr_id, BidSettings.enable_price_match, BidSettings.price_match_duration)
                     .all()
                     )
 
@@ -525,7 +524,6 @@ class Transporter:
                            ShipperModel.shpr_id,
                            ShipperModel.name,
                            ShipperModel.contact_no,
-                           BidSettings.bdsttng_rate_quote_type,
                            BidSettings.price_match_duration,
                            BidSettings.enable_price_match,
                            func.array_agg(MapLoadSrcDestPair.src_city),
@@ -544,7 +542,7 @@ class Transporter:
                     .outerjoin(BidSettings, and_(BidSettings.bdsttng_shipper_id == ShipperModel.shpr_id, BidSettings.is_active == True))
                     .outerjoin(MapLoadSrcDestPair, and_(MapLoadSrcDestPair.mlsdp_bidding_load_id == BiddingLoad.bl_id, MapLoadSrcDestPair.is_active == True))
                     .filter(BiddingLoad.is_active == True, BiddingLoad.bl_id.in_(bid_ids), BiddingLoad.load_status == "completed")
-                    .group_by(BiddingLoad, *BiddingLoad.__table__.c, ShipperModel.name, ShipperModel.contact_no, ShipperModel.shpr_id, BidSettings.bdsttng_rate_quote_type, BidSettings.enable_price_match, BidSettings.price_match_duration)
+                    .group_by(BiddingLoad, *BiddingLoad.__table__.c, ShipperModel.name, ShipperModel.contact_no, ShipperModel.shpr_id, BidSettings.enable_price_match, BidSettings.price_match_duration)
                     .all()
                     )
 
@@ -599,7 +597,6 @@ class Transporter:
                            ShipperModel.shpr_id,
                            ShipperModel.name,
                            ShipperModel.contact_no,
-                           BidSettings.bdsttng_rate_quote_type,
                            BidSettings.price_match_duration,
                            BidSettings.enable_price_match,
                            func.array_agg(MapLoadSrcDestPair.src_city),
@@ -618,7 +615,7 @@ class Transporter:
                     .outerjoin(BidSettings, and_(BidSettings.bdsttng_shipper_id == ShipperModel.shpr_id, BidSettings.is_active == True))
                     .outerjoin(MapLoadSrcDestPair, and_(MapLoadSrcDestPair.mlsdp_bidding_load_id == BiddingLoad.bl_id, MapLoadSrcDestPair.is_active == True))
                     .filter(BiddingLoad.is_active == True, BiddingLoad.bl_id.in_(bid_ids))
-                    .group_by(BiddingLoad, *BiddingLoad.__table__.c, ShipperModel.name, ShipperModel.contact_no, ShipperModel.shpr_id, BidSettings.bdsttng_rate_quote_type, BidSettings.enable_price_match, BidSettings.price_match_duration)
+                    .group_by(BiddingLoad, *BiddingLoad.__table__.c, ShipperModel.name, ShipperModel.contact_no, ShipperModel.shpr_id, BidSettings.enable_price_match, BidSettings.price_match_duration)
                     .all()
                     )
 
@@ -654,7 +651,6 @@ class Transporter:
                            ShipperModel.shpr_id,
                            ShipperModel.name,
                            ShipperModel.contact_no,
-                           BidSettings.bdsttng_rate_quote_type,
                            BidSettings.price_match_duration,
                            BidSettings.enable_price_match,
                            func.array_agg(MapLoadSrcDestPair.src_city),
@@ -673,7 +669,7 @@ class Transporter:
                     .outerjoin(BidSettings, and_(BidSettings.bdsttng_shipper_id == ShipperModel.shpr_id, BidSettings.is_active == True))
                     .outerjoin(MapLoadSrcDestPair, and_(MapLoadSrcDestPair.mlsdp_bidding_load_id == BiddingLoad.bl_id, MapLoadSrcDestPair.is_active == True))
                     .filter(BiddingLoad.is_active == True, BiddingLoad.bl_id.in_(bid_ids), BiddingLoad.load_status.in_(load_status_for_lost_participated))
-                    .group_by(BiddingLoad, *BiddingLoad.__table__.c, ShipperModel.name, ShipperModel.contact_no, ShipperModel.shpr_id, BidSettings.bdsttng_rate_quote_type, BidSettings.enable_price_match, BidSettings.price_match_duration)
+                    .group_by(BiddingLoad, *BiddingLoad.__table__.c, ShipperModel.name, ShipperModel.contact_no, ShipperModel.shpr_id, BidSettings.enable_price_match, BidSettings.price_match_duration)
                     .all()
                     )
 
@@ -877,7 +873,6 @@ class Transporter:
                            ShipperModel.shpr_id,
                            ShipperModel.name,
                            ShipperModel.contact_no,
-                           BidSettings.bdsttng_rate_quote_type,
                            BidSettings.price_match_duration,
                            BidSettings.enable_price_match,
                            func.array_agg(MapLoadSrcDestPair.src_city),
@@ -896,7 +891,7 @@ class Transporter:
                     .outerjoin(BidSettings, and_(BidSettings.bdsttng_shipper_id == ShipperModel.shpr_id, BidSettings.is_active == True))
                     .outerjoin(MapLoadSrcDestPair, and_(MapLoadSrcDestPair.mlsdp_bidding_load_id == BiddingLoad.bl_id, MapLoadSrcDestPair.is_active == True))
                     .filter(BiddingLoad.is_active == True, BiddingLoad.bl_id.in_(bid_ids))
-                    .group_by(BiddingLoad, *BiddingLoad.__table__.c, ShipperModel.name, ShipperModel.contact_no, ShipperModel.shpr_id, BidSettings.bdsttng_rate_quote_type, BidSettings.enable_price_match, BidSettings.price_match_duration)
+                    .group_by(BiddingLoad, *BiddingLoad.__table__.c, ShipperModel.name, ShipperModel.contact_no, ShipperModel.shpr_id, BidSettings.enable_price_match, BidSettings.price_match_duration)
                     .all()
                     )
 

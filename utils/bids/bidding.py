@@ -630,7 +630,6 @@ class Bid:
                                  ShipperModel.shpr_id,
                                  ShipperModel.name,
                                  ShipperModel.contact_no,
-                                 BidSettings.bdsttng_rate_quote_type,
                                  BidSettings.price_match_duration,
                                  BidSettings.enable_price_match,
                                  func.array_agg(MapLoadSrcDestPair.src_city),
@@ -656,14 +655,14 @@ class Bid:
                     BiddingLoad.load_status == status)
 
             bids = bids_query.group_by(BiddingLoad, *BiddingLoad.__table__.c,
-                                       ShipperModel.name, ShipperModel.contact_no, ShipperModel.shpr_id, BidSettings.bdsttng_rate_quote_type, BidSettings.enable_price_match, BidSettings.price_match_duration).all()
+                                       ShipperModel.name, ShipperModel.contact_no, ShipperModel.shpr_id, BidSettings.enable_price_match, BidSettings.price_match_duration).all()
             log("BIDS IN PUBLIC", bids)
             if not bids:
                 return ([], "")
 
             filtered_bids = []
             for bid in bids:
-                (_, shipper_id, _, _, _, _, _, _, _, _) = bid
+                (_, shipper_id, _, _, _, _, _, _, _) = bid
                 if shipper_id not in blocked_shippers:
                     filtered_bids.append(bid)
 
@@ -686,7 +685,6 @@ class Bid:
                                  ShipperModel.shpr_id,
                                  ShipperModel.name,
                                  ShipperModel.contact_no,
-                                 BidSettings.bdsttng_rate_quote_type,
                                  BidSettings.price_match_duration,
                                  BidSettings.enable_price_match,
                                  func.array_agg(MapLoadSrcDestPair.src_city),
@@ -712,7 +710,7 @@ class Bid:
                     BiddingLoad.load_status == status)
 
             bids = bids_query.group_by(BiddingLoad, *BiddingLoad.__table__.c,
-                                       ShipperModel.name, ShipperModel.contact_no, ShipperModel.shpr_id, BidSettings.bdsttng_rate_quote_type, BidSettings.enable_price_match, BidSettings.price_match_duration).all()
+                                       ShipperModel.name, ShipperModel.contact_no, ShipperModel.shpr_id, BidSettings.enable_price_match, BidSettings.price_match_duration).all()
 
             if not bids:
                 return (bids, "")
@@ -741,7 +739,6 @@ class Bid:
                                  ShipperModel.shpr_id,
                                  ShipperModel.name,
                                  ShipperModel.contact_no,
-                                 BidSettings.bdsttng_rate_quote_type,
                                  BidSettings.price_match_duration,
                                  BidSettings.enable_price_match,
                                  func.array_agg(MapLoadSrcDestPair.src_city),
@@ -767,7 +764,7 @@ class Bid:
                     BiddingLoad.load_status == status)
 
             bids = bids_query.group_by(BiddingLoad, *BiddingLoad.__table__.c,
-                                       ShipperModel.name, ShipperModel.contact_no, ShipperModel.shpr_id, BidSettings.bdsttng_rate_quote_type, BidSettings.enable_price_match, BidSettings.price_match_duration).all()
+                                       ShipperModel.name, ShipperModel.contact_no, ShipperModel.shpr_id, BidSettings.enable_price_match, BidSettings.price_match_duration).all()
 
             if not bids:
                 return (bids, "")
