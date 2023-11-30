@@ -234,17 +234,27 @@ class Bid:
         try:
 
             attempt_number = 1
+            last_comment = comment
             attempted = session.query(BidTransaction).filter(
                 BidTransaction.transporter_id == transporter_id, BidTransaction.bid_id == bid_id).count()
 
             if attempted:
                 attempt_number = attempted + 1
 
+            if not comment:
+                last_commented_bid = session.query(BidTransaction).filter(
+                    BidTransaction.transporter_id == transporter_id, BidTransaction.bid_id == bid_id, BidTransaction.comment != None, BidTransaction.comment != ""
+                ).order_by(BidTransaction.created_at.desc()).first()
+                
+                if last_commented_bid:
+                    last_comment = last_commented_bid.comment
+            
+
             bid = BidTransaction(
                 bid_id=bid_id,
                 transporter_id=transporter_id,
                 rate=rate,
-                comment=comment,
+                comment=last_comment,
                 attempt_number=attempt_number,
 
                 created_by=user_id

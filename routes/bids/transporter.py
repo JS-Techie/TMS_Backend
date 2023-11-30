@@ -313,10 +313,10 @@ async def provide_new_rate_for_bid(request: Request, bid_id: str, bid_req: Trans
 
         log("VALID RATE", bid_id)
 
-        (new_record, error) = await bid.new(
+        (new_bid_transaction, error) = await bid.new(
             bid_id, transporter_id, bid_req.rate, bid_req.comment, user_id=user_id)
 
-        log("NEW BID INSERTED", new_record)
+        log("NEW BID INSERTED", new_bid_transaction)
 
         if error:
             return ErrorResponse(data=[], dev_msg=error, client_msg=os.getenv("BID_RATE_ERROR"))
@@ -330,7 +330,7 @@ async def provide_new_rate_for_bid(request: Request, bid_id: str, bid_req: Trans
             return ErrorResponse(data=[], client_msg=os.getenv("BID_RATE_ERROR"), dev_msg=error)
 
         (sorted_bid_details, error) = await redis.update(sorted_set=bid_id,
-                                                         transporter_id=transporter_id, comment=bid_req.comment, transporter_name=transporter_name, rate=bid_req.rate, attempts=transporter_attempts + 1)
+                                                         transporter_id=transporter_id, comment=new_bid_transaction.comment, transporter_name=transporter_name, rate=bid_req.rate, attempts=transporter_attempts + 1)
 
         log("BID DETAILS", sorted_bid_details)
 

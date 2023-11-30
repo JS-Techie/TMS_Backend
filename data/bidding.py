@@ -31,6 +31,9 @@ status_wise_fetch_query = """
                 (select name from t_lkp_fleet where t_lkp_fleet.id = t_bidding_load.fleet_type) as fleet_name,
                 t_bidding_load.show_current_lowest_rate_transporter,
                 t_bidding_load.bl_shipper_id,
+                t_bidding_load.bl_branch_id,
+				t_bid_settings.enable_price_match,
+				t_bid_settings.price_match_duration,
 				(select name from t_shipper where t_shipper.shpr_id = t_bidding_load.bl_shipper_id) as shipper_name,
                 t_map_load_src_dest_pair.src_city,
                 t_map_load_src_dest_pair.dest_city,
@@ -41,6 +44,7 @@ status_wise_fetch_query = """
                 t_load_assigned.price,
                 t_load_assigned.price_difference_percent,
                 t_load_assigned.no_of_fleets_assigned,
+                t_load_assigned.is_assigned,
                 t_transporter.name,
                 t_transporter.contact_no,
                 t_tracking_fleet.tf_id,
@@ -52,6 +56,29 @@ status_wise_fetch_query = """
                 t_tracking_fleet.is_active as trf_active,
                 (select count(*) from t_bid_transaction where t_bid_transaction.bid_id = t_bidding_load.bl_id) as total_no_of_bids
             FROM t_bidding_load
+            LEFT JOIN t_bid_settings ON ( t_bid_settings.is_active = true AND t_bid_settings.bdsttng_shipper_id = t_bidding_load.bl_shipper_id
+                                            AND (
+                                                CASE
+                                                    WHEN t_bidding_load.bl_branch_id IS NULL THEN
+                                                        TRUE
+                                                        AND t_bid_settings.bdsttng_branch_id IS NULL 
+                                                    ELSE
+                                                        (
+                                                            t_bid_settings.bdsttng_branch_id = t_bidding_load.bl_branch_id
+                                                            OR (
+                                                                NOT EXISTS (
+                                                                    SELECT 1
+                                                                    FROM t_bid_settings bs
+                                                                    WHERE bs.bdsttng_branch_id = t_bidding_load.bl_branch_id
+                                                                    AND bs.bdsttng_shipper_id = t_bidding_load.bl_shipper_id
+                                                                    AND bs.is_active = true
+                                                                )
+                                                                AND t_bid_settings.bdsttng_branch_id IS NULL
+                                                            )
+                                                        )
+                                                END
+                                            )
+                                        )
             LEFT JOIN t_load_assigned ON t_load_assigned.la_bidding_load_id = t_bidding_load.bl_id
             LEFT JOIN t_transporter ON t_transporter.trnsp_id = t_load_assigned.la_transporter_id
             LEFT JOIN t_map_load_src_dest_pair ON (t_map_load_src_dest_pair.mlsdp_bidding_load_id = t_bidding_load.bl_id and t_map_load_src_dest_pair.is_active=true and t_map_load_src_dest_pair.is_prime=true)
@@ -60,7 +87,7 @@ status_wise_fetch_query = """
                 t_bidding_load.is_active = true
                 AND t_bidding_load.load_status = :load_status
             ORDER BY
-                t_bidding_load.created_at DESC
+                t_bidding_load.updated_at DESC, t_bidding_load.created_at DESC
                 """
 
 
@@ -82,6 +109,9 @@ filter_wise_fetch_query = """
                 (select name from t_lkp_fleet where t_lkp_fleet.id = t_bidding_load.fleet_type) as fleet_name,
                 t_bidding_load.show_current_lowest_rate_transporter,
                 t_bidding_load.bl_shipper_id,
+                t_bidding_load.bl_branch_id,
+				t_bid_settings.enable_price_match,
+				t_bid_settings.price_match_duration,
 				(select name from t_shipper where t_shipper.shpr_id = t_bidding_load.bl_shipper_id) as shipper_name,
                 t_map_load_src_dest_pair.src_city,
                 t_map_load_src_dest_pair.dest_city,
@@ -92,6 +122,7 @@ filter_wise_fetch_query = """
                 t_load_assigned.price,
                 t_load_assigned.price_difference_percent,
                 t_load_assigned.no_of_fleets_assigned,
+                t_load_assigned.is_assigned,
                 t_transporter.name,
                 t_transporter.contact_no,
                 t_tracking_fleet.tf_id,
@@ -103,6 +134,29 @@ filter_wise_fetch_query = """
                 t_tracking_fleet.is_active as trf_active,
                 (select count(*) from t_bid_transaction where t_bid_transaction.bid_id = t_bidding_load.bl_id) as total_no_of_bids
             FROM t_bidding_load
+            LEFT JOIN t_bid_settings ON ( t_bid_settings.is_active = true AND t_bid_settings.bdsttng_shipper_id = t_bidding_load.bl_shipper_id
+                                            AND (
+                                                CASE
+                                                    WHEN t_bidding_load.bl_branch_id IS NULL THEN
+                                                        TRUE
+                                                        AND t_bid_settings.bdsttng_branch_id IS NULL 
+                                                    ELSE
+                                                        (
+                                                            t_bid_settings.bdsttng_branch_id = t_bidding_load.bl_branch_id
+                                                            OR (
+                                                                NOT EXISTS (
+                                                                    SELECT 1
+                                                                    FROM t_bid_settings bs
+                                                                    WHERE bs.bdsttng_branch_id = t_bidding_load.bl_branch_id
+                                                                    AND bs.bdsttng_shipper_id = t_bidding_load.bl_shipper_id
+                                                                    AND bs.is_active = true
+                                                                )
+                                                                AND t_bid_settings.bdsttng_branch_id IS NULL
+                                                            )
+                                                        )
+                                                END
+                                            )
+                                        )
             LEFT JOIN t_load_assigned ON t_load_assigned.la_bidding_load_id = t_bidding_load.bl_id
             LEFT JOIN t_transporter ON t_transporter.trnsp_id = t_load_assigned.la_transporter_id
             LEFT JOIN t_map_load_src_dest_pair ON (t_map_load_src_dest_pair.mlsdp_bidding_load_id = t_bidding_load.bl_id and t_map_load_src_dest_pair.is_active=true and t_map_load_src_dest_pair.is_prime = true)
@@ -116,7 +170,7 @@ filter_wise_fetch_query = """
                 $from_date_filter
                 $to_date_filter
             ORDER BY
-                t_bidding_load.created_at DESC
+                t_bidding_load.updated_at DESC, t_bidding_load.created_at DESC
                 ;"""
 
 
