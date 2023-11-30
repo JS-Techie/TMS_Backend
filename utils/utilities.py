@@ -33,6 +33,7 @@ def structurize(input_array):
                 "bid_end_time": item["bid_end_time"],
                 "bid_extended_time": item["bid_extended_time"],
                 "bid_mode": item["bid_mode"],
+                "rate_quote_type": item["rate_quote_type"],
                 "reporting_from_time": item["reporting_from_time"],
                 "reporting_to_time": item["reporting_to_time"],
                 "bl_cancellation_reason": item["bl_cancellation_reason"],
