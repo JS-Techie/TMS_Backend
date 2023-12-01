@@ -87,7 +87,7 @@ status_wise_fetch_query = """
                 t_bidding_load.is_active = true
                 AND t_bidding_load.load_status = :load_status
             ORDER BY
-                t_bidding_load.updated_at DESC, t_bidding_load.created_at DESC
+                COALESCE(t_bidding_load.updated_at, '1111-11-11 11:11:11.111') DESC, t_bidding_load.created_at DESC
                 """
 
 
@@ -170,7 +170,7 @@ filter_wise_fetch_query = """
                 $from_date_filter
                 $to_date_filter
             ORDER BY
-                t_bidding_load.updated_at DESC, t_bidding_load.created_at DESC
+                COALESCE(t_bidding_load.updated_at, '1111-11-11 11:11:11.111') DESC, t_bidding_load.created_at DESC
                 ;"""
 
 

@@ -377,8 +377,10 @@ class Transporter:
 
             if no_transporter_assigned:
                 bid.load_status = "pending"
+                bid.updated_at = "NOW()"
             else:
                 bid.load_status = "partially_confirmed"
+                bid.updated_at = "NOW()"
 
             session.commit()
 
@@ -569,7 +571,6 @@ class Transporter:
             return [], str(e)
         finally:
             session.close()
-
 
     async def participated_bids(self, transporter_id: str) -> (any, str):
 

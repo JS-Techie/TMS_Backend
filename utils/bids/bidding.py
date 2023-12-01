@@ -49,6 +49,7 @@ class Bid:
                 log("THE CURRENT TIME", current_time)
                 if convert_date_to_string(bid.bid_time) == current_time:
                     setattr(bid, "load_status", "live")
+                    setattr(bid, "updated_at", "NOW()")
 
             session.commit()
 
@@ -190,6 +191,7 @@ class Bid:
                 return (False, "Bid requested could not be found")
 
             setattr(bid_to_be_updated, "load_status", status)
+            setattr(bid_to_be_updated, "updated_at", "NOW()")
             setattr(bid_to_be_updated, "updated_by", user_id)
 
             if reason:
@@ -513,6 +515,7 @@ class Bid:
 
             setattr(bid_details, "split", split)
             setattr(bid_details, "load_status", status)
+            setattr(bid_details, "updated_at", "NOW()")
 
             session.bulk_save_objects(assigned_transporters)
             session.commit()
@@ -548,6 +551,7 @@ class Bid:
             for bid in bids:
                 if convert_date_to_string(bid.bid_end_time) == current_time:
                     setattr(bid, "load_status", "pending")
+                    setattr(bid, "updated_at", "NOW()")
                     # redis.delete(sorted_set=bid)
 
             session.commit()
