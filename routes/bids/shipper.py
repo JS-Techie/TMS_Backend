@@ -36,6 +36,34 @@ fm = FastMail(email_conf)
 acu, shp = os.getenv("ACULEAD"), os.getenv("SHIPPER")
 
 
+@shipper_bidding_router.get("/control")
+async def initiate_and_close_bid(request: Request):
+
+    try:
+
+        userdata = request.state.current_user
+        shipper_id = None
+        log(" ID ", userdata["id"])
+        
+        
+        if userdata["user_type"] == "shp":
+            shipper_id = userdata["shipper_id"]
+            log("SHIPPER ID ", shipper_id)
+            
+        initiation_response = bid.initiate(shipper_id= shipper_id)
+
+        log("BID INITIATION RESPONSE ", initiation_response)
+
+        expulsion_response = bid.close(shipper_id= shipper_id)
+
+        log("BID CLOSING RESPONSE ", expulsion_response)
+        
+        return SuccessResponse(data=[], client_msg="SUCCESS", dev_msg={ "initiation_response": initiation_response , "expulsion_response": expulsion_response})
+
+    except Exception as err:
+        return ServerError(err=err, errMsg=str(err))
+
+
 @shipper_bidding_router.get("/status/{status}")
 async def get_bids_according_to_status(request: Request, status: str):
 
@@ -88,13 +116,14 @@ async def publish_new_bid(request: Request, bid_id: str, bg_tasks: BackgroundTas
     try:
         ist_timezone = pytz.timezone("Asia/Kolkata")
         current_time = datetime.now(ist_timezone)
-        current_time = current_time.replace(tzinfo=None, second =0, microsecond =0)
+        current_time = current_time.replace(
+            tzinfo=None, second=0, microsecond=0)
 
         (valid_bid_id, error) = await bid.is_valid(bid_id)
 
         if not valid_bid_id:
             return ErrorResponse(data=[], client_msg=os.getenv("NOT_FOUND_ERROR"), dev_msg=error)
-        
+
         (success, bid_details) = await bid.details(bid_id=bid_id)
 
         if not success:
@@ -102,7 +131,6 @@ async def publish_new_bid(request: Request, bid_id: str, bg_tasks: BackgroundTas
 
         if current_time > bid_details.bid_time:
             return ErrorResponse(data=[], client_msg=f"Bid Time was {bid_details.bid_time.replace(second =0, microsecond =0)}. Bid could not be published Anymore.", dev_msg="Already Crossed Bid Time. Bid Couldnot be published.")
-
 
         (update_successful, error) = await bid.update_status(bid_id=bid_id, status="not_started", user_id=user_id)
 

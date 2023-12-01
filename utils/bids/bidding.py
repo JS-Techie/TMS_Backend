@@ -30,7 +30,7 @@ redis = Redis()
 
 class Bid:
 
-    def initiate(self):
+    def initiate(self, shipper_id: str | None = None):
 
         session = Session()
         ist_timezone = pytz.timezone("Asia/Kolkata")
@@ -38,8 +38,14 @@ class Bid:
 
         try:
 
-            bids = (session.query(BiddingLoad).filter(
-                BiddingLoad.is_active == True, BiddingLoad.load_status == "not_started").all())
+            bids = session.query(BiddingLoad).filter(
+                BiddingLoad.is_active == True, BiddingLoad.load_status == "not_started")
+            
+            if shipper_id:
+                bids = bids.filter(BiddingLoad.bl_shipper_id == shipper_id)
+                
+            bids = bids.all()
+            
             log("THE BIDS TO INITIATE:", bids)
             if not bids:
                 return
@@ -532,7 +538,7 @@ class Bid:
         finally:
             session.close()
 
-    def close(self):
+    def close(self, shipper_id: str | None=None):
 
         session = Session()
         ist_timezone = pytz.timezone("Asia/Kolkata")
@@ -540,8 +546,14 @@ class Bid:
 
         try:
 
-            bids = (session.query(BiddingLoad).filter(
-                BiddingLoad.is_active == True, BiddingLoad.load_status == "live").all())
+            bids = session.query(BiddingLoad).filter(
+                BiddingLoad.is_active == True, BiddingLoad.load_status == "live")
+            
+            if shipper_id:
+                bids = bids.filter(BiddingLoad.bl_shipper_id == shipper_id)
+                
+            bids = bids.all()
+            
             log("THE BIDS TO CLOSE:", bids)
 
             if not bids:
