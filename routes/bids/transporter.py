@@ -296,7 +296,7 @@ async def provide_new_rate_for_bid(request: Request, bid_id: str, bid_req: Trans
             return ErrorResponse(data=[], client_msg=os.getenv("BID_RATE_ERROR"), dev_msg=error)
 
         if transporter_attempts >= bid_details.no_of_tries:
-            return ErrorResponse(data=[], client_msg="You have exceeded the number of tries for this bid!", dev_msg=f"Number of tries for Bid: L- {bid_id[-5:]} exceeded!")
+            return ErrorResponse(data=[], client_msg="You have exceeded the number of tries for this bid!", dev_msg=f"Number of tries for Bid  L-{bid_id[-5:]} exceeded!")
 
         log("BID TRIES OK", bid_id)
 
