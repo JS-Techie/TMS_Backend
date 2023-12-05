@@ -5,7 +5,7 @@ import pytz
 from datetime import datetime, timedelta
 from string import Template
 
-from sqlalchemy import func, text, and_, select
+from sqlalchemy import func, text, and_, select, or_, exists
 
 from config.db_config import Session
 from config.redis import r as redis
@@ -14,7 +14,8 @@ from data.bidding import (filter_wise_fetch_query, live_bid_details,
                           status_wise_fetch_query, transporter_analysis)
 from models.models import (BiddingLoad, BidSettings, BidTransaction,
                            LoadAssigned, MapLoadSrcDestPair, ShipperModel,
-                           TransporterModel, Segment, MapTransporterSegment, TrackingFleet)
+                           TransporterModel, Segment, MapTransporterSegment, 
+                           TrackingFleet, MapUser)
 from schemas.bidding import FilterBidsRequest
 from utils.redis import Redis
 from utils.response import ErrorResponse
@@ -656,8 +657,6 @@ class Bid:
                                  ShipperModel.shpr_id,
                                  ShipperModel.name,
                                  ShipperModel.contact_no,
-                                 BidSettings.price_match_duration,
-                                 BidSettings.enable_price_match,
                                  func.array_agg(MapLoadSrcDestPair.src_city),
                                  func.array_agg(MapLoadSrcDestPair.dest_city),
                                  func.array_agg(select(func.count())
@@ -671,7 +670,6 @@ class Bid:
                                                         ).label('tf_vehicle_count')
                                  )
                           .outerjoin(ShipperModel, ShipperModel.shpr_id == BiddingLoad.bl_shipper_id)
-                          .outerjoin(BidSettings, and_(BidSettings.bdsttng_shipper_id == ShipperModel.shpr_id, BidSettings.is_active == True))
                           .outerjoin(MapLoadSrcDestPair, and_(MapLoadSrcDestPair.mlsdp_bidding_load_id == BiddingLoad.bl_id, MapLoadSrcDestPair.is_active == True))
                           .filter(BiddingLoad.is_active == True,  BiddingLoad.bid_mode == "open_market")
                           )
@@ -681,14 +679,14 @@ class Bid:
                     BiddingLoad.load_status == status)
 
             bids = bids_query.group_by(BiddingLoad, *BiddingLoad.__table__.c,
-                                       ShipperModel.name, ShipperModel.contact_no, ShipperModel.shpr_id, BidSettings.enable_price_match, BidSettings.price_match_duration).all()
+                                       ShipperModel.name, ShipperModel.contact_no, ShipperModel.shpr_id ).all()
             log("BIDS IN PUBLIC", bids)
             if not bids:
                 return ([], "")
 
             filtered_bids = []
             for bid in bids:
-                (_, shipper_id, _, _, _, _, _, _, _) = bid
+                (_, shipper_id, _, _, _, _, _) = bid
                 if shipper_id not in blocked_shippers:
                     filtered_bids.append(bid)
 
@@ -700,7 +698,7 @@ class Bid:
         finally:
             session.close()
 
-    async def private(self, shippers: any, transporter_id: str, status: str | None = None) -> (any, str):
+    async def private(self, shippers: any, transporter_id: str, user_id: str, status: str | None = None) -> (any, str):
 
         session = Session()
 
@@ -711,8 +709,6 @@ class Bid:
                                  ShipperModel.shpr_id,
                                  ShipperModel.name,
                                  ShipperModel.contact_no,
-                                 BidSettings.price_match_duration,
-                                 BidSettings.enable_price_match,
                                  func.array_agg(MapLoadSrcDestPair.src_city),
                                  func.array_agg(MapLoadSrcDestPair.dest_city),
                                  func.array_agg(select(func.count())
@@ -720,15 +716,27 @@ class Bid:
                                                                 TrackingFleet.tf_transporter_id == transporter_id,
                                                                 TrackingFleet.tf_bidding_load_id == BiddingLoad.bl_id,
                                                                 TrackingFleet.is_active == True  
-                                                            )
+                                                                  )
                                                             .correlate(BiddingLoad)
                                                             .subquery()
-                                                        ).label('tf_vehicle_count')
+                                                ).label('tf_vehicle_count')
                                  )
                           .outerjoin(ShipperModel, ShipperModel.shpr_id == BiddingLoad.bl_shipper_id)
-                          .outerjoin(BidSettings, and_(BidSettings.bdsttng_shipper_id == ShipperModel.shpr_id, BidSettings.is_active == True))
                           .outerjoin(MapLoadSrcDestPair, and_(MapLoadSrcDestPair.mlsdp_bidding_load_id == BiddingLoad.bl_id, MapLoadSrcDestPair.is_active == True))
-                          .filter(BiddingLoad.is_active == True, BiddingLoad.bl_shipper_id.in_(shippers), BiddingLoad.bid_mode == "private_pool", BiddingLoad.bl_segment_id == None)
+                          .filter(BiddingLoad.is_active == True, 
+                                  BiddingLoad.bl_shipper_id.in_(shippers), 
+                                  BiddingLoad.bid_mode == "private_pool", 
+                                  BiddingLoad.bl_segment_id == None,
+                                  or_(BiddingLoad.bl_branch_id == None,
+                                      exists()
+                                      .where(
+                                            MapUser.mpus_shipper_id == BiddingLoad.bl_shipper_id,
+                                            MapUser.mpus_branch_id == BiddingLoad.bl_branch_id,
+                                            MapUser.mpus_user_id == user_id,
+                                            MapUser.is_active == True
+                                            )
+                                      )
+                                  )
                           )
 
             if status:
@@ -736,7 +744,7 @@ class Bid:
                     BiddingLoad.load_status == status)
 
             bids = bids_query.group_by(BiddingLoad, *BiddingLoad.__table__.c,
-                                       ShipperModel.name, ShipperModel.contact_no, ShipperModel.shpr_id, BidSettings.enable_price_match, BidSettings.price_match_duration).all()
+                                       ShipperModel.name, ShipperModel.contact_no, ShipperModel.shpr_id ).all()
 
             if not bids:
                 return (bids, "")
@@ -748,7 +756,7 @@ class Bid:
         finally:
             session.close()
 
-    async def segment(self, shippers: any, transporter_id: str, status: str | None = None) -> (any, str):
+    async def segment(self, shippers: any, transporter_id: str, user_id: str, status: str | None = None) -> (any, str):
 
         session = Session()
 
@@ -765,8 +773,6 @@ class Bid:
                                  ShipperModel.shpr_id,
                                  ShipperModel.name,
                                  ShipperModel.contact_no,
-                                 BidSettings.price_match_duration,
-                                 BidSettings.enable_price_match,
                                  func.array_agg(MapLoadSrcDestPair.src_city),
                                  func.array_agg(MapLoadSrcDestPair.dest_city),
                                  func.array_agg(select(func.count())
@@ -774,15 +780,26 @@ class Bid:
                                                                 TrackingFleet.tf_transporter_id == transporter_id,
                                                                 TrackingFleet.tf_bidding_load_id == BiddingLoad.bl_id,
                                                                 TrackingFleet.is_active == True  
-                                                            )
+                                                                  )
                                                             .correlate(BiddingLoad)
                                                             .subquery()
-                                                        ).label('tf_vehicle_count')
+                                                ).label('tf_vehicle_count')
                                  )
                           .outerjoin(ShipperModel, ShipperModel.shpr_id == BiddingLoad.bl_shipper_id)
-                          .outerjoin(BidSettings, and_(BidSettings.bdsttng_shipper_id == ShipperModel.shpr_id, BidSettings.is_active == True))
                           .outerjoin(MapLoadSrcDestPair, and_(MapLoadSrcDestPair.mlsdp_bidding_load_id == BiddingLoad.bl_id, MapLoadSrcDestPair.is_active == True))
-                          .filter(BiddingLoad.is_active == True, BiddingLoad.bl_segment_id.in_(transporter_allowed_segments), BiddingLoad.bid_mode == "private_pool")
+                          .filter(BiddingLoad.is_active == True, 
+                                  BiddingLoad.bl_segment_id.in_(transporter_allowed_segments), 
+                                  BiddingLoad.bid_mode == "private_pool",
+                                  or_(BiddingLoad.bl_branch_id == None,
+                                      exists()
+                                      .where(
+                                            MapUser.mpus_shipper_id == BiddingLoad.bl_shipper_id,
+                                            MapUser.mpus_branch_id == BiddingLoad.bl_branch_id,
+                                            MapUser.mpus_user_id == user_id,
+                                            MapUser.is_active == True
+                                            )
+                                      )
+                                  )
                           )
 
             if status:
@@ -790,7 +807,7 @@ class Bid:
                     BiddingLoad.load_status == status)
 
             bids = bids_query.group_by(BiddingLoad, *BiddingLoad.__table__.c,
-                                       ShipperModel.name, ShipperModel.contact_no, ShipperModel.shpr_id, BidSettings.enable_price_match, BidSettings.price_match_duration).all()
+                                       ShipperModel.name, ShipperModel.contact_no, ShipperModel.shpr_id ).all()
 
             if not bids:
                 return (bids, "")

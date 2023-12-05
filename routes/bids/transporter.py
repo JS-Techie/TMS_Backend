@@ -30,6 +30,7 @@ shp, trns, acu = os.getenv("SHIPPER"), os.getenv(
 async def fetch_bids_for_transporter_by_status(request: Request, status: str | None = None):
 
     transporter_id = request.state.current_user["transporter_id"]
+    user_id = request.state.current_user["id"]
     (bids, error) = ([], "")
 
     try:
@@ -44,9 +45,9 @@ async def fetch_bids_for_transporter_by_status(request: Request, status: str | N
             (bids, error) = await transporter.assigned_bids(transporter_id=transporter_id)
         else:
             if status == "active":
-                (bids, error) = await transporter.bids_by_status(transporter_id=transporter_id, status="not_started")
+                (bids, error) = await transporter.bids_by_status(transporter_id=transporter_id, user_id= user_id, status="not_started")
             else:
-                (bids, error) = await transporter.bids_by_status(transporter_id=transporter_id, status=status)
+                (bids, error) = await transporter.bids_by_status(transporter_id=transporter_id, user_id= user_id, status=status)
 
         if error:
             return ErrorResponse(data=[], dev_msg=error, client_msg=os.getenv("GENERIC_ERROR"))

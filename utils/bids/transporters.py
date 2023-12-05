@@ -392,7 +392,7 @@ class Transporter:
         finally:
             session.close()
 
-    async def bids_by_status(self, transporter_id: str, status: str | None = None) -> (any, str):
+    async def bids_by_status(self, transporter_id: str, user_id: str, status: str | None = None) -> (any, str):
 
         session = Session()
 
@@ -413,12 +413,12 @@ class Transporter:
             unsegmented_private_bids = []
             segmented_bids = []
             if shippers["shipper_ids"]:
-                unsegmented_private_bids, error = await bid.private(shippers=shippers["shipper_ids"], transporter_id=transporter_id, status=status)
+                unsegmented_private_bids, error = await bid.private(shippers=shippers["shipper_ids"], transporter_id=transporter_id, user_id=user_id, status=status)
                 if error:
                     return [], error
                 log("FETCHED PRIVATE BIDS", unsegmented_private_bids)
                 
-                segmented_bids, error = await bid.segment(shippers=shippers["shipper_ids"], status=status, transporter_id=transporter_id)
+                segmented_bids, error = await bid.segment(shippers=shippers["shipper_ids"], transporter_id=transporter_id, user_id=user_id, status=status)
                 if error:
                     return [],error
                 log("SEGMENTED PRIVATE BIDS", segmented_bids)
@@ -458,8 +458,6 @@ class Transporter:
                            ShipperModel.shpr_id,
                            ShipperModel.name,
                            ShipperModel.contact_no,
-                           BidSettings.price_match_duration,
-                           BidSettings.enable_price_match,
                            func.array_agg(MapLoadSrcDestPair.src_city),
                            func.array_agg(MapLoadSrcDestPair.dest_city),
                            func.array_agg(select(func.count())
@@ -473,10 +471,9 @@ class Transporter:
                                                         ).label('tf_vehicle_count')
                             )
                     .outerjoin(ShipperModel, ShipperModel.shpr_id == BiddingLoad.bl_shipper_id)
-                    .outerjoin(BidSettings, and_(BidSettings.bdsttng_shipper_id == ShipperModel.shpr_id, BidSettings.is_active == True))
                     .outerjoin(MapLoadSrcDestPair, and_(MapLoadSrcDestPair.mlsdp_bidding_load_id == BiddingLoad.bl_id, MapLoadSrcDestPair.is_active == True))
                     .filter(BiddingLoad.is_active == True, BiddingLoad.bl_id.in_(bid_ids))
-                    .group_by(BiddingLoad, *BiddingLoad.__table__.c, ShipperModel.name, ShipperModel.contact_no, ShipperModel.shpr_id, BidSettings.enable_price_match, BidSettings.price_match_duration)
+                    .group_by(BiddingLoad, *BiddingLoad.__table__.c, ShipperModel.name, ShipperModel.contact_no, ShipperModel.shpr_id )
                     .all()
                     )
 
@@ -526,8 +523,6 @@ class Transporter:
                            ShipperModel.shpr_id,
                            ShipperModel.name,
                            ShipperModel.contact_no,
-                           BidSettings.price_match_duration,
-                           BidSettings.enable_price_match,
                            func.array_agg(MapLoadSrcDestPair.src_city),
                            func.array_agg(MapLoadSrcDestPair.dest_city),
                            func.array_agg(select(func.count())
@@ -541,10 +536,9 @@ class Transporter:
                                                         ).label('tf_vehicle_count')
                             )
                     .outerjoin(ShipperModel, ShipperModel.shpr_id == BiddingLoad.bl_shipper_id)
-                    .outerjoin(BidSettings, and_(BidSettings.bdsttng_shipper_id == ShipperModel.shpr_id, BidSettings.is_active == True))
                     .outerjoin(MapLoadSrcDestPair, and_(MapLoadSrcDestPair.mlsdp_bidding_load_id == BiddingLoad.bl_id, MapLoadSrcDestPair.is_active == True))
                     .filter(BiddingLoad.is_active == True, BiddingLoad.bl_id.in_(bid_ids), BiddingLoad.load_status == "completed")
-                    .group_by(BiddingLoad, *BiddingLoad.__table__.c, ShipperModel.name, ShipperModel.contact_no, ShipperModel.shpr_id, BidSettings.enable_price_match, BidSettings.price_match_duration)
+                    .group_by(BiddingLoad, *BiddingLoad.__table__.c, ShipperModel.name, ShipperModel.contact_no, ShipperModel.shpr_id )
                     .all()
                     )
 
@@ -598,8 +592,6 @@ class Transporter:
                            ShipperModel.shpr_id,
                            ShipperModel.name,
                            ShipperModel.contact_no,
-                           BidSettings.price_match_duration,
-                           BidSettings.enable_price_match,
                            func.array_agg(MapLoadSrcDestPair.src_city),
                            func.array_agg(MapLoadSrcDestPair.dest_city),
                            func.array_agg(select(func.count())
@@ -613,10 +605,9 @@ class Transporter:
                                                         ).label('tf_vehicle_count')
                            )
                     .outerjoin(ShipperModel, ShipperModel.shpr_id == BiddingLoad.bl_shipper_id)
-                    .outerjoin(BidSettings, and_(BidSettings.bdsttng_shipper_id == ShipperModel.shpr_id, BidSettings.is_active == True))
                     .outerjoin(MapLoadSrcDestPair, and_(MapLoadSrcDestPair.mlsdp_bidding_load_id == BiddingLoad.bl_id, MapLoadSrcDestPair.is_active == True))
                     .filter(BiddingLoad.is_active == True, BiddingLoad.bl_id.in_(bid_ids))
-                    .group_by(BiddingLoad, *BiddingLoad.__table__.c, ShipperModel.name, ShipperModel.contact_no, ShipperModel.shpr_id, BidSettings.enable_price_match, BidSettings.price_match_duration)
+                    .group_by(BiddingLoad, *BiddingLoad.__table__.c, ShipperModel.name, ShipperModel.contact_no, ShipperModel.shpr_id )
                     .all()
                     )
 
@@ -652,8 +643,6 @@ class Transporter:
                            ShipperModel.shpr_id,
                            ShipperModel.name,
                            ShipperModel.contact_no,
-                           BidSettings.price_match_duration,
-                           BidSettings.enable_price_match,
                            func.array_agg(MapLoadSrcDestPair.src_city),
                            func.array_agg(MapLoadSrcDestPair.dest_city),
                            func.array_agg(select(func.count())
@@ -667,10 +656,9 @@ class Transporter:
                                                         ).label('tf_vehicle_count')
                            )
                     .outerjoin(ShipperModel, ShipperModel.shpr_id == BiddingLoad.bl_shipper_id)
-                    .outerjoin(BidSettings, and_(BidSettings.bdsttng_shipper_id == ShipperModel.shpr_id, BidSettings.is_active == True))
                     .outerjoin(MapLoadSrcDestPair, and_(MapLoadSrcDestPair.mlsdp_bidding_load_id == BiddingLoad.bl_id, MapLoadSrcDestPair.is_active == True))
                     .filter(BiddingLoad.is_active == True, BiddingLoad.bl_id.in_(bid_ids), BiddingLoad.load_status.in_(load_status_for_lost_participated))
-                    .group_by(BiddingLoad, *BiddingLoad.__table__.c, ShipperModel.name, ShipperModel.contact_no, ShipperModel.shpr_id, BidSettings.enable_price_match, BidSettings.price_match_duration)
+                    .group_by(BiddingLoad, *BiddingLoad.__table__.c, ShipperModel.name, ShipperModel.contact_no, ShipperModel.shpr_id )
                     .all()
                     )
 
@@ -874,8 +862,6 @@ class Transporter:
                            ShipperModel.shpr_id,
                            ShipperModel.name,
                            ShipperModel.contact_no,
-                           BidSettings.price_match_duration,
-                           BidSettings.enable_price_match,
                            func.array_agg(MapLoadSrcDestPair.src_city),
                            func.array_agg(MapLoadSrcDestPair.dest_city),
                            func.array_agg(select(func.count())
@@ -889,10 +875,9 @@ class Transporter:
                                                         ).label('tf_vehicle_count')
                            )
                     .outerjoin(ShipperModel, ShipperModel.shpr_id == BiddingLoad.bl_shipper_id)
-                    .outerjoin(BidSettings, and_(BidSettings.bdsttng_shipper_id == ShipperModel.shpr_id, BidSettings.is_active == True))
                     .outerjoin(MapLoadSrcDestPair, and_(MapLoadSrcDestPair.mlsdp_bidding_load_id == BiddingLoad.bl_id, MapLoadSrcDestPair.is_active == True))
                     .filter(BiddingLoad.is_active == True, BiddingLoad.bl_id.in_(bid_ids))
-                    .group_by(BiddingLoad, *BiddingLoad.__table__.c, ShipperModel.name, ShipperModel.contact_no, ShipperModel.shpr_id, BidSettings.enable_price_match, BidSettings.price_match_duration)
+                    .group_by(BiddingLoad, *BiddingLoad.__table__.c, ShipperModel.name, ShipperModel.contact_no, ShipperModel.shpr_id )
                     .all()
                     )
 
