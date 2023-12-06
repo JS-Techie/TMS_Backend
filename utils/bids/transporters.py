@@ -142,15 +142,15 @@ class Transporter:
         finally:
             session.close()
 
-    async def is_valid_bid_rate(self, bid_id: str, show_rate_to_transporter: bool, rate: float, transporter_id: str, decrement: float, status: str) -> (any, str):
+    async def is_valid_bid_rate(self, bid_id: str, show_rate_to_transporter: bool, rate: float, transporter_id: str, decrement: float, is_decrement_in_percentage: bool, status: str) -> (any, str):
 
         session = Session()
 
         try:
 
             if show_rate_to_transporter and status == "live":
-                return await bid.decrement_on_lowest_price(bid_id=bid_id, rate=rate, decrement=decrement)
-            return await bid.decrement_on_transporter_lowest_price(bid_id, transporter_id, rate, decrement)
+                return await bid.decrement_on_lowest_price(bid_id=bid_id, rate=rate, decrement=decrement, is_decrement_in_percentage=is_decrement_in_percentage)
+            return await bid.decrement_on_transporter_lowest_price(bid_id=bid_id, transporter_id=transporter_id, rate=rate, decrement=decrement, is_decrement_in_percentage=is_decrement_in_percentage)
 
         except Exception as e:
             session.rollback()

@@ -281,7 +281,7 @@ class Bid:
         finally:
             session.close()
 
-    async def decrement_on_lowest_price(self, bid_id: str, rate: float, decrement: float) -> (any, str):
+    async def decrement_on_lowest_price(self, bid_id: str, rate: float, decrement: float, is_decrement_in_percentage: bool) -> (any, str):
 
         session = Session()
         log("DECREMENTING ON CURRENT LOWEST PRICE")
@@ -307,18 +307,19 @@ class Bid:
             log("DECREMENT", decrement)
             log("RATE", rate)
 
-            if (rate + math.ceil(decrement*lowest_price*0.01) <= lowest_price):
+            if (rate + (math.ceil(decrement*lowest_price*0.01) if is_decrement_in_percentage else decrement) <= lowest_price):
 
-                log("NEW RATE", rate + math.ceil(decrement * lowest_price * 0.01))
+                log("NEW RATE", rate + (math.ceil(decrement * lowest_price * 0.01) if is_decrement_in_percentage else decrement))
 
                 log("BID RATE OK", rate)
                 return ({
                     "valid": True,
                 }, "")
             log("BID RATE NOT OK", rate)
+            percentage_sign = "%" if is_decrement_in_percentage else ""
             return ({
                 "valid": False
-            }, f"Incorrect Bid price, has to be lower, the decrement is {decrement} %")
+            }, f"Incorrect Bid price, has to be lower, the decrement is {decrement} {percentage_sign}")
 
         except Exception as e:
             session.rollback()
@@ -327,7 +328,7 @@ class Bid:
         finally:
             session.close()
 
-    async def decrement_on_transporter_lowest_price(self, bid_id: str, transporter_id: str, rate: float, decrement: float) -> (any, str):
+    async def decrement_on_transporter_lowest_price(self, bid_id: str, transporter_id: str, rate: float, decrement: float, is_decrement_in_percentage: bool) -> (any, str):
 
         session = Session()
 
@@ -343,14 +344,15 @@ class Bid:
             decrement = int(decrement)
             rate = int(rate)
 
-            if (int(bid.rate) >= rate + math.ceil(decrement*int(bid.rate)*0.01)):
+            if (int(bid.rate) >= rate + (math.ceil(decrement*int(bid.rate)*0.01) if is_decrement_in_percentage else decrement)):
                 return ({
                     "valid": True,
                 }, "")
             log("TRANSPORTER BID RATE NOT VALID", bid)
+            percentage_sign = "%" if is_decrement_in_percentage else ""
             return ({
                 "valid": False
-            }, f"Incorrect Bid price, has to be lower,decrement is {decrement} %")
+            }, f"Incorrect Bid price, has to be lower,decrement is {decrement} {percentage_sign}")
 
         except Exception as e:
             session.rollback()
