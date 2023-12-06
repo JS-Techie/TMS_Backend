@@ -6,7 +6,7 @@ from fastapi import APIRouter, Request
 
 from config.socket import manager
 from data.bidding import valid_bid_status, valid_transporter_status
-from schemas.bidding import TransporterBidReq, TransporterLostBidsReq
+from schemas.bidding import TransporterBidReq, TransporterLostBidsReq, TransporterBidMatchApproval
 from utils.bids.bidding import Bid
 from utils.bids.shipper import Shipper
 from utils.bids.transporters import Transporter
@@ -401,6 +401,24 @@ async def provide_new_rate_for_bid(request: Request, bid_id: str, bid_req: Trans
         log("SOCKET EVENT SENT", sorted_bid_details)
 
         return SuccessResponse(data=sorted_bid_details, dev_msg="Bid submitted successfully", client_msg=f"Bid for Bid-{bid_id} submitted!")
+
+    except Exception as err:
+        return ServerError(err=err, errMsg=str(err))
+
+@transporter_bidding_router.post("/match/{bid_id}")
+async def bid_match_for_transporter(request: Request, bid_id: str, req: TransporterBidMatchApproval):
+    transporter_id = request.state.current_user["transporter_id"]
+
+    try:
+        if not transporter_id:
+            return ErrorResponse(data=[], dev_msg=os.getenv("TRANSPORTER_ID_NOT_FOUND_ERROR"), client_msg=os.getenv("GENERIC_ERROR"))
+
+        (bid_match_result, error) = await transporter.bid_match_approval(transporter_id= transporter_id, bid_id= bid_id, req=req)
+
+        if error :
+            return ErrorResponse(data=[], client_msg="Something Went Wrong. Pls Try Again after Sometime", dev_msg=error)
+
+        return SuccessResponse(data= [], client_msg="Price match Approval Complete", dev_msg="price match approval update")
 
     except Exception as err:
         return ServerError(err=err, errMsg=str(err))

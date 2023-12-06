@@ -36,6 +36,10 @@ class TransporterBidMatchRequest(BaseModel):
     rate : float
     comment : str | None = None
 
+class TransporterBidMatchApproval(BaseModel):
+    approval : bool
+    rate : float | None = None
+    comment : str | None = None
 
 class TransporterUnassignRequest(BaseModel):
     transporter_id : str

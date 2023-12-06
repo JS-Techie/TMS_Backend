@@ -1002,3 +1002,60 @@ class Transporter:
 
         finally:
             session.close()
+
+    async def bid_match_approval(self, transporter_id: str, bid_id: str, req: any) -> (any, str):
+
+        session = Session()
+
+        try:
+
+            event = []
+
+            ist_timezone = pytz.timezone("Asia/Kolkata")
+            current_time = datetime.now(ist_timezone)
+            current_time = current_time.replace(
+                tzinfo=None, second=0, microsecond=0)
+
+            transporter_detail = (session.query(LoadAssigned).filter(LoadAssigned.la_bidding_load_id == bid_id,
+                                LoadAssigned.la_transporter_id == transporter_id, LoadAssigned.is_active == True).first())
+
+            if not transporter_detail:
+                return ([], "Transporter's Assigned Load Detail not Found")
+
+            if req.approval :
+                event.append(req.rate)
+                event.append(str(current_time))
+                event.append("Price Match Approved by Transporter")
+
+                transporter_detail.is_negotiated_by_aculead = False
+                transporter_detail.is_pmr_approved = True
+
+            else:
+                event.append(req.rate)
+                event.append(str(current_time))
+                event.append(req.comment)
+
+                transporter_detail.is_negotiated_by_aculead = False
+                transporter_detail.is_pmr_approved = None
+                if req.rate :
+                    transporter_detail.pmr_price = req.rate
+                if req.comment :
+                    transporter_detail.pmr_comment = req.comment
+
+            if transporter_detail.history:
+                fetched_history = ast.literal_eval(transporter_detail.history)
+                fetched_history.append(tuple(event))
+                transporter_detail.history = str(fetched_history)
+                
+            else:
+                transporter_detail.history = str([(tuple(event))])
+
+            session.commit()
+            return ([],"")
+
+        except Exception as err:
+            session.rollback()
+            return ([], str(err))
+
+        finally:
+            session.close()
