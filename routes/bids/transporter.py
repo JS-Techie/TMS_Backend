@@ -29,6 +29,7 @@ shp, trns, acu = os.getenv("SHIPPER"), os.getenv(
 @transporter_bidding_router.get("/status/{status}")
 async def fetch_bids_for_transporter_by_status(request: Request, status: str | None = None):
 
+    bid = Bid()
     transporter_id = request.state.current_user["transporter_id"]
     user_id = request.state.current_user["id"]
     (bids, error) = ([], "")
@@ -122,6 +123,7 @@ async def fetch_bids_for_transporter_by_status(request: Request, status: str | N
                 lowest_price_data = lowest_price_response["data"]
                 updated_private_bids.append(
                     {**private_bid, **lowest_price_data})
+                
 
             for public_bid in bids["public"]:
 
@@ -132,23 +134,50 @@ async def fetch_bids_for_transporter_by_status(request: Request, status: str | N
                 lowest_price_data = lowest_price_response["data"]
                 updated_public_bids.append({**public_bid, **lowest_price_data})
 
+            private_bids_with_assigned_load_details = []
+            public_bids_with_assigned_load_details = []
+
+            (assigned_private_load_details, error) = await bid.assigned_load_details(bid_ids= [private_bid["bid_id"] for private_bid in updated_private_bids])
+            if error:
+                return ErrorResponse(data=[], client_msg="Something Went Wrong, Please Try Again Later", dev_msg=error)
+            
+            (assigned_public_load_details, error) = await bid.assigned_load_details(bid_ids= [public_bid["bid_id"] for public_bid in updated_public_bids])
+            if error:
+                return ErrorResponse(data=[], client_msg="Something Went Wrong, Please Try Again Later", dev_msg=error)
+
+            for assigned_private_load_detail, updated_private_bid in zip(assigned_private_load_details, updated_private_bids):
+                private_bids_with_assigned_load_details.append({**assigned_private_load_detail, ** updated_private_bid})
+
+            for assigned_public_load_detail, updated_public_bid in zip(assigned_public_load_details, updated_public_bids):
+                public_bids_with_assigned_load_details.append({**assigned_public_load_detail, ** updated_public_bid})
+
             updated_bids = {
-                "all": updated_private_bids+updated_public_bids,
-                "private": updated_private_bids,
-                "public": updated_public_bids
+                "all": private_bids_with_assigned_load_details+public_bids_with_assigned_load_details,
+                "private": private_bids_with_assigned_load_details,
+                "public": public_bids_with_assigned_load_details
             }
 
         else:
 
-            updated_bids = []
-            for bid in bids:
+            updated_bids_with_lowest_price = []
+            for each_bid in bids:
 
-                lowest_price_response = await lowest_price_of_bid_and_transporter(request=request, bid_id=bid["bid_id"])
+                lowest_price_response = await lowest_price_of_bid_and_transporter(request=request, bid_id=each_bid["bid_id"])
                 if lowest_price_response["data"] == []:
                     return lowest_price_response
 
                 lowest_price_data = lowest_price_response["data"]
-                updated_bids.append({**bid, **lowest_price_data})
+                updated_bids_with_lowest_price.append({**each_bid, **lowest_price_data})
+
+            updated_bids = []
+
+            (assigned_load_details, error) = await bid.assigned_load_details(bid_ids= [bid["bid_id"] for bid in updated_bids_with_lowest_price])
+            if error:
+                return ErrorResponse(data=[], client_msg="Something Went Wrong, Please Try Again Later", dev_msg=error)
+            
+            for assigned_load_detail, updated_bid in zip(assigned_load_details, updated_bids_with_lowest_price):
+                updated_bids.append({**assigned_load_detail, ** updated_bid})
+
 
         return SuccessResponse(data=updated_bids, dev_msg="Fetched bids successfully", client_msg=f"Fetched all {status} bids successfully!")
 
@@ -174,15 +203,27 @@ async def fetch_selected_bids(request: Request):
         if not bids:
             return SuccessResponse(data=[], client_msg="You have not been selected in any bids yet", dev_msg="Not selected in any bids")
 
-        updated_bids = []
-        for bid in bids:
+        updated_bids_with_lowest_price = []
+        for each_bid in bids:
 
-            lowest_price_response = await lowest_price_of_bid_and_transporter(request=request, bid_id=bid["bid_id"])
+            lowest_price_response = await lowest_price_of_bid_and_transporter(request=request, bid_id=each_bid["bid_id"])
             if lowest_price_response["data"] == []:
                 return lowest_price_response
 
             lowest_price_data = lowest_price_response["data"]
-            updated_bids.append({**bid, **lowest_price_data})
+            updated_bids_with_lowest_price.append({**each_bid, **lowest_price_data})
+
+        
+        updated_bids = []
+
+        (assigned_load_details, error) = await bid.assigned_load_details(bid_ids= [bid["bid_id"] for bid in updated_bids_with_lowest_price])
+        if error:
+            return ErrorResponse(data=[], client_msg="Something Went Wrong, Please Try Again Later", dev_msg=error)
+        
+        for assigned_load_detail, updated_bid in zip(assigned_load_details, updated_bids_with_lowest_price):
+            updated_bids.append({**assigned_load_detail, ** updated_bid})
+
+
 
         return SuccessResponse(data=updated_bids, dev_msg="Fetched bids successfully", client_msg="Fetched all selected bids successfully!")
 
@@ -194,6 +235,7 @@ async def fetch_selected_bids(request: Request):
 async def fetch_completed_bids(request: Request):
 
     transporter_id = request.state.current_user["transporter_id"]
+    bid=Bid()
 
     try:
 
@@ -210,26 +252,44 @@ async def fetch_completed_bids(request: Request):
 
         private_bids = []
         public_bids = []
-        for bid in bids:
+        for each_bid in bids:
 
-            lowest_price_response = await lowest_price_of_bid_and_transporter(request=request, bid_id=bid["bid_id"])
+            lowest_price_response = await lowest_price_of_bid_and_transporter(request=request, bid_id=each_bid["bid_id"])
             if lowest_price_response["data"] == []:
                 return lowest_price_response
 
             lowest_price_data = lowest_price_response["data"]
             
-            if bid["bid_mode"] == "private_pool":
-                private_bids.append({**bid, **lowest_price_data})
+            if each_bid["bid_mode"] == "private_pool":
+                private_bids.append({**each_bid, **lowest_price_data})
             else:
-                public_bids.append({**bid, **lowest_price_data})
-                
-        bids = {
-                "all": private_bids + public_bids,
-                "private": private_bids,
-                "public": public_bids
-            }
+                public_bids.append({**each_bid, **lowest_price_data})
 
-        return SuccessResponse(data=bids, dev_msg="Fetched bids successfully", client_msg="Fetched all completed bids successfully!")
+        
+        private_bids_with_assigned_load_details = []
+        public_bids_with_assigned_load_details = []
+
+        (assigned_private_load_details, error) = await bid.assigned_load_details(bid_ids= [private_bid["bid_id"] for private_bid in private_bids])
+        if error:
+            return ErrorResponse(data=[], client_msg="Something Went Wrong, Please Try Again Later", dev_msg=error)
+        
+        (assigned_public_load_details, error) = await bid.assigned_load_details(bid_ids= [public_bid["bid_id"] for public_bid in public_bids])
+        if error:
+            return ErrorResponse(data=[], client_msg="Something Went Wrong, Please Try Again Later", dev_msg=error)
+
+        for assigned_private_load_detail, private_bid in zip(assigned_private_load_details, private_bids):
+            private_bids_with_assigned_load_details.append({**assigned_private_load_detail, ** private_bid})
+
+        for assigned_public_load_detail, public_bid in zip(assigned_public_load_details, public_bids):
+            public_bids_with_assigned_load_details.append({**assigned_public_load_detail, ** public_bid})
+
+        updated_bids = {
+            "all": private_bids_with_assigned_load_details+public_bids_with_assigned_load_details,
+            "private": private_bids_with_assigned_load_details,
+            "public": public_bids_with_assigned_load_details
+        }
+
+        return SuccessResponse(data=updated_bids, dev_msg="Fetched bids successfully", client_msg="Fetched all completed bids successfully!")
 
     except Exception as err:
         return ServerError(err=err, errMsg=str(err))

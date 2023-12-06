@@ -127,7 +127,9 @@ def structurize_assignment_data(data):
                 "lowest_price": float('inf'),
                 "last_comment": None,
                 "rates": [],
-                "fleet_assigned": None
+                "fleet_assigned": None,
+                "is_pmr_approved": None,
+                "is_negotiated_by_aculead": None
             }
 
         transporter_entry = transporter_data[transporter_id]
@@ -150,10 +152,15 @@ def structurize_assignment_data(data):
         if not entry["load_assigned"]:
             transporter_entry["pmr_price"] = None
             transporter_entry["fleet_assigned"] = None
+            transporter_entry["is_pmr_approved"] = None
+            transporter_entry["is_negotiated_by_aculead"] = None
+
         elif transporter_id == entry["load_assigned"].la_transporter_id:
             transporter_entry["fleet_assigned"] = entry["load_assigned"].no_of_fleets_assigned
             transporter_entry["pmr_price"] = entry["load_assigned"].pmr_price
             transporter_entry["assigned"] = entry["load_assigned"].is_assigned
+            transporter_entry["is_pmr_approved"] = entry["load_assigned"].is_pmr_approved
+            transporter_entry["is_negotiated_by_aculead"] = entry["load_assigned"].is_negotiated_by_aculead
 
     # Sort the rates array for each transporter by rate
     for transporter_entry in transporter_data.values():

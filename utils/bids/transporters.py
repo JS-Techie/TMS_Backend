@@ -239,18 +239,25 @@ class Transporter:
         finally:
             session.close()
 
-    async def bid_match(self, bid_id: str, transporters: any, user_id: str) -> (any, str):
+    async def bid_match(self, bid_id: str, transporters: any, user_id: str, user_type: str) -> (any, str):
         session = Session()
 
         try:
 
-            transporter_ids = []
             fetched_transporter_ids = []
             assigned_transporters = []
+            superuser = (user_type == "acu")
+            ist_timezone = pytz.timezone("Asia/Kolkata")
+            current_time = datetime.now(ist_timezone)
+            current_time = current_time.replace(
+                tzinfo=None, second=0, microsecond=0)
+            
+            if not superuser:
+                bid_assigned_to_transporter = session.query(LoadAssigned).filter(LoadAssigned.la_bidding_load_id == bid_id, LoadAssigned.is_assigned == True, LoadAssigned.is_active).first()
+                if bid_assigned_to_transporter:
+                    return ([], "Transporter already assigned")
 
-            for transporter in transporters:
-                transporter_ids.append(
-                    getattr(transporter, "transporter_id"))
+            transporter_ids = [getattr(transporter, "transporter_id") for transporter in transporters]
 
             transporter_details = session.query(LoadAssigned).filter(
                 LoadAssigned.la_bidding_load_id == bid_id, LoadAssigned.la_transporter_id.in_(transporter_ids)).all()
@@ -283,8 +290,11 @@ class Transporter:
                         pmr_comment=getattr(
                             transporter, "comment"
                         ),
+                        is_pmr_approved = True if superuser else False,
+                        is_negotiated_by_aculead = True if superuser else False,
+                        history = str([(getattr(transporter, "rate"), str(current_time), getattr(transporter, "comment"))]),
                         is_active=True,
-                        updated_at="NOW()",
+                        created_at="NOW()",
                         created_by=user_id
                     )
                     assigned_transporters.append(assign_detail)
@@ -295,6 +305,11 @@ class Transporter:
                 if getattr(transporter_detail, "la_transporter_id") in transporters_to_be_updated:
                     for transporter in transporters:
                         if getattr(transporter_detail, "la_transporter_id") == getattr(transporter, "transporter_id"):
+
+                            task = (getattr(transporter, "rate"), str(current_time), getattr(transporter, "comment"))
+                            fetched_history = ast.literal_eval(getattr(transporter_detail, "history"))
+                            fetched_history.append(task)
+
                             setattr(transporter_detail, "la_transporter_id",
                                     getattr(transporter, "transporter_id"))
                             setattr(transporter_detail, "pmr_price",
@@ -303,6 +318,9 @@ class Transporter:
                                     getattr(transporter, "trans_pos_in_bid"))
                             setattr(transporter_detail, "pmr_comment",
                                     getattr(transporter, "comment"))
+                            setattr(transporter_detail, "is_pmr_approved", True if superuser else False)
+                            setattr(transporter_detail, "is_negotiated_by_aculead", True if superuser else False)
+                            setattr(transporter_detail, "history", str(fetched_history))
                             setattr(transporter_detail, "updated_at", "NOW()")
                             setattr(transporter_detail, "updated_by", user_id)
 
@@ -969,9 +987,7 @@ class Transporter:
 
             history = []
 
-            for task_snapshot in assignment_history:
-                (assigned_no_of_fleets, created_at,
-                 unassignment_reason) = task_snapshot
+            for (assigned_no_of_fleets, created_at, unassignment_reason) in assignment_history:
                 history.append({
                     "assigned_no_of_fleets": assigned_no_of_fleets,
                     "created_at": created_at,

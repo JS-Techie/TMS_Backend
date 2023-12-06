@@ -352,6 +352,7 @@ async def live_bid_details(request: Request, bid_id: str):
 async def bid_match_for_transporters(request: Request, bid_id: str, transporters: List[TransporterBidMatchRequest], bg_tasks: BackgroundTasks):
 
     user_id = request.state.current_user["id"]
+    user_type = request.state.current_user["user_type"]
 
     try:
 
@@ -360,9 +361,11 @@ async def bid_match_for_transporters(request: Request, bid_id: str, transporters
         if not valid_bid_id:
             return ErrorResponse(data=[], client_msg=os.getenv("INVALID_BID_ERROR"), dev_msg=error)
 
-        (assignment_details, error) = await transporter.bid_match(bid_id=bid_id, transporters=transporters, user_id=user_id)
+        (assignment_details, error) = await transporter.bid_match(bid_id=bid_id, transporters=transporters, user_id=user_id, user_type= user_type)
 
         if error:
+            if error == "Transporter already assigned":
+                return ErrorResponse(data=[], client_msg="Price Match Ineligible as some transporters are already assigned", dev_msg=error)
             return ErrorResponse(data=[], client_msg=os.getenv("GENERIC_ERROR"), dev_msg=error)
 
         # transporter_ids = [t.transporter_id for t in transporters]

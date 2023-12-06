@@ -1017,3 +1017,50 @@ class Bid:
             return ([], str(e))
         finally:
             session.close()
+
+    async def assigned_load_details(self, bid_ids: any):
+
+        session = Session()
+
+        try:
+
+            load_assignment_details = []
+
+            assigned_load_details = session.query(LoadAssigned).filter(LoadAssigned.la_bidding_load_id.in_(bid_ids), LoadAssigned.is_active).all()
+
+            for bid_id in bid_ids:
+                assigned_load_details_for_bid_id = next((assigned_load for assigned_load in assigned_load_details if assigned_load.la_bidding_load_id == bid_id), None)
+                
+                if assigned_load_details_for_bid_id:
+                    load_assignment_detail = {
+                                                "bid_id":bid_id, 
+                                                "la_id": assigned_load_details_for_bid_id.la_id,
+                                                "la_bidding_load_id": assigned_load_details_for_bid_id.la_bidding_load_id,
+                                                "la_transporter_id": assigned_load_details_for_bid_id.la_transporter_id,
+                                                "is_assigned": assigned_load_details_for_bid_id.is_assigned,
+                                                "pmr_price": assigned_load_details_for_bid_id.pmr_price,
+                                                "pmr_comment": assigned_load_details_for_bid_id.pmr_comment,
+                                                "is_pmr_approved": assigned_load_details_for_bid_id.is_pmr_approved,
+                                                "is_negotiated_by_aculead": assigned_load_details_for_bid_id.is_negotiated_by_aculead
+                                                }
+                else:
+                    load_assignment_detail = {
+                                                "bid_id":bid_id,
+                                                "la_id": None,
+                                                "la_bidding_load_id": None,
+                                                "la_transporter_id": None,
+                                                "is_assigned": None,
+                                                "pmr_price": None,
+                                                "pmr_comment": None,
+                                                "is_pmr_approved": None,
+                                                "is_negotiated_by_aculead": None
+                                                } 
+
+                load_assignment_details.append(load_assignment_detail)
+                
+            return (load_assignment_details, "")
+        except Exception as e:
+            session.rollback()
+            return ([], str(e))
+        finally:
+            session.close()
