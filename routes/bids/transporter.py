@@ -137,11 +137,11 @@ async def fetch_bids_for_transporter_by_status(request: Request, status: str | N
             private_bids_with_assigned_load_details = []
             public_bids_with_assigned_load_details = []
 
-            (assigned_private_load_details, error) = await bid.assigned_load_details(bid_ids= [private_bid["bid_id"] for private_bid in updated_private_bids])
+            (assigned_private_load_details, error) = await bid.assigned_load_details(bid_ids= [private_bid["bid_id"] for private_bid in updated_private_bids], transporter_id= transporter_id)
             if error:
                 return ErrorResponse(data=[], client_msg="Something Went Wrong, Please Try Again Later", dev_msg=error)
             
-            (assigned_public_load_details, error) = await bid.assigned_load_details(bid_ids= [public_bid["bid_id"] for public_bid in updated_public_bids])
+            (assigned_public_load_details, error) = await bid.assigned_load_details(bid_ids= [public_bid["bid_id"] for public_bid in updated_public_bids], transporter_id= transporter_id)
             if error:
                 return ErrorResponse(data=[], client_msg="Something Went Wrong, Please Try Again Later", dev_msg=error)
 
@@ -171,7 +171,7 @@ async def fetch_bids_for_transporter_by_status(request: Request, status: str | N
 
             updated_bids = []
 
-            (assigned_load_details, error) = await bid.assigned_load_details(bid_ids= [bid["bid_id"] for bid in updated_bids_with_lowest_price])
+            (assigned_load_details, error) = await bid.assigned_load_details(bid_ids= [bid["bid_id"] for bid in updated_bids_with_lowest_price], transporter_id= transporter_id)
             if error:
                 return ErrorResponse(data=[], client_msg="Something Went Wrong, Please Try Again Later", dev_msg=error)
             
@@ -216,7 +216,7 @@ async def fetch_selected_bids(request: Request):
         
         updated_bids = []
 
-        (assigned_load_details, error) = await bid.assigned_load_details(bid_ids= [bid["bid_id"] for bid in updated_bids_with_lowest_price])
+        (assigned_load_details, error) = await bid.assigned_load_details(bid_ids= [bid["bid_id"] for bid in updated_bids_with_lowest_price], transporter_id= transporter_id)
         if error:
             return ErrorResponse(data=[], client_msg="Something Went Wrong, Please Try Again Later", dev_msg=error)
         
@@ -269,11 +269,11 @@ async def fetch_completed_bids(request: Request):
         private_bids_with_assigned_load_details = []
         public_bids_with_assigned_load_details = []
 
-        (assigned_private_load_details, error) = await bid.assigned_load_details(bid_ids= [private_bid["bid_id"] for private_bid in private_bids])
+        (assigned_private_load_details, error) = await bid.assigned_load_details(bid_ids= [private_bid["bid_id"] for private_bid in private_bids], transporter_id= transporter_id)
         if error:
             return ErrorResponse(data=[], client_msg="Something Went Wrong, Please Try Again Later", dev_msg=error)
         
-        (assigned_public_load_details, error) = await bid.assigned_load_details(bid_ids= [public_bid["bid_id"] for public_bid in public_bids])
+        (assigned_public_load_details, error) = await bid.assigned_load_details(bid_ids= [public_bid["bid_id"] for public_bid in public_bids], transporter_id= transporter_id)
         if error:
             return ErrorResponse(data=[], client_msg="Something Went Wrong, Please Try Again Later", dev_msg=error)
 

@@ -1020,7 +1020,7 @@ class Bid:
         finally:
             session.close()
 
-    async def assigned_load_details(self, bid_ids: any):
+    async def assigned_load_details(self, bid_ids: any, transporter_id: str):
 
         session = Session()
 
@@ -1028,7 +1028,7 @@ class Bid:
 
             load_assignment_details = []
 
-            assigned_load_details = session.query(LoadAssigned).filter(LoadAssigned.la_bidding_load_id.in_(bid_ids), LoadAssigned.is_active).all()
+            assigned_load_details = session.query(LoadAssigned).filter(LoadAssigned.la_bidding_load_id.in_(bid_ids), LoadAssigned.la_transporter_id == transporter_id, LoadAssigned.is_active).all()
 
             for bid_id in bid_ids:
                 assigned_load_details_for_bid_id = next((assigned_load for assigned_load in assigned_load_details if assigned_load.la_bidding_load_id == bid_id), None)
