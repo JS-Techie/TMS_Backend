@@ -12,6 +12,16 @@ particpated_and_lost_status = ['pending','confirmed','partially_confirmed','comp
 
 valid_transporter_status = ['not_started','active', 'pending', 'assigned','live']
 
+assignment_events = {
+                    "unassign": "Un-assignment",
+                    "assign": "Assignment",
+                    "pm-request": "Price Match Request",
+                    "pm-approved": "Price Match Approval",
+                    "pm-rejected": "Price Match Rejected",
+                    "pm-negotiated": "Price Match Agreed On",
+                    "superuser-negotiation": "Negotiated by Aculead"
+                    }
+
 
 status_wise_fetch_query = """
             SELECT

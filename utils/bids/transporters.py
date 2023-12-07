@@ -14,7 +14,7 @@ from utils.response import ServerError, SuccessResponse
 from models.models import BidTransaction, TransporterModel, MapShipperTransporter, LoadAssigned, BiddingLoad, User, ShipperModel, MapLoadSrcDestPair, BlacklistTransporter, TrackingFleet, BidSettings
 from utils.bids.bidding import Bid
 from utils.utilities import log, structurize_transporter_bids
-from data.bidding import lost_participated_transporter_bids, live_bid_details
+from data.bidding import lost_participated_transporter_bids, live_bid_details, assignment_events
 
 
 bid = Bid()
@@ -247,15 +247,11 @@ class Transporter:
             fetched_transporter_ids = []
             assigned_transporters = []
             superuser = (user_type == "acu")
+            print("SUPERUSER >>>>>>>", superuser)
             ist_timezone = pytz.timezone("Asia/Kolkata")
             current_time = datetime.now(ist_timezone)
             current_time = current_time.replace(
                 tzinfo=None, second=0, microsecond=0)
-            
-            if not superuser:
-                bid_assigned_to_transporter = session.query(LoadAssigned).filter(LoadAssigned.la_bidding_load_id == bid_id, LoadAssigned.is_assigned == True, LoadAssigned.is_active).first()
-                if bid_assigned_to_transporter:
-                    return ([], "Transporter already assigned")
 
             transporter_ids = [getattr(transporter, "transporter_id") for transporter in transporters]
 
@@ -276,6 +272,7 @@ class Transporter:
 
             for transporter in transporters:
                 if getattr(transporter, "transporter_id") in transporters_not_assigned:
+
                     assign_detail = LoadAssigned(
                         la_bidding_load_id=bid_id,
                         la_transporter_id=getattr(
@@ -292,7 +289,7 @@ class Transporter:
                         ),
                         is_pmr_approved = True if superuser else False,
                         is_negotiated_by_aculead = True if superuser else False,
-                        history = str([(getattr(transporter, "rate"), str(current_time), getattr(transporter, "comment"))]),
+                        history = str([(assignment_events["superuser-negotiation"] if superuser else assignment_events["pm-request"] ,getattr(transporter, "rate"), str(current_time), getattr(transporter, "comment"))]),
                         is_active=True,
                         created_at="NOW()",
                         created_by=user_id
@@ -305,8 +302,8 @@ class Transporter:
                 if getattr(transporter_detail, "la_transporter_id") in transporters_to_be_updated:
                     for transporter in transporters:
                         if getattr(transporter_detail, "la_transporter_id") == getattr(transporter, "transporter_id"):
-
-                            task = (getattr(transporter, "rate"), str(current_time), getattr(transporter, "comment"))
+                            
+                            task = (assignment_events["superuser-negotiation"] if superuser else assignment_events["pm-request"],getattr(transporter, "rate"), str(current_time), getattr(transporter, "comment"))
                             fetched_history = ast.literal_eval(getattr(transporter_detail, "history"))
                             fetched_history.append(task)
 
@@ -373,13 +370,13 @@ class Transporter:
                     transporter.no_of_fleets_assigned = 0
                     transporter.unassignment_reason = unassignment_reason
                     if transporter.history:
-                        task = (0, str(current_time), unassignment_reason)
+                        task = (assignment_events["unassign"],0, str(current_time), unassignment_reason)
                         fetched_history = ast.literal_eval(transporter.history)
                         fetched_history.append(task)
                         transporter.history = str(fetched_history)
                     else:
                         transporter.history = str(
-                            [(0, str(current_time), unassignment_reason)])
+                            [(assignment_events["unassign"],0, str(current_time), unassignment_reason)])
 
                 elif no_transporter_assigned and transporter.la_transporter_id != UUID(transporter_id):
                     no_transporter_assigned = False
@@ -987,11 +984,19 @@ class Transporter:
 
             history = []
 
-            for (assigned_no_of_fleets, created_at, unassignment_reason) in assignment_history:
+            for (event, resources, created_at, reason) in assignment_history:
+                
+                filtered_resources = ""
+                if event in (assignment_events["unassign"] ,assignment_events["assign"]):
+                    filtered_resources = str(resources)+" vehicle(s)"
+                else:
+                    filtered_resources = "₹ "+str(resources) if resources else None
+                
                 history.append({
-                    "assigned_no_of_fleets": assigned_no_of_fleets,
+                    "event": event,
+                    "resources": filtered_resources,
                     "created_at": created_at,
-                    "unassignment_reason": unassignment_reason
+                    "reason": reason
                 })
 
             return (history, "")
@@ -1023,6 +1028,7 @@ class Transporter:
                 return ([], "Transporter's Assigned Load Detail not Found")
 
             if req.approval :
+                event.append(assignment_events["pm-approved"])
                 event.append(req.rate)
                 event.append(str(current_time))
                 event.append("Price Match Approved by Transporter")
@@ -1031,6 +1037,10 @@ class Transporter:
                 transporter_detail.is_pmr_approved = True
 
             else:
+                if req.rate:
+                    event.append(assignment_events["pm-negotiated"])
+                else:
+                    event.append(assignment_events["pm-rejected"])
                 event.append(req.rate)
                 event.append(str(current_time))
                 event.append(req.comment)

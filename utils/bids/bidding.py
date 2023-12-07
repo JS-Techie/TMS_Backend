@@ -11,7 +11,7 @@ from config.db_config import Session
 from config.redis import r as redis
 from config.scheduler import Scheduler
 from data.bidding import (filter_wise_fetch_query, live_bid_details,
-                          status_wise_fetch_query, transporter_analysis)
+                          status_wise_fetch_query, transporter_analysis, assignment_events)
 from models.models import (BiddingLoad, BidSettings, BidTransaction,
                            LoadAssigned, MapLoadSrcDestPair, ShipperModel,
                            TransporterModel, Segment, MapTransporterSegment, 
@@ -475,7 +475,7 @@ class Bid:
                         no_of_fleets_assigned=getattr(
                             transporter, "no_of_fleets_assigned"),
                         history=str(
-                            [(getattr(transporter, "no_of_fleets_assigned"), str(current_time), None)]),
+                            [(assignment_events["assign"], getattr(transporter, "no_of_fleets_assigned"), str(current_time), None)]),
                         is_assigned=True,
                         is_active=True,
                         created_by=user_id
@@ -506,11 +506,11 @@ class Bid:
                             setattr(transporter_detail, "updated_by", user_id)
                             if not transporter_detail.history:
                                 setattr(transporter_detail, "history", str(
-                                    [(getattr(transporter, "no_of_fleets_assigned"), str(current_time), None)]))
+                                    [(assignment_events["assign"],getattr(transporter, "no_of_fleets_assigned"), str(current_time), None)]))
                             else:
                                 history_fetched = ast.literal_eval(
                                     getattr(transporter_detail, "history"))
-                                task = (transporter.no_of_fleets_assigned,
+                                task = (assignment_events["assign"],transporter.no_of_fleets_assigned,
                                         str(current_time), None)
                                 history_fetched.append(task)
                                 setattr(transporter_detail, "history",

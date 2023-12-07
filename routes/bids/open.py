@@ -1,7 +1,9 @@
 from fastapi import APIRouter, Request
-import pytz, os
+import pytz, os,  ast
 from datetime import datetime, timedelta
+from config.db_config import Session
 
+from models.models import LoadAssigned
 from utils.bids.bidding import Bid
 from utils.response import ErrorResponse, ServerError, SuccessResponse
 
@@ -40,6 +42,38 @@ async def increment_time_of_bid(bid_id: str):
             return ErrorResponse(data=bid_id, client_msg="Something Went Wrong While Incrementing Bid Time", dev_msg=error)
 
         return SuccessResponse(data=bid_id, client_msg="Bid End Time Updated Successfully!", dev_msg="Bid end time was updated successfully!")
+
+    except Exception as err:
+        return ServerError(err=err, errMsg=str(err))
+
+
+@open_router.get("/change")
+async def change():
+
+    session = Session()
+    
+    try:
+        all = session.query(LoadAssigned).filter(LoadAssigned.history != None).all()
+        print("ALL : ", all)
+        
+        for each in all :
+            event_list = []
+            assignment_history = ast.literal_eval(each.history)
+            for event in assignment_history:
+                (resource, created_at, unassignment_reason) = event
+                event = list(event)
+                print("RESOURCE :", resource)
+                print("CREATED AT :", created_at)
+                print("EVENT LIST :", list(event))
+                if resource == 0:
+                    event.insert(0, "Un-assignment")
+                else:
+                    event.insert(0, "Assignment")
+                event_list.append(tuple(event))
+            each.history = str(event_list)
+            print("EACH HISTORY ::", each.history)
+        session.commit()
+        session.close()
 
     except Exception as err:
         return ServerError(err=err, errMsg=str(err))
