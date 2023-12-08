@@ -66,9 +66,9 @@ async def change():
                 print("CREATED AT :", created_at)
                 print("EVENT LIST :", list(event))
                 if resource == 0:
-                    event.insert(0, "Un-assignment")
+                    event.insert(0, "Unassigned")
                 else:
-                    event.insert(0, "Assignment")
+                    event.insert(0, "Assigned With")
                 event_list.append(tuple(event))
             each.history = str(event_list)
             print("EACH HISTORY ::", each.history)

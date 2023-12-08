@@ -1039,6 +1039,8 @@ class Transporter:
             else:
                 if req.rate:
                     event.append(assignment_events["pm-negotiated"])
+                    transporter_detail.pmr_price = req.rate
+                    transporter_detail.pmr_comment = req.comment
                 else:
                     event.append(assignment_events["pm-rejected"])
                 event.append(req.rate)
@@ -1047,10 +1049,6 @@ class Transporter:
 
                 transporter_detail.is_negotiated_by_aculead = False
                 transporter_detail.is_pmr_approved = None
-                if req.rate :
-                    transporter_detail.pmr_price = req.rate
-                if req.comment :
-                    transporter_detail.pmr_comment = req.comment
 
             if transporter_detail.history:
                 fetched_history = ast.literal_eval(transporter_detail.history)

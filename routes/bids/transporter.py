@@ -418,7 +418,7 @@ async def bid_match_for_transporter(request: Request, bid_id: str, req: Transpor
         if error :
             return ErrorResponse(data=[], client_msg="Something Went Wrong. Pls Try Again after Sometime", dev_msg=error)
 
-        return SuccessResponse(data= [], client_msg="Price match Approval Complete", dev_msg="price match approval update")
+        return SuccessResponse(data= [], client_msg="Price match Approval Complete", dev_msg="price match approval updated")
 
     except Exception as err:
         return ServerError(err=err, errMsg=str(err))
