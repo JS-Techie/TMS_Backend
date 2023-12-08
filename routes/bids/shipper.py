@@ -141,7 +141,7 @@ async def publish_new_bid(request: Request, bid_id: str, bg_tasks: BackgroundTas
         # if not success:
         #     return ErrorResponse(data=[], dev_msg=error)
 
-        return SuccessResponse(data=bid_id, client_msg=f"Bid  L-{bid_id[-5:]} is now published!", dev_msg="Bid status was updated successfully!")
+        return SuccessResponse(data=bid_id, client_msg=f"Bid  L-{bid_id[-5:].upper()} is now published!", dev_msg="Bid status was updated successfully!")
 
     except Exception as err:
         return ServerError(err=err, errMsg=str(err))
@@ -161,7 +161,7 @@ async def get_lowest_price_of_current_bid(request: Request, bid_id: str):
             if error:
                 return ErrorResponse(data=[], client_msg="Something went wrong while fetching the lowest price for this bid", dev_msg=error)
 
-        return SuccessResponse(data=lowest_price, dev_msg="Lowest price found for current bid", client_msg=f"Fetched lowest price for Bid  L-{bid_id[-5:]}!")
+        return SuccessResponse(data=lowest_price, dev_msg="Lowest price found for current bid", client_msg=f"Fetched lowest price for Bid  L-{bid_id[-5:].upper()}!")
 
     except Exception as err:
         return ServerError(err=err, errMsg=str(err))
@@ -212,7 +212,7 @@ async def cancel_bid(request: Request, bid_id: str, r: CancelBidReq):
 
         if bid_details.load_status not in valid_cancel_status:
 
-            return ErrorResponse(data=[], client_msg="This bid is not valid and cannot be cancelled!", dev_msg=f"Bid  L-{bid_id[-5:]} is {bid_details.load_status}, cannot be cancelled!")
+            return ErrorResponse(data=[], client_msg="This bid is not valid and cannot be cancelled!", dev_msg=f"Bid  L-{bid_id[-5:].upper()} is {bid_details.load_status}, cannot be cancelled!")
 
         log("BID STATUS IS VALID")
         (update_successful, error) = await bid.update_status(bid_id=bid_id, status="cancelled", user_id=user_id, reason=r.reason)
@@ -271,7 +271,7 @@ async def assign_to_transporter(request: Request, bid_id: str, transporters: Lis
         if error:
             return ErrorResponse(data=[], client_msg="Something Went Wrong While Assigning Transporters", dev_msg=error)
 
-        return SuccessResponse(data=assigned_loads, dev_msg="Load Assigned Successfully", client_msg=f"Load  L-{bid_id[-5:]} assignment was successful!")
+        return SuccessResponse(data=assigned_loads, dev_msg="Load Assigned Successfully", client_msg=f"Load  L-{bid_id[-5:].upper()} assignment was successful!")
 
     except Exception as err:
         return ServerError(err=err, errMsg=str(err))
@@ -383,7 +383,7 @@ async def bid_match_for_transporters(request: Request, bid_id: str, transporters
         # ## Send email as a background task
         # bg_tasks.add_task(fm.send_message,message)
 
-        return SuccessResponse(data=assignment_details, client_msg="Bid Match Successful", dev_msg="Bid Match Successful")
+        return SuccessResponse(data=assignment_details, client_msg="Successfully Requested Bid Match", dev_msg="Bid Match Request Successful")
 
     except Exception as err:
         return ServerError(err=err, errMsg=str(err))
@@ -406,7 +406,7 @@ async def unassign_transporter_for_bid(request: Request, bid_id: str, tr: Transp
         if error:
             return ErrorResponse(data=[], client_msg=os.getenv("INVALID_BID_ERROR"), dev_msg=error)
 
-        return SuccessResponse(data=unassigned_transporter, client_msg=f"Successfully unassigned transporter for Bid  L-{bid_id[-5:]}", dev_msg="Unassigned requested transporter from bid")
+        return SuccessResponse(data=unassigned_transporter, client_msg=f"Successfully unassigned transporter for Bid  L-{bid_id[-5:].upper()}", dev_msg="Unassigned requested transporter from bid")
 
     except Exception as err:
         return ServerError(err=err, errMsg=str(err))
@@ -433,7 +433,7 @@ async def details_of_a_bid(request: Request, bid_id: str):
         return SuccessResponse(data={"bid_details": bid_details,
                                      "no_of_bids": len(bid_details)
                                      },
-                               client_msg=f"Successfully unassigned transporter for Bid  L-{bid_id[-5:]}",
+                               client_msg=f"Successfully unassigned transporter for Bid  L-{bid_id[-5:].upper()}",
                                dev_msg="Unassigned requested transporter from bid")
 
     except Exception as err:

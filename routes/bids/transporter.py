@@ -357,7 +357,7 @@ async def provide_new_rate_for_bid(request: Request, bid_id: str, bid_req: Trans
             return ErrorResponse(data=[], client_msg=os.getenv("BID_RATE_ERROR"), dev_msg=error)
 
         if transporter_attempts >= bid_details.no_of_tries:
-            return ErrorResponse(data=[], client_msg="You have exceeded the number of tries for this bid!", dev_msg=f"Number of tries for Bid  L-{bid_id[-5:]} exceeded!")
+            return ErrorResponse(data=[], client_msg="You have exceeded the number of tries for this bid!", dev_msg=f"Number of tries for Bid  L-{bid_id[-5:].upper()} exceeded!")
 
         log("BID TRIES OK", bid_id)
 
@@ -400,7 +400,7 @@ async def provide_new_rate_for_bid(request: Request, bid_id: str, bid_req: Trans
 
         log("SOCKET EVENT SENT", sorted_bid_details)
 
-        return SuccessResponse(data=sorted_bid_details, dev_msg="Bid submitted successfully", client_msg=f"Bid for Bid-{bid_id} submitted!")
+        return SuccessResponse(data=sorted_bid_details, dev_msg="Bid submitted successfully", client_msg=f"Bid for Bid  L-{bid_id[-5:].upper()} submitted!")
 
     except Exception as err:
         return ServerError(err=err, errMsg=str(err))

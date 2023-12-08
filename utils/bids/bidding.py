@@ -316,10 +316,11 @@ class Bid:
                     "valid": True,
                 }, "")
             log("BID RATE NOT OK", rate)
+            rupees_sign ="₹" if not is_decrement_in_percentage else ""
             percentage_sign = "%" if is_decrement_in_percentage else ""
             return ({
                 "valid": False
-            }, f"Incorrect Bid price, has to be lower, the decrement is {decrement} {percentage_sign}")
+            }, f"Incorrect Bid price, has to be lower, the decrement is {rupees_sign} {decrement} {percentage_sign}")
 
         except Exception as e:
             session.rollback()
@@ -349,10 +350,11 @@ class Bid:
                     "valid": True,
                 }, "")
             log("TRANSPORTER BID RATE NOT VALID", bid)
+            rupees_sign ="₹" if not is_decrement_in_percentage else ""
             percentage_sign = "%" if is_decrement_in_percentage else ""
             return ({
                 "valid": False
-            }, f"Incorrect Bid price, has to be lower,decrement is {decrement} {percentage_sign}")
+            }, f"Incorrect Bid price, has to be lower,decrement is {rupees_sign} {decrement} {percentage_sign}")
 
         except Exception as e:
             session.rollback()
