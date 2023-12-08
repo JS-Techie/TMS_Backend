@@ -103,12 +103,12 @@ async def fetch_bids_for_transporter_by_status(request: Request, status: str | N
 
                     filtered_private_bids = [
                         private_record for private_record in bids["private"]
-                        if any(participated_bid["bid_id"] == private_record["bid_id"] and participated_bid["load_status"] == "pending" for participated_bid in bids_participated)
+                        if any(participated_bid["bid_id"] == private_record["bid_id"] and participated_bid["load_status"] in ["pending", "partially_confirmed"] for participated_bid in bids_participated)
                     ]
 
                     filtered_public_bids = [
                         public_record for public_record in bids["public"]
-                        if any(participated_bid["bid_id"] == public_record["bid_id"] and participated_bid["load_status"] == "pending" for participated_bid in bids_participated)
+                        if any(participated_bid["bid_id"] == public_record["bid_id"] and participated_bid["load_status"] in ["pending", "partially_confirmed"] for participated_bid in bids_participated)
                     ]
 
                     bids["private"] = filtered_private_bids
@@ -418,7 +418,7 @@ async def bid_match_for_transporter(request: Request, bid_id: str, req: Transpor
         if error :
             return ErrorResponse(data=[], client_msg="Something Went Wrong. Pls Try Again after Sometime", dev_msg=error)
 
-        return SuccessResponse(data= [], client_msg="Price match Approval Complete", dev_msg="price match approval updated")
+        return SuccessResponse(data= [], client_msg="Price Match Approval Complete", dev_msg="price match approval updated")
 
     except Exception as err:
         return ServerError(err=err, errMsg=str(err))

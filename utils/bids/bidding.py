@@ -654,6 +654,8 @@ class Bid:
 
         try:
 
+            statuses = ['pending', 'partially_confirmed'] if status == 'pending' else [status]
+
             bids_query = (session
                           .query(BiddingLoad,
                                  ShipperModel.shpr_id,
@@ -678,7 +680,7 @@ class Bid:
 
             if status:
                 bids_query = bids_query.filter(
-                    BiddingLoad.load_status == status)
+                    BiddingLoad.load_status.in_(statuses))
 
             bids = bids_query.group_by(BiddingLoad, *BiddingLoad.__table__.c,
                                        ShipperModel.name, ShipperModel.contact_no, ShipperModel.shpr_id ).all()
@@ -688,9 +690,10 @@ class Bid:
 
             filtered_bids = []
             for bid in bids:
-                (_, shipper_id, _, _, _, _, _) = bid
+                (bid_load, shipper_id, _, _, _, _, _) = bid
                 if shipper_id not in blocked_shippers:
                     filtered_bids.append(bid)
+                    log("BID LOAD ID::", bid_load.bl_id)
 
             return (structurize_transporter_bids(bids=filtered_bids), "")
 

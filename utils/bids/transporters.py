@@ -737,7 +737,7 @@ class Transporter:
                               BlacklistTransporter
                               )
                 .join(TransporterModel, and_(MapShipperTransporter.mst_transporter_id == TransporterModel.trnsp_id, TransporterModel.is_active == True))
-                .outerjoin(BlacklistTransporter, and_(BlacklistTransporter.bt_shipper_id == MapShipperTransporter.mst_shipper_id, BlacklistTransporter.bt_transporter_id == MapShipperTransporter.mst_transporter_id, BlacklistTransporter.is_active == True))
+                .outerjoin(BlacklistTransporter, and_(BlacklistTransporter.bt_shipper_id == MapShipperTransporter.mst_shipper_id, BlacklistTransporter.bt_transporter_id == transporter_id, BlacklistTransporter.is_active == True))
                 .filter(MapShipperTransporter.mst_transporter_id == transporter_id, MapShipperTransporter.is_active == True)
                 .all()
             )
