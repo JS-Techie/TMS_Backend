@@ -508,12 +508,42 @@ async def lowest_price_of_bid_and_transporter(request: Request, bid_id: str):
         if error:
             return ErrorResponse(data=[], dev_msg=error, client_msg="Something went wrong file fetching bid details for transporter, please try again in sometime!")
         log("TRANSPORTER POSITION ", transporter_position)
+
         return SuccessResponse(data={
             "bid_lowest_price": bid_lowest_price if bid_lowest_price != float("inf") else None,
             "transporter_lowest_price": transporter_lowest_price if transporter_lowest_price != 0.0 else None,
-            "position": transporter_position+1 if transporter_position != None else None
+            "position": transporter_position+1 if transporter_position != None else None,
+            "no_of_tries": bid_details.no_of_tries
             # "transporter_rates": transporter_historical_rates
         }, dev_msg="Found all rates successfully", client_msg="Fetched lowest price of bid and transporter successfully")
 
     except Exception as err:
         return ServerError(err=err, errMsg=str(err))
+
+
+@transporter_bidding_router.get("/details/{bid_id}")
+async def fetch_details_needed_for_providing_rates(request: Request, bid_id: str):
+
+    transporter_id = str(request.state.current_user["transporter_id"])
+
+    try:
+
+        lowest_price_response = await lowest_price_of_bid_and_transporter(request=request, bid_id=bid_id)
+        if lowest_price_response["data"] == []:
+            return lowest_price_response
+
+        lowest_price_data = lowest_price_response["data"]
+
+        (bid_details_found, details_for_assignment) = await bid.details_for_assignment(bid_id=bid_id, transporter_id=transporter_id)
+
+        if not bid_details_found:
+            return ErrorResponse(data=[], client_msg="Bid details were not found", dev_msg="Bid details for assignment could not be found")
+
+        specific_details = {**lowest_price_data, **details_for_assignment[0], "pending_tries":lowest_price_data["no_of_tries"] - details_for_assignment[0]["total_number_attempts"]}
+
+        return SuccessResponse(data=specific_details, client_msg='Necessary Details For Providing Rates are Fetched', dev_msg='Details Fetched')
+
+        
+    except Exception as err:
+        return ServerError(err=err, errMsg=str(err))
+

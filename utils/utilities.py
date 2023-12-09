@@ -139,8 +139,6 @@ def structurize_assignment_data(data):
 
         if rate < transporter_entry["lowest_price"]:
             transporter_entry["lowest_price"] = rate
-            if comment:
-                transporter_entry["last_comment"] = comment
 
         existing_entry = next(
             (item for item in transporter_entry["rates"] if item["rate"] == rate and item["comment"] == comment), None)
@@ -165,6 +163,7 @@ def structurize_assignment_data(data):
     # Sort the rates array for each transporter by rate
     for transporter_entry in transporter_data.values():
         transporter_entry["rates"].sort(key=lambda x: x["rate"])
+        transporter_entry["last_comment"] = next((rate_comment["comment"] for rate_comment in transporter_entry["rates"] if rate_comment["comment"]), None)
         transporter_entry["total_number_attempts"] = len(
             transporter_entry["rates"])
 
@@ -206,6 +205,7 @@ def structurize_transporter_bids(bids):
             "reporting_from_time":bid_load.reporting_from_time,
             "reporting_to_time":bid_load.reporting_to_time,
             "bid_mode": bid_load.bid_mode,
+            "no_of_tries": bid_load.no_of_tries,
             "show_current_lowest_rate_transporter" : bid_load.show_current_lowest_rate_transporter,
             "completion_reason":bid_load.completion_reason,
             "no_of_fleets_assigned":0,

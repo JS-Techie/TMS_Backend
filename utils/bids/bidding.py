@@ -384,7 +384,7 @@ class Bid:
         finally:
             session.close()
 
-    async def details_for_assignment(self, bid_id: str) -> (bool, any):
+    async def details_for_assignment(self, bid_id: str, transporter_id: str | None=None) -> (bool, any):
 
         session = Session()
 
@@ -402,8 +402,12 @@ class Bid:
                 .join(TransporterModel, TransporterModel.trnsp_id == BidTransaction.transporter_id)
                 .outerjoin(LoadAssigned, LoadAssigned.la_bidding_load_id == BidTransaction.bid_id)
                 .filter(BidTransaction.bid_id == bid_id)
-                .all()
             )
+
+            if transporter_id:
+                details = details.filter(BidTransaction.transporter_id == transporter_id)
+                
+            details = details.all()
 
             log("BID DETAILS FOR ASSIGNMENT", details)
 
