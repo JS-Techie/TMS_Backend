@@ -441,7 +441,7 @@ async def details_of_a_bid(request: Request, bid_id: str):
 
 
 @shipper_bidding_router.post("/history/assignment/{bid_id}")
-async def fetch_transporter_specific_bid_assingment_history(request: Request, bid_id: str, req: AssignmentHistoryReq):
+async def fetch_transporter_specific_bid_assignment_history(request: Request, bid_id: str, req: AssignmentHistoryReq):
 
     try:
 

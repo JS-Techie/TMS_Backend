@@ -247,7 +247,6 @@ class Transporter:
             fetched_transporter_ids = []
             assigned_transporters = []
             superuser = (user_type == "acu")
-            print("SUPERUSER >>>>>>>", superuser)
             ist_timezone = pytz.timezone("Asia/Kolkata")
             current_time = datetime.now(ist_timezone)
             current_time = current_time.replace(
@@ -281,7 +280,6 @@ class Transporter:
                             transporter, "trans_pos_in_bid"
                         ),
                         no_of_fleets_assigned=0,
-                        price=getattr(transporter, "rate"),
                         pmr_price=getattr(
                             transporter, "rate"),
                         pmr_comment=getattr(
@@ -1042,15 +1040,21 @@ class Transporter:
                 if req.rate:
                     event.append(assignment_events["pm-negotiated"])
                     transporter_detail.pmr_price = req.rate
-                    transporter_detail.pmr_comment = req.comment
                 else:
                     event.append(assignment_events["pm-rejected"])
+                    
+                    (last_bid_rate, error) = await self.lowest_price(bid_id= bid_id, transporter_id= transporter_id)
+                    if error :
+                        log("ERROR WHILE FETCHING LOWEST BID IN BID APPROVAL ", error)
+                    
+                    transporter_detail.pmr_price = None if not last_bid_rate else last_bid_rate
                 event.append(req.rate)
                 event.append(str(current_time))
                 event.append(req.comment)
 
                 transporter_detail.is_negotiated_by_aculead = False
                 transporter_detail.is_pmr_approved = None
+                transporter_detail.pmr_comment = req.comment
 
             if transporter_detail.history:
                 fetched_history = ast.literal_eval(transporter_detail.history)
