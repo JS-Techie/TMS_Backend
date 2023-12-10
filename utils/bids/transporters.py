@@ -369,6 +369,8 @@ class Transporter:
                     transporter.is_assigned = False
                     transporter.no_of_fleets_assigned = 0
                     transporter.unassignment_reason = unassignment_reason
+                    transporter.pmr_price = None
+                    transporter.pmr_comment = None
                     if transporter.history:
                         task = (assignment_events["unassign"],0, str(current_time), unassignment_reason)
                         fetched_history = ast.literal_eval(transporter.history)
