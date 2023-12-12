@@ -383,7 +383,7 @@ async def bid_match_for_transporters(request: Request, bid_id: str, transporters
         # ## Send email as a background task
         # bg_tasks.add_task(fm.send_message,message)
 
-        return SuccessResponse(data=assignment_details, client_msg="Successfully Requested Bid Match", dev_msg="Bid Match Request Successful")
+        return SuccessResponse(data=assignment_details, client_msg="Successfully Requested Bid Match" if user_type != "acu" else "Successfully Bid Matched", dev_msg="Bid Match Request Successful")
 
     except Exception as err:
         return ServerError(err=err, errMsg=str(err))

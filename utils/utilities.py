@@ -48,6 +48,7 @@ def structurize(input_array):
                 "shipper_id": item["bl_shipper_id"],
                 "branch_id": item["bl_branch_id"],
                 "shipper_name": item["shipper_name"],
+                "branch_name": item["branch_name"],
                 "bid_show": item["show_current_lowest_rate_transporter"],
                 "load_type": load_type_dict[item["bid_mode"]],
                 "prime_src_city": item["src_city"],

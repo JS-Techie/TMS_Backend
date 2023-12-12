@@ -478,8 +478,6 @@ class Bid:
                         price=getattr(transporter, "price"),
                         price_difference_percent=getattr(
                             transporter, "price_difference_percent"),
-                        pmr_price = None,
-                        pmr_comment = None,
                         no_of_fleets_assigned=getattr(
                             transporter, "no_of_fleets_assigned"),
                         history=str(

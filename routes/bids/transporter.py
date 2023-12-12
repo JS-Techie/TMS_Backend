@@ -539,7 +539,11 @@ async def fetch_details_needed_for_providing_rates(request: Request, bid_id: str
         if not bid_details_found:
             return ErrorResponse(data=[], client_msg="Bid details were not found", dev_msg="Bid details for assignment could not be found")
 
-        specific_details = {**lowest_price_data, **details_for_assignment[0], "pending_tries":lowest_price_data["no_of_tries"] - details_for_assignment[0]["total_number_attempts"]}
+        specific_details ={}
+        if len(details_for_assignment) == 0:
+            specific_details = {**lowest_price_data, "last_comment": None, "pending_tries": None}
+        else:
+            specific_details = {**lowest_price_data, **details_for_assignment[0], "pending_tries":lowest_price_data["no_of_tries"] - details_for_assignment[0]["total_number_attempts"]}
 
         return SuccessResponse(data=specific_details, client_msg='Necessary Details For Providing Rates are Fetched', dev_msg='Details Fetched')
 
