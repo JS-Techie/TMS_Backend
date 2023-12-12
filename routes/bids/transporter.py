@@ -156,6 +156,12 @@ async def fetch_bids_for_transporter_by_status(request: Request, status: str | N
                 "private": private_bids_with_assigned_load_details,
                 "public": public_bids_with_assigned_load_details
             }
+            sorted_bids = {
+                "all":sorted(updated_bids["all"], key=lambda x: x['bid_time'], reverse=True),
+                "private":sorted(updated_bids["private"], key=lambda x: x['bid_time'], reverse=True),
+                "public":sorted(updated_bids["public"], key=lambda x: x['bid_time'], reverse=True)
+            }
+
 
         else:
 
@@ -178,8 +184,9 @@ async def fetch_bids_for_transporter_by_status(request: Request, status: str | N
             for assigned_load_detail, updated_bid in zip(assigned_load_details, updated_bids_with_lowest_price):
                 updated_bids.append({**assigned_load_detail, ** updated_bid})
 
+            sorted_bids = sorted(updated_bids, key=lambda x: x['bid_time'], reverse=True)
 
-        return SuccessResponse(data=updated_bids, dev_msg="Fetched bids successfully", client_msg=f"Fetched all {status} bids successfully!")
+        return SuccessResponse(data=sorted_bids, dev_msg="Fetched bids successfully", client_msg=f"Fetched all {status} bids successfully!")
 
     except Exception as err:
         return ServerError(err=err, errMsg=str(err))
@@ -223,9 +230,9 @@ async def fetch_selected_bids(request: Request):
         for assigned_load_detail, updated_bid in zip(assigned_load_details, updated_bids_with_lowest_price):
             updated_bids.append({**assigned_load_detail, ** updated_bid})
 
+        sorted_bids = sorted(updated_bids, key=lambda x: x['bid_time'], reverse=True)
 
-
-        return SuccessResponse(data=updated_bids, dev_msg="Fetched bids successfully", client_msg="Fetched all selected bids successfully!")
+        return SuccessResponse(data=sorted_bids, dev_msg="Fetched bids successfully", client_msg="Fetched all selected bids successfully!")
 
     except Exception as err:
         return ServerError(err=err, errMsg=str(err))
@@ -289,7 +296,13 @@ async def fetch_completed_bids(request: Request):
             "public": public_bids_with_assigned_load_details
         }
 
-        return SuccessResponse(data=updated_bids, dev_msg="Fetched bids successfully", client_msg="Fetched all completed bids successfully!")
+        sorted_bids = {
+                "all":sorted(updated_bids["all"], key=lambda x: x['bid_time'], reverse=True),
+                "private":sorted(updated_bids["private"], key=lambda x: x['bid_time'], reverse=True),
+                "public":sorted(updated_bids["public"], key=lambda x: x['bid_time'], reverse=True)
+            }
+
+        return SuccessResponse(data=sorted_bids, dev_msg="Fetched bids successfully", client_msg="Fetched all completed bids successfully!")
 
     except Exception as err:
         return ServerError(err=err, errMsg=str(err))
@@ -458,7 +471,9 @@ async def fetch_lost_bids_for_transporter_based_on_participation(request: Reques
             lowest_price_data = lowest_price_response["data"]
             updated_bids.append({**bid, **lowest_price_data})
 
-        return SuccessResponse(data=updated_bids, dev_msg="Fetched lost bids successfully", client_msg="Fetched all lost bids successfully!")
+        sorted_bids = sorted(updated_bids, key=lambda x: x['bid_time'], reverse=True)
+
+        return SuccessResponse(data=sorted_bids, dev_msg="Fetched lost bids successfully", client_msg="Fetched all lost bids successfully!")
 
     except Exception as err:
         return ServerError(err=err, errMsg=str(err))
