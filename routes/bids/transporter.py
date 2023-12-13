@@ -43,7 +43,7 @@ async def fetch_bids_for_transporter_by_status(request: Request, participated: b
             return ErrorResponse(data=[], dev_msg=os.getenv("TRANSPORTER_ID_NOT_FOUND_ERROR"), client_msg=os.getenv("GENERIC_ERROR"))
 
         if status == "assigned":
-            (bids, error) = await transporter.assigned_bids(transporter_id=transporter_id)
+            (bids, error) = await transporter.assigned_bids(transporter_id=transporter_id, user_id= user_id)
         else:
             if status == "active":
                 (bids, error) = await transporter.bids_by_status(transporter_id=transporter_id, user_id= user_id, status="not_started")
@@ -488,6 +488,7 @@ async def bid_match_for_transporter(request: Request, bid_id: str, req: Transpor
 async def fetch_lost_bids_for_transporter_based_on_participation(request: Request, t: TransporterLostBidsReq):
 
     transporter_id = request.state.current_user["transporter_id"]
+    user_id = request.state.current_user["id"]
 
     try:
         if not transporter_id:
@@ -500,7 +501,7 @@ async def fetch_lost_bids_for_transporter_based_on_participation(request: Reques
                 transporter_id=transporter_id)
         else:
             (bids, error) = await transporter.not_participated_and_lost_bids(
-                transporter_id=transporter_id)
+                transporter_id=transporter_id, user_id= user_id)
 
         if error:
             return ErrorResponse(data=[], dev_msg=error, client_msg="Something went wrong file fetching bids, please try again in some time")

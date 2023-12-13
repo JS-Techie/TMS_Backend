@@ -710,12 +710,12 @@ class Transporter:
         finally:
             session.close()
 
-    async def not_participated_and_lost_bids(self, transporter_id: str) -> (any, str):
+    async def not_participated_and_lost_bids(self, transporter_id: str, user_id: str) -> (any, str):
 
         session = Session()
 
         try:
-            all_bids, error = await self.bids_by_status(transporter_id=transporter_id)
+            all_bids, error = await self.bids_by_status(transporter_id=transporter_id, user_id= user_id)
 
             if error:
                 return ([], error)
@@ -852,13 +852,13 @@ class Transporter:
         finally:
             session.close()
 
-    async def assigned_bids(self, transporter_id: str) -> (any, str):
+    async def assigned_bids(self, transporter_id: str, user_id: str) -> (any, str):
 
         session = Session()
 
         try:
 
-            _all, error = await self.bids_by_status(transporter_id=transporter_id)
+            _all, error = await self.bids_by_status(transporter_id=transporter_id, user_id= user_id)
 
             if error:
                 return ([], error)
