@@ -65,7 +65,8 @@ status_wise_fetch_query = """
                 t_load_assigned.is_active as la_active,
                 t_transporter.is_active as tr_active,
                 t_tracking_fleet.is_active as trf_active,
-                (select count(*) from t_bid_transaction where t_bid_transaction.bid_id = t_bidding_load.bl_id) as total_no_of_bids
+                (select count(*) from t_bid_transaction where t_bid_transaction.bid_id = t_bidding_load.bl_id) as total_no_of_bids,
+				(select count(distinct(t_bid_transaction.transporter_id)) from t_bid_transaction where t_bid_transaction.bid_id = t_bidding_load.bl_id) as participants
             FROM t_bidding_load
             LEFT JOIN t_bid_settings ON ( t_bid_settings.is_active = true AND t_bid_settings.bdsttng_shipper_id = t_bidding_load.bl_shipper_id
                                             AND (
@@ -144,7 +145,8 @@ filter_wise_fetch_query = """
                 t_load_assigned.is_active as la_active,
                 t_transporter.is_active as tr_active,
                 t_tracking_fleet.is_active as trf_active,
-                (select count(*) from t_bid_transaction where t_bid_transaction.bid_id = t_bidding_load.bl_id) as total_no_of_bids
+                (select count(*) from t_bid_transaction where t_bid_transaction.bid_id = t_bidding_load.bl_id) as total_no_of_bids,
+				(select count(distinct(t_bid_transaction.transporter_id)) from t_bid_transaction where t_bid_transaction.bid_id = t_bidding_load.bl_id) as participants
             FROM t_bidding_load
             LEFT JOIN t_bid_settings ON ( t_bid_settings.is_active = true AND t_bid_settings.bdsttng_shipper_id = t_bidding_load.bl_shipper_id
                                             AND (

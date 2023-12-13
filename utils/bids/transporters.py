@@ -127,6 +127,28 @@ class Transporter:
                                  .first()
                                  )
 
+            historical_rates = [{**historical_rate.__dict__, "event":"Live Bid Rates"} for historical_rate in historical_rates]
+            history = []
+
+            if price_match_rates:
+                if price_match_rates.history:
+                    assignment_history = ast.literal_eval(price_match_rates.history)[::-1]
+
+                    log("ASSIGNMENT HISTORY", assignment_history)
+                    log("TYPE", type(assignment_history))
+
+                    for (event, rate, created_at, reason) in assignment_history:
+                        if event not in (assignment_events["unassign"] ,assignment_events["assign"]):
+                            history.append({
+                                "event": event,
+                                "rate": rate,
+                                "created_at": created_at,
+                                "comment": reason
+                            })
+            
+            if history:
+                historical_rates = history + historical_rates
+
             return ({
                 "historical": historical_rates,
                 "pmr_price": price_match_rates.pmr_price if price_match_rates else None,
@@ -367,8 +389,6 @@ class Transporter:
                     transporter.is_assigned = False
                     transporter.no_of_fleets_assigned = 0
                     transporter.unassignment_reason = unassignment_reason
-                    transporter.pmr_price = None
-                    transporter.pmr_comment = None
                     if transporter.history:
                         task = (assignment_events["unassign"],0, str(current_time), unassignment_reason)
                         fetched_history = ast.literal_eval(transporter.history)
@@ -985,19 +1005,14 @@ class Transporter:
             history = []
 
             for (event, resources, created_at, reason) in assignment_history:
-                
-                filtered_resources = ""
+
                 if event in (assignment_events["unassign"] ,assignment_events["assign"]):
-                    filtered_resources = str(resources)+" vehicle(s)"
-                else:
-                    filtered_resources = "₹ "+str(resources) if resources else None
-                
-                history.append({
-                    "event": event,
-                    "resources": filtered_resources,
-                    "created_at": created_at,
-                    "reason": reason
-                })
+                    history.append({
+                        "event": event,
+                        "resources": str(resources)+" vehicle(s)",
+                        "created_at": created_at,
+                        "reason": reason
+                    })
 
             return (history, "")
 
@@ -1015,6 +1030,7 @@ class Transporter:
         try:
 
             event = []
+            approval_status = ""
 
             ist_timezone = pytz.timezone("Asia/Kolkata")
             current_time = datetime.now(ist_timezone)
@@ -1035,19 +1051,24 @@ class Transporter:
 
                 transporter_detail.is_negotiated_by_aculead = False
                 transporter_detail.is_pmr_approved = True
+                approval_status = "approved"
 
             else:
                 if req.rate:
                     event.append(assignment_events["pm-negotiated"])
                     transporter_detail.pmr_price = req.rate
+                    approval_status = "negotiated"
                 else:
                     event.append(assignment_events["pm-rejected"])
-                    
-                    (last_bid_rate, error) = await self.lowest_price(bid_id= bid_id, transporter_id= transporter_id)
-                    if error :
-                        log("ERROR WHILE FETCHING LOWEST BID IN BID APPROVAL ", error)
-                    
-                    transporter_detail.pmr_price = None if not last_bid_rate else last_bid_rate
+                    approval_status = "rejected"
+
+                    event_detail = ''
+                    if transporter_detail.history:
+                        event_details = ast.literal_eval(transporter_detail.history)[::-1]
+                        event_detail = next ((event_detail for event_detail in event_details if event_detail[0] == assignment_events["pm-negotiated"]), None)
+
+                    transporter_detail.pmr_price = event_detail[1] if event_detail else None
+
                 event.append(req.rate)
                 event.append(str(current_time))
                 event.append(req.comment)
@@ -1065,7 +1086,7 @@ class Transporter:
                 transporter_detail.history = str([(tuple(event))])
 
             session.commit()
-            return ([],"")
+            return (approval_status,"")
 
         except Exception as err:
             session.rollback()

@@ -715,6 +715,8 @@ class Bid:
 
         try:
 
+            statuses = ['pending', 'partially_confirmed'] if status == 'pending' else [status]
+
             bids_query = (session
                           .query(BiddingLoad,
                                  ShipperModel.shpr_id,
@@ -752,7 +754,7 @@ class Bid:
 
             if status:
                 bids_query = bids_query.filter(
-                    BiddingLoad.load_status == status)
+                    BiddingLoad.load_status.in_(statuses))
 
             bids = bids_query.group_by(BiddingLoad, *BiddingLoad.__table__.c,
                                        ShipperModel.name, ShipperModel.contact_no, ShipperModel.shpr_id ).all()
@@ -772,6 +774,8 @@ class Bid:
         session = Session()
 
         try:
+
+            statuses = ['pending', 'partially_confirmed'] if status == 'pending' else [status]
 
             (transporter_allowed_segments, error) = await self.segments(shippers= shippers, transporter_id= transporter_id)
             
@@ -815,7 +819,7 @@ class Bid:
 
             if status:
                 bids_query = bids_query.filter(
-                    BiddingLoad.load_status == status)
+                    BiddingLoad.load_status.in_(statuses))
 
             bids = bids_query.group_by(BiddingLoad, *BiddingLoad.__table__.c,
                                        ShipperModel.name, ShipperModel.contact_no, ShipperModel.shpr_id ).all()

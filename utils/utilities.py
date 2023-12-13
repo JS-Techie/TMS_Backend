@@ -56,6 +56,7 @@ def structurize(input_array):
                 "src_cities": item["src_city"],
                 "dest_cities": item["dest_city"],
                 "no_of_bids_placed":item["total_no_of_bids"],
+                "transporters_participated": item["participants"],
                 "completion_reason":item["completion_reason"],
                 "transporters": []  # Rename bid_items to transporters
             }

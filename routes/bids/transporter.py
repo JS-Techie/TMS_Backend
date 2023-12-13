@@ -27,7 +27,7 @@ shp, trns, acu = os.getenv("SHIPPER"), os.getenv(
 
 
 @transporter_bidding_router.get("/status/{status}")
-async def fetch_bids_for_transporter_by_status(request: Request, status: str | None = None):
+async def fetch_bids_for_transporter_by_status(request: Request, participated: bool | None=True, status: str | None = None):
 
     bid = Bid()
     transporter_id = request.state.current_user["transporter_id"]
@@ -77,6 +77,7 @@ async def fetch_bids_for_transporter_by_status(request: Request, status: str | N
                     bids["private"] = filtered_private_bids
                     bids["public"] = filtered_public_bids
 
+
             if status == "active":
                 (bids_participated, error) = await transporter.participated_bids(transporter_id=transporter_id)
 
@@ -95,6 +96,44 @@ async def fetch_bids_for_transporter_by_status(request: Request, status: str | N
                     bids["private"] = filtered_private_bids
                     bids["public"] = filtered_public_bids
                     log("BIDS PUBLIC :", bids["public"])
+
+
+            if status == "live":
+                (bids_participated, error) = await transporter.participated_bids(transporter_id=transporter_id)
+
+                if participated:
+
+                    filtered_private_bids = [
+                        private_record for private_record in bids["private"]
+                        if any(participated_bid["bid_id"] == private_record["bid_id"] and participated_bid["load_status"] == "live" for participated_bid in bids_participated)
+                    ]
+
+                    filtered_public_bids = [
+                        public_record for public_record in bids["public"]
+                        if any(participated_bid["bid_id"] == public_record["bid_id"] and participated_bid["load_status"] == "live" for participated_bid in bids_participated)
+                    ]
+
+                    bids["private"] = filtered_private_bids
+                    bids["public"] = filtered_public_bids
+
+                else:
+
+                    if bids_participated:
+
+                        filtered_private_bids = [
+                            private_record for private_record in bids["private"]
+                            if not any(participated_bid["bid_id"] == private_record["bid_id"] and participated_bid["load_status"] == "live" for participated_bid in bids_participated)
+                        ]
+
+                        filtered_public_bids = [
+                            public_record for public_record in bids["public"]
+                            if not any(participated_bid["bid_id"] == public_record["bid_id"] and participated_bid["load_status"] == "live" for participated_bid in bids_participated)
+                        ]
+
+                        bids["private"] = filtered_private_bids
+                        bids["public"] = filtered_public_bids
+                        log("BIDS PUBLIC :", bids["public"])
+
 
             if status == "pending":
                 (bids_participated, error) = await transporter.participated_bids(transporter_id=transporter_id)
@@ -430,8 +469,16 @@ async def bid_match_for_transporter(request: Request, bid_id: str, req: Transpor
 
         if error :
             return ErrorResponse(data=[], client_msg="Something Went Wrong. Pls Try Again after Sometime", dev_msg=error)
+        
+        client_msg = ""
+        if bid_match_result == "approved":
+            client_msg = "Price Approved Successfully"
+        elif bid_match_result == "negotiated":
+            client_msg = "Price Match Rejected and Updated with a new rate Successfully"
+        else:
+            client_msg = "Price Match Rejection Successful"
 
-        return SuccessResponse(data= [], client_msg="Price Match Approval Complete", dev_msg="price match approval updated")
+        return SuccessResponse(data= [], client_msg=client_msg, dev_msg="price match approval updated")
 
     except Exception as err:
         return ServerError(err=err, errMsg=str(err))
