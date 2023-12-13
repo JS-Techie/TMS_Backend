@@ -18,7 +18,7 @@ assignment_events = {
                     "pm-request": "Price Match Requested",
                     "pm-approved": "Price Match Approved",
                     "pm-rejected": "Price Match Rejected",
-                    "pm-negotiated": "Price Match Agreed On",
+                    "pm-negotiated": "Final Price Through Bid Match",
                     "superuser-negotiation": "Negotiated by Aculead"
                     }
 
