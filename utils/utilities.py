@@ -21,7 +21,8 @@ def structurize(input_array):
 
     load_type_dict = {
         "private_pool": "Private Pool",
-        "open_market": "Open Market"
+        "open_market": "Open Market",
+        "indent": "Indent"
     }
     
     for item in input_array:

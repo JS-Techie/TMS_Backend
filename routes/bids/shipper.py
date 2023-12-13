@@ -132,7 +132,7 @@ async def publish_new_bid(request: Request, bid_id: str, bg_tasks: BackgroundTas
         if current_time > bid_details.bid_time:
             return ErrorResponse(data=[], client_msg=f"Bid Time was {bid_details.bid_time.replace(second =0, microsecond =0)}. Bid could not be published Anymore.", dev_msg="Already Crossed Bid Time. Bid Couldnot be published.")
 
-        (update_successful, error) = await bid.update_status(bid_id=bid_id, status="not_started", user_id=user_id)
+        (update_successful, error) = await bid.update_status(bid_id=bid_id, status="not_started" if bid_details.bid_mode != "indent" else "confirmed", user_id=user_id)
 
         if not update_successful:
             return ErrorResponse(data=bid_id, client_msg=os.getenv("BID_PUBLISH_ERROR"), dev_msg=error)
