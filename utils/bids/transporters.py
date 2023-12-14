@@ -1032,7 +1032,7 @@ class Transporter:
         finally:
             session.close()
 
-    async def bid_match_approval(self, transporter_id: str, bid_id: str, req: any) -> (any, str):
+    async def bid_match_approval(self, transporter_id: str, bid_id: str, req: any, user_id: str) -> (any, str):
 
         session = Session()
 
@@ -1085,6 +1085,8 @@ class Transporter:
                 transporter_detail.is_negotiated_by_aculead = False
                 transporter_detail.is_pmr_approved = None
                 transporter_detail.pmr_comment = req.comment
+                transporter_detail.updated_at = current_time
+                transporter_detail.updated_by = user_id
 
             if transporter_detail.history:
                 fetched_history = ast.literal_eval(transporter_detail.history)
