@@ -213,6 +213,7 @@ class Bid:
                     price_difference_percent = 0.0,
                     no_of_fleets_assigned = bid_to_be_updated.no_of_fleets,
                     is_assigned = True,
+                    created_by = user_id
                 )
 
                 session.add(assigning_load)

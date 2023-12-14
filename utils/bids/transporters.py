@@ -114,9 +114,6 @@ class Transporter:
 
         try:
 
-            price_match_rate = None
-            price_match_comment = None
-
             historical_rates = (session
                                 .query(BidTransaction)
                                 .filter(BidTransaction.transporter_id == transporter_id, BidTransaction.bid_id == bid_id)
@@ -152,10 +149,19 @@ class Transporter:
             if history:
                 historical_rates = history + historical_rates
 
+            pm_price = None
+            pm_comment = None
+
+            if price_match_rates:
+                if price_match_rates.is_pmr_approved != False:
+                    pm_price = price_match_rates.pmr_price
+                    pm_comment = price_match_rates.pmr_comment
+                    
+
             return ({
                 "historical": historical_rates,
-                "pmr_price": price_match_rates.pmr_price if price_match_rates else None,
-                "pmr_comment": price_match_rates.pmr_comment if price_match_rates else None,
+                "pmr_price": pm_price,
+                "pmr_comment": pm_comment,
                 "pmr_date": price_match_rates.updated_at if price_match_rates else None,
                 "no_of_fleets_assigned": price_match_rates.no_of_fleets_assigned if price_match_rates else None,
             }, "")
