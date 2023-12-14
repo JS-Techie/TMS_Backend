@@ -204,6 +204,19 @@ class Bid:
             if reason:
                 setattr(bid_to_be_updated, "bl_cancellation_reason", reason)
 
+            if bid_to_be_updated.bid_mode == "indent":
+                assigning_load = LoadAssigned(
+                    la_bidding_load_id = bid_to_be_updated.bl_id,
+                    la_transporter_id = bid_to_be_updated.indent_transporter_id,
+                    trans_pos_in_bid = 0,
+                    price = bid_to_be_updated.indent_amount,
+                    price_difference_percent = 0.0,
+                    no_of_fleets_assigned = bid_to_be_updated.no_of_fleets,
+                    is_assigned = True,
+                )
+
+                session.add(assigning_load)
+
             session.commit()
 
             return (True, "")

@@ -114,6 +114,9 @@ class Transporter:
 
         try:
 
+            price_match_rate = None
+            price_match_comment = None
+
             historical_rates = (session
                                 .query(BidTransaction)
                                 .filter(BidTransaction.transporter_id == transporter_id, BidTransaction.bid_id == bid_id)
