@@ -510,15 +510,24 @@ async def fetch_lost_bids_for_transporter_based_on_participation(request: Reques
         if not bids:
             return SuccessResponse(data=[], dev_msg="Not lost any bid", client_msg="No lost bids to show right now!")
 
+        ist_timezone = pytz.timezone("Asia/Kolkata")
+        current_time = datetime.now(ist_timezone)
+        current_time = current_time.replace(tzinfo=None, second=0, microsecond=0)
+
         updated_bids = []
         for bid in bids:
 
-            lowest_price_response = await lowest_price_of_bid_and_transporter(request=request, bid_id=bid["bid_id"])
+            lowest_price_response = await lowest_price_of_bid_and_transporter(request=request, bid_id=bid["bid_id"], show_bid_lowest_price=True)
             if lowest_price_response["data"] == []:
                 return lowest_price_response
 
             lowest_price_data = lowest_price_response["data"]
-            updated_bids.append({**bid, **lowest_price_data})
+            bid_data_with_lowest_price = {**bid, **lowest_price_data}
+
+            if current_time.day - bid_data_with_lowest_price["bid_end_time"].day < 7:
+                bid_data_with_lowest_price["bid_lowest_price"] = None
+            updated_bids.append(bid_data_with_lowest_price)
+            
 
         sorted_bids = sorted(updated_bids, key=lambda x: x['bid_time'], reverse=True)
 
@@ -529,7 +538,7 @@ async def fetch_lost_bids_for_transporter_based_on_participation(request: Reques
 
 
 @transporter_bidding_router.get("/lowest/{bid_id}")
-async def lowest_price_of_bid_and_transporter(request: Request, bid_id: str):
+async def lowest_price_of_bid_and_transporter(request: Request, bid_id: str, show_bid_lowest_price: bool | None = False):
 
     transporter_id = str(request.state.current_user["transporter_id"])
     log("TRANSPORTER DATA TYPE :", type(transporter_id))
@@ -552,7 +561,10 @@ async def lowest_price_of_bid_and_transporter(request: Request, bid_id: str):
 
         (bid_lowest_price, error) = (None, None)
 
-        if bid_details.show_current_lowest_rate_transporter:
+        if not show_bid_lowest_price:
+            if bid_details.show_current_lowest_rate_transporter:
+                (bid_lowest_price, error) = await bid.lowest_price(bid_id=bid_id)
+        else:
             (bid_lowest_price, error) = await bid.lowest_price(bid_id=bid_id)
 
         if error:
