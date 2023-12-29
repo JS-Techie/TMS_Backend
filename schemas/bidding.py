@@ -20,6 +20,7 @@ class HistoricalRatesReq(BaseModel):
 class TransporterBidReq(BaseModel):
     rate: float
     comment: str
+    is_tc_accepted: bool
 
 
 class TransporterAssignReq(BaseModel):

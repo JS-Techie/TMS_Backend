@@ -250,7 +250,7 @@ class Bid:
         finally:
             session.close()
 
-    async def new(self, bid_id: str, transporter_id: str, rate: float, comment: str, user_id: str) -> (any, str):
+    async def new(self, bid_id: str, transporter_id: str, rate: float, comment: str, is_tc_accepted: bool, user_id: str) -> (any, str):
 
         session = Session()
 
@@ -279,7 +279,7 @@ class Bid:
                 rate=rate,
                 comment=last_comment,
                 attempt_number=attempt_number,
-
+                is_tc_accepted=is_tc_accepted,
                 created_by=user_id
             )
 

@@ -446,7 +446,7 @@ async def provide_new_rate_for_bid(request: Request, bid_id: str, bid_req: Trans
         log("VALID RATE", bid_id)
 
         (new_bid_transaction, error) = await bid.new(
-            bid_id, transporter_id, bid_req.rate, bid_req.comment, user_id=user_id)
+            bid_id, transporter_id, bid_req.rate, bid_req.comment, bid_req.is_tc_accepted, user_id=user_id)
 
         log("NEW BID INSERTED", new_bid_transaction)
 
