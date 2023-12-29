@@ -845,8 +845,7 @@ class Transporter:
                                         BidTransaction.is_tc_accepted == True,
                                         BidTransaction.is_active == True,
                                         BidTransaction.bid_id == BiddingLoad.bl_id,
-                                        BiddingLoad.is_active == True,
-                                        BiddingLoad.load_status == "not_started")
+                                        BiddingLoad.is_active == True)
                                 .all()
                                 )
             
