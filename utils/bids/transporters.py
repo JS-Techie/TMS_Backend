@@ -116,7 +116,7 @@ class Transporter:
 
             historical_rates = (session
                                 .query(BidTransaction)
-                                .filter(BidTransaction.transporter_id == transporter_id, BidTransaction.bid_id == bid_id)
+                                .filter(BidTransaction.transporter_id == transporter_id, BidTransaction.bid_id == bid_id, BidTransaction.rate > 0)
                                 .order_by(BidTransaction.created_at.desc())
                                 .all()
                                 )
@@ -195,7 +195,7 @@ class Transporter:
 
         try:
             no_of_tries = session.query(BidTransaction).filter(
-                BidTransaction.transporter_id == transporter_id, BidTransaction.bid_id == bid_id).count()
+                BidTransaction.transporter_id == transporter_id, BidTransaction.bid_id == bid_id, BidTransaction.rate > 0).count()
 
             log("NUMBER OF TRIES", no_of_tries)
 
@@ -215,7 +215,7 @@ class Transporter:
 
             transporter_bid = (session
                                .query(BidTransaction)
-                               .filter(BidTransaction.transporter_id == transporter_id, BidTransaction.bid_id == bid_id)
+                               .filter(BidTransaction.transporter_id == transporter_id, BidTransaction.bid_id == bid_id, BidTransaction.rate > 0)
                                .order_by(BidTransaction.rate)
                                .first()
                                )
@@ -618,7 +618,7 @@ class Transporter:
             bid_arr = (session
                        .query(BidTransaction)
                        .distinct(BidTransaction.bid_id)
-                       .filter(BidTransaction.transporter_id == transporter_id)
+                       .filter(BidTransaction.transporter_id == transporter_id, BidTransaction.rate > 0)
                        .all()
                        )
 
@@ -844,6 +844,7 @@ class Transporter:
                                 .filter(BidTransaction.transporter_id == transporter_id,
                                         BidTransaction.is_tc_accepted == True,
                                         BidTransaction.is_active == True,
+                                        BidTransaction.rate < 0,
                                         BidTransaction.bid_id == BiddingLoad.bl_id,
                                         BiddingLoad.is_active == True)
                                 .all()

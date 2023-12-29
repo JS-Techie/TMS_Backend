@@ -259,14 +259,14 @@ class Bid:
             attempt_number = 1
             last_comment = comment
             attempted = session.query(BidTransaction).filter(
-                BidTransaction.transporter_id == transporter_id, BidTransaction.bid_id == bid_id).count()
+                BidTransaction.transporter_id == transporter_id, BidTransaction.bid_id == bid_id, BidTransaction.rate > 0).count()
 
             if attempted:
                 attempt_number = attempted + 1
 
             if not comment:
                 last_commented_bid = session.query(BidTransaction).filter(
-                    BidTransaction.transporter_id == transporter_id, BidTransaction.bid_id == bid_id, BidTransaction.comment != None, BidTransaction.comment != ""
+                    BidTransaction.transporter_id == transporter_id, BidTransaction.bid_id == bid_id, BidTransaction.comment != None, BidTransaction.comment != "", BidTransaction.rate > 0
                 ).order_by(BidTransaction.created_at.desc()).first()
                 
                 if last_commented_bid:
@@ -349,7 +349,7 @@ class Bid:
 
         try:
             bid = session.query(BidTransaction).filter(
-                BidTransaction.transporter_id == transporter_id, BidTransaction.bid_id == bid_id).order_by(BidTransaction.rate).first()
+                BidTransaction.transporter_id == transporter_id, BidTransaction.bid_id == bid_id, BidTransaction.rate > 0).order_by(BidTransaction.rate).first()
 
             if not bid:
                 return ({"valid": True}, "")
@@ -383,7 +383,7 @@ class Bid:
 
         try:
             bid = session.query(BidTransaction).filter(
-                BidTransaction.bid_id == bid_id).order_by(BidTransaction.rate.asc()).first()
+                BidTransaction.bid_id == bid_id, BidTransaction.rate > 0).order_by(BidTransaction.rate.asc()).first()
 
             if not bid:
                 return (float("inf"), "")
@@ -415,7 +415,7 @@ class Bid:
                               )
                 .join(TransporterModel, TransporterModel.trnsp_id == BidTransaction.transporter_id)
                 .outerjoin(LoadAssigned, LoadAssigned.la_bidding_load_id == BidTransaction.bid_id)
-                .filter(BidTransaction.bid_id == bid_id)
+                .filter(BidTransaction.bid_id == bid_id, BidTransaction.rate > 0)
             )
 
             if transporter_id:
@@ -898,7 +898,7 @@ class Bid:
 
             bids = (session
                     .query(BidTransaction)
-                    .filter(BidTransaction.bid_id == bid_id, BidTransaction.is_active == True)
+                    .filter(BidTransaction.bid_id == bid_id, BidTransaction.is_active == True, BidTransaction.rate > 0)
                     .all()
                     )
 
