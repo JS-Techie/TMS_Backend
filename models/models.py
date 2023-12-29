@@ -632,6 +632,7 @@ class BidTransaction(Base,Persistance):
     rate = Column(Double,nullable=False)
     comment = Column(String,nullable=True)
     attempt_number = Column(Integer,nullable=False)
+    is_tc_accepted = Column(Boolean, default=False)
 
 
 class MapLoadSrcDestPair(Base, Persistance):

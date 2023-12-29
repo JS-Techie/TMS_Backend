@@ -833,6 +833,38 @@ class Transporter:
         finally:
             session.close()
 
+    async def participated_bids_shipper(self, transporter_id: str) -> (any, str):
+
+        session = Session()
+        
+        try:
+            
+            bids_participated = (session
+                                .query(BidTransaction, BiddingLoad.bl_shipper_id)
+                                .filter(BidTransaction.transporter_id == transporter_id,
+                                        BidTransaction.is_tc_accepted == True,
+                                        BidTransaction.is_active == True,
+                                        BidTransaction.bid_id == BiddingLoad.bl_id,
+                                        BiddingLoad.is_active == True,
+                                        BiddingLoad.load_status == "not_started")
+                                .all()
+                                )
+            
+            shippers_participated_in = []
+            
+            if bids_participated:
+                shippers_participated_in = [shipper_id for _, shipper_id in bids_participated]
+                
+            return (list(set(shippers_participated_in)), "")
+            
+            
+        except Exception as e:
+            session.rollback()
+            return ({}, str(e))
+        finally:
+            session.close()
+            
+
     async def bid_details(self, bid_id: str, transporter_id: str | None = None) -> (any, str):
 
         session = Session()
