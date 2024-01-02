@@ -1,5 +1,6 @@
 import os, math, copy
 import datetime
+from collections import Counter
 from schemas.bidding import FilterBidsRequest, FilterBidsRequest
 from models.models import BiddingLoad
 
@@ -63,9 +64,17 @@ def structurize(input_array):
             }
             if item["src_cities"]:
                 log("SRC CITIES", item["src_cities"])
-                result_dict[bl_id]["src_cities"]= ','.join(set(city for city in item["src_cities"] if city is not None))
+                # result_dict[bl_id]["src_cities"]= ','.join(set(city for city in item["src_cities"] if city is not None))
+                result_dict[bl_id]["src_cities"]= [city for city in item["src_cities"] if city is not None]
+                src_city_list=copy.deepcopy(result_dict[bl_id]["src_cities"])
+                counter = Counter(src_city_list)
+                result_dict[bl_id]["src_cities"]= ', '.join(f"{key}({count})" if count > 1 else key for key, count in counter.items())
             if item["dest_cities"]:
-                result_dict[bl_id]["dest_cities"]= ','.join(set(city for city in item["dest_cities"] if city is not None))
+                # result_dict[bl_id]["dest_cities"]= ','.join(set(city for city in item["dest_cities"] if city is not None))
+                result_dict[bl_id]["dest_cities"]= [city for city in item["dest_cities"] if city is not None]
+                dest_city_list=copy.deepcopy(result_dict[bl_id]["dest_cities"])
+                counter = Counter(dest_city_list)
+                result_dict[bl_id]["dest_cities"]= ', '.join(f"{key}({count})" if count > 1 else key for key, count in counter.items())
             
 
         bid_item = {
