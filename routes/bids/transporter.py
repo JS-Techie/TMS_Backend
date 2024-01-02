@@ -150,7 +150,26 @@ async def fetch_bids_for_transporter_by_status(request: Request, participated: b
 
                         bids["private"] = filtered_private_bids
                         bids["public"] = filtered_public_bids
+                        
+                        (participated_shipper_of_private_bids, error) = await transporter.participated_bids_shipper(transporter_id= transporter_id)
+                        if error :
+                            return ErrorResponse(data=[], dev_msg=error)
+                        
+                        (participated_shipper_of_public_bids, error) = await transporter.participated_bids_shipper(transporter_id= transporter_id)
+                        if error :
+                            return ErrorResponse(data=[], dev_msg=error)
+
+                        private_bids_with_participated_shipper = [{**private_bid, "participated_for_shipper": 1} if private_bid["shipper_id"] in participated_shipper_of_private_bids 
+                                                                    else {**private_bid, "participated_for_shipper": 0} for private_bid in bids["private"]]
+
+                        public_bids_with_participated_shipper = [{**public_bid, "participated_for_shipper": 1} if public_bid["shipper_id"] in participated_shipper_of_public_bids 
+                                                                    else {**public_bid, "participated_for_shipper": 0} for public_bid in bids["public"]]
+
+                        bids["private"] = private_bids_with_participated_shipper
+                        bids["public"] = public_bids_with_participated_shipper
+                        
                         log("BIDS PUBLIC :", bids["public"])
+                        
 
 
             if status == "pending":
