@@ -1137,3 +1137,28 @@ class Transporter:
 
         finally:
             session.close()
+
+    async def tc_approval(self, transporter_id: str, bid_id: str, user_id: str) -> (any, str):
+        session = Session()
+
+        try:
+
+            approval_data = BidTransaction(
+                                        bid_id= bid_id,
+                                        transporter_id= transporter_id,
+                                        rate= -1,
+                                        attempt_number= 0,
+                                        is_tc_accepted= True,
+                                        created_by= user_id
+                                        )
+            
+            session.add(approval_data)
+            session.commit()
+            return (True,"")
+
+        except Exception as err:
+            session.rollback()
+            return (False, str(err))
+
+        finally:
+            session.close()

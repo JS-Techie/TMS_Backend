@@ -664,3 +664,21 @@ async def fetch_details_needed_for_providing_rates(request: Request, bid_id: str
     except Exception as err:
         return ServerError(err=err, errMsg=str(err))
 
+@transporter_bidding_router.get("/approval/tc/{bid_id}")
+async def terms_and_conditions_approval_before_bidding(request: Request, bid_id: str):
+
+    transporter_id = str(request.state.current_user["transporter_id"])
+    user_id = str(request.state.current_user["id"])
+
+    try:
+
+        (tc_approval_success, error) = await transporter.tc_approval(bid_id= bid_id, transporter_id= transporter_id, user_id= user_id)
+        
+        if not tc_approval_success:
+            return ErrorResponse(data=[], dev_msg=error)
+        
+        return SuccessResponse(data=[], client_msg='Terms & Conditions Acceptance Successful', dev_msg='T&C accepted')
+
+        
+    except Exception as err:
+        return ServerError(err=err, errMsg=str(err))
