@@ -1137,7 +1137,7 @@ class Bid:
                                                 (session
                                                 .query(BlacklistTransporter)
                                                 .filter(BlacklistTransporter.bt_shipper_id == shipper_id,
-                                                        BlacklistTransporter.bt_transporter_id == TransporterModel.trnsp_id,
+                                                        BlacklistTransporter.bt_transporter_id == MapShipperTransporter.mst_transporter_id,
                                                         BlacklistTransporter.is_active == True
                                                         )
                                                 .exists()
