@@ -5,7 +5,7 @@ import pytz
 from datetime import datetime, timedelta
 from string import Template
 
-from sqlalchemy import func, text, and_, select, or_, exists
+from sqlalchemy import func, text, and_, select, or_, exists, not_ 
 
 from config.db_config import Session
 from config.redis import r as redis
@@ -15,7 +15,8 @@ from data.bidding import (filter_wise_fetch_query, live_bid_details,
 from models.models import (BiddingLoad, BidSettings, BidTransaction,
                            LoadAssigned, MapLoadSrcDestPair, ShipperModel,
                            TransporterModel, Segment, MapTransporterSegment, 
-                           TrackingFleet, MapUser)
+                           TrackingFleet, MapUser, BlacklistTransporter, MapShipperTransporter, User
+                           )
 from schemas.bidding import FilterBidsRequest
 from utils.redis import Redis
 from utils.response import ErrorResponse
@@ -1090,6 +1091,80 @@ class Bid:
                 load_assignment_details.append(load_assignment_detail)
                 
             return (load_assignment_details, "")
+        except Exception as e:
+            session.rollback()
+            return ([], str(e))
+        finally:
+            session.close()
+
+    async def transporter_kams(self, bid_id: str, bid_mode: str, shipper_id: str, indent_transporter_id: str) -> (any,str):
+
+        session = Session()
+
+        try:
+
+            transporter_ids = []
+
+            if bid_mode == "public":
+
+                transporters = (session
+                                .query(TransporterModel)
+                                .filter(TransporterModel.is_active == True, 
+                                        TransporterModel.status!='blocked',
+                                        not_(
+                                                (session
+                                                .query(BlacklistTransporter)
+                                                .filter(BlacklistTransporter.bt_shipper_id == shipper_id,
+                                                        BlacklistTransporter.bt_transporter_id == TransporterModel.trnsp_id,
+                                                        BlacklistTransporter.is_active == True
+                                                        )
+                                                .exists()
+                                                )
+                                            )
+                                        )
+                                .all()
+                                )
+
+                transporter_ids = [transporter.trnsp_id for transporter in transporters]
+
+            elif bid_mode == "private":
+
+                transporters =(session
+                                .query(MapShipperTransporter)
+                                .filter(MapShipperTransporter.mst_shipper_id == shipper_id,
+                                        MapShipperTransporter.is_active == True,
+                                        not_(
+                                                (session
+                                                .query(BlacklistTransporter)
+                                                .filter(BlacklistTransporter.bt_shipper_id == shipper_id,
+                                                        BlacklistTransporter.bt_transporter_id == TransporterModel.trnsp_id,
+                                                        BlacklistTransporter.is_active == True
+                                                        )
+                                                .exists()
+                                                )
+                                            )
+                                        )
+                                .all()
+                                )
+
+                transporter_ids = [transporter.mst_transporter_id for transporter in transporters]
+
+            elif bid_mode == "indent":
+
+                transporter_ids = transporter_ids.append(indent_transporter_id)
+
+            kam_details = (session
+                            .query(User)
+                            .filter(User.user_transporter_id.in_(transporter_ids),
+                                    User.user_type == 'trns',
+                                    User.is_active == True
+                                    )
+                            .all()
+                        )
+            
+            kam_ids = [user.user_id for user in kam_details]
+
+            return (kam_ids, "")
         except Exception as e:
             session.rollback()
             return ([], str(e))

@@ -22,6 +22,7 @@ from utils.redis import Redis
 from utils.response import (ErrorResponse, ServerError,
                             SuccessNoContentResponse, SuccessResponse)
 from utils.utilities import log
+from utils.notification_service_manager import notification_service_manager, NotificationServiceManagerReq
 
 shipper_bidding_router: APIRouter = APIRouter(
     prefix="/shipper/bid", tags=["Shipper routes for bidding"])
@@ -112,6 +113,7 @@ async def get_bids_according_to_filter_criteria(request: Request, status: str, f
 async def publish_new_bid(request: Request, bid_id: str, bg_tasks: BackgroundTasks):
 
     user_id = request.state.current_user["id"]
+    authtoken = request.headers.get("authorization", "")
 
     try:
         ist_timezone = pytz.timezone("Asia/Kolkata")
@@ -140,6 +142,23 @@ async def publish_new_bid(request: Request, bid_id: str, bg_tasks: BackgroundTas
         # (success, error)= await transporter.notify(bid_id=bid_id, authtoken=request.headers.get("authorization", ""))
         # if not success:
         #     return ErrorResponse(data=[], dev_msg=error)
+        
+        (bid_related_kam, error) = await bid.transporter_kams(bid_id=bid_details.bl_id, bid_mode=bid_details.bid_mode, shipper_id=bid_details.bl_shipper_id, indent_transporter_id=bid_details.indent_transporter_id)
+        
+        if error:
+            return ErrorResponse(data=[], dev_msg=error)
+        
+        (notification_response_success, error) = await notification_service_manager(authtoken=authtoken, req=NotificationServiceManagerReq(**{
+                                                                                                                                                "receiver_ids": bid_related_kam,
+                                                                                                                                                "text":f"Bid L-{bid_id[-5:].upper()} has been published! HURRY & BID NOW !!!",
+                                                                                                                                                "type":"Bid Publish",
+                                                                                                                                                "deep_link":"transporter_dashboard_upcoming"
+                                                                                                                                            }
+                                                                                                                                            )
+                                                                                    )
+        
+        if error:
+            log("::: NOTIFICATION ERROR DURING BID PUBLISH ::: ",error)
 
         return SuccessResponse(data=bid_id, client_msg=f"Bid  L-{bid_id[-5:].upper()} is now published!", dev_msg="Bid status was updated successfully!")
 
