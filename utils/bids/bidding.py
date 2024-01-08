@@ -1105,7 +1105,7 @@ class Bid:
 
             transporter_ids = []
 
-            if bid_mode == "public":
+            if bid_mode == "open_market":
 
                 transporters = (session
                                 .query(TransporterModel)
@@ -1127,7 +1127,7 @@ class Bid:
 
                 transporter_ids = [transporter.trnsp_id for transporter in transporters]
 
-            elif bid_mode == "private":
+            elif bid_mode == "private_pool":
 
                 transporters =(session
                                 .query(MapShipperTransporter)
@@ -1162,7 +1162,7 @@ class Bid:
                             .all()
                         )
             
-            kam_ids = [user.user_id for user in kam_details]
+            kam_ids = [str(user.user_id) for user in kam_details]
 
             return (kam_ids, "")
         except Exception as e:

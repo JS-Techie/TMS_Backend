@@ -148,6 +148,8 @@ async def publish_new_bid(request: Request, bid_id: str, bg_tasks: BackgroundTas
         if error:
             return ErrorResponse(data=[], dev_msg=error)
         
+        log("::: BID RELATED KAM ::: ", bid_related_kam)
+        
         (notification_response_success, error) = await notification_service_manager(authtoken=authtoken, req=NotificationServiceManagerReq(**{
                                                                                                                                                 "receiver_ids": bid_related_kam,
                                                                                                                                                 "text":f"Bid L-{bid_id[-5:].upper()} has been published! HURRY & BID NOW !!!",
