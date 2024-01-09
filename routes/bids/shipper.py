@@ -143,7 +143,7 @@ async def publish_new_bid(request: Request, bid_id: str, bg_tasks: BackgroundTas
         # if not success:
         #     return ErrorResponse(data=[], dev_msg=error)
         
-        (bid_related_kam, error) = await bid.transporter_kams(bid_id=bid_details.bl_id, bid_mode=bid_details.bid_mode, shipper_id=bid_details.bl_shipper_id, indent_transporter_id=bid_details.indent_transporter_id)
+        (bid_related_kam, error) = await bid.transporter_kams(bid_id=bid_details.bl_id, bid_mode=bid_details.bid_mode, shipper_id=bid_details.bl_shipper_id, segment_id=bid_details.bl_segment_id ,indent_transporter_id=bid_details.indent_transporter_id)
         
         if error:
             return ErrorResponse(data=[], dev_msg=error)
