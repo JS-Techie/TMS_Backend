@@ -241,6 +241,27 @@ async def cancel_bid(request: Request, bid_id: str, r: CancelBidReq):
         if not update_successful:
             return ErrorResponse(data=[], client_msg=os.getenv("BID_CANCEL_ERROR"), dev_msg=error)
         log("BID STATUS IS NOW CANCELLED")
+        
+        (bid_related_kam, error) = await bid.transporter_kams(bid_id=bid_id, bid_mode=bid_details.bid_mode, shipper_id=bid_details.bl_shipper_id, segment_id=bid_details.bl_segment_id ,indent_transporter_id=bid_details.indent_transporter_id)
+        
+        if error:
+            return ErrorResponse(data=[], dev_msg=error)
+        
+        log("::: BID RELATED KAM ::: ", bid_related_kam)
+        
+        (notification_response_success, error) = await notification_service_manager(authtoken=request.headers.get("authorization", ""), req=NotificationServiceManagerReq(**{
+                                                                                                                                                "receiver_ids": bid_related_kam,
+                                                                                                                                                "text":f"Bid L-{bid_id[-5:].upper()} has been Cancelled. SORRY for the INCONVENIENCE",
+                                                                                                                                                "type":"Bid Cancellation",
+                                                                                                                                                "deep_link":"#"
+                                                                                                                                            }
+                                                                                                                                            )
+                                                                                    )
+        
+        if error:
+            log("::: NOTIFICATION ERROR DURING BID PUBLISH ::: ",error)
+
+        
         return SuccessNoContentResponse(dev_msg="Bid cancelled successfully", client_msg="Your Bid is Successfully Cancelled")
 
     except Exception as err:
@@ -403,6 +424,28 @@ async def bid_match_for_transporters(request: Request, bid_id: str, transporters
 
         # ## Send email as a background task
         # bg_tasks.add_task(fm.send_message,message)
+        
+        transporter_ids = [transporter.transporter_id for transporter in transporters]
+        
+        (bid_related_kam, error) = await bid.transporter_kams(transporter_ids=transporter_ids)
+        
+        if error:
+            return ErrorResponse(data=[], dev_msg=error)
+        
+        log("::: BID RELATED KAM ::: ", bid_related_kam)
+        
+        (notification_response_success, error) = await notification_service_manager(authtoken=request.headers.get("authorization", ""), req=NotificationServiceManagerReq(**{
+                                                                                                                                                "receiver_ids": bid_related_kam,
+                                                                                                                                                "text":f"Bid L-{bid_id[-5:].upper()} has asked for a Price Match" if user_type != "acu" else f"The Price for Bid L-{bid_id[-5:].upper()} has been Negotiated" ,
+                                                                                                                                                "type":"Bid match and Negotiation",
+                                                                                                                                                "deep_link":"transporter_dashboard_pending"
+                                                                                                                                            }
+                                                                                                                                            )
+                                                                                    )
+        
+        if error:
+            log("::: NOTIFICATION ERROR DURING BID PUBLISH ::: ",error)
+
 
         return SuccessResponse(data=assignment_details, client_msg="Successfully Requested Bid Match" if user_type != "acu" else "Successfully Bid Matched", dev_msg="Bid Match Request Successful")
 

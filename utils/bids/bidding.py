@@ -1097,81 +1097,84 @@ class Bid:
         finally:
             session.close()
 
-    async def transporter_kams(self, bid_id: str, bid_mode: str, shipper_id: str | None=None, segment_id: str | None=None, indent_transporter_id: str | None=None) -> (any,str):
+    async def transporter_kams(self, bid_id: str | None=None, bid_mode: str | None=None, shipper_id: str | None=None, segment_id: str | None=None, indent_transporter_id: str | None=None, transporter_ids: list | None=[]) -> (any,str):
 
         session = Session()
 
         try:
 
-            transporter_ids = []
 
-            if bid_mode == "open_market":
+            if bid_mode:
 
-                transporters = (session
-                                .query(TransporterModel)
-                                .filter(TransporterModel.is_active == True, 
-                                        TransporterModel.status!='blocked',
-                                        not_(
-                                                (session
-                                                .query(BlacklistTransporter)
-                                                .filter(BlacklistTransporter.bt_shipper_id == shipper_id,
-                                                        BlacklistTransporter.bt_transporter_id == TransporterModel.trnsp_id,
-                                                        BlacklistTransporter.is_active == True
+                transporter_ids = []
+
+                if bid_mode == "open_market":
+
+                    transporters = (session
+                                    .query(TransporterModel)
+                                    .filter(TransporterModel.is_active == True, 
+                                            TransporterModel.status!='blocked',
+                                            not_(
+                                                    (session
+                                                    .query(BlacklistTransporter)
+                                                    .filter(BlacklistTransporter.bt_shipper_id == shipper_id,
+                                                            BlacklistTransporter.bt_transporter_id == TransporterModel.trnsp_id,
+                                                            BlacklistTransporter.is_active == True
+                                                            )
+                                                    .exists()
+                                                    )
+                                                )
+                                            )
+                                    .all()
+                                    )
+
+                    transporter_ids = [transporter.trnsp_id for transporter in transporters]
+
+                elif bid_mode == "private_pool":
+
+                    if not segment_id:
+                        transporters =(session
+                                        .query(MapShipperTransporter)
+                                        .filter(MapShipperTransporter.mst_shipper_id == shipper_id,
+                                                MapShipperTransporter.is_active == True,
+                                                not_(
+                                                        (session
+                                                        .query(BlacklistTransporter)
+                                                        .filter(BlacklistTransporter.bt_shipper_id == shipper_id,
+                                                                BlacklistTransporter.bt_transporter_id == MapShipperTransporter.mst_transporter_id,
+                                                                BlacklistTransporter.is_active == True
+                                                                )
+                                                        .exists()
                                                         )
-                                                .exists()
+                                                    )
                                                 )
-                                            )
+                                        .all()
                                         )
-                                .all()
-                                )
+                        transporter_ids = [transporter.mst_transporter_id for transporter in transporters]
 
-                transporter_ids = [transporter.trnsp_id for transporter in transporters]
-
-            elif bid_mode == "private_pool":
-
-                if not segment_id:
-                    transporters =(session
-                                    .query(MapShipperTransporter)
-                                    .filter(MapShipperTransporter.mst_shipper_id == shipper_id,
-                                            MapShipperTransporter.is_active == True,
-                                            not_(
-                                                    (session
-                                                    .query(BlacklistTransporter)
-                                                    .filter(BlacklistTransporter.bt_shipper_id == shipper_id,
-                                                            BlacklistTransporter.bt_transporter_id == MapShipperTransporter.mst_transporter_id,
-                                                            BlacklistTransporter.is_active == True
-                                                            )
-                                                    .exists()
+                    if segment_id:
+                        transporters =(session
+                                        .query(MapTransporterSegment)
+                                        .filter(MapTransporterSegment.mts_segment_id == segment_id,
+                                                MapTransporterSegment.is_active == True,
+                                                not_(
+                                                        (session
+                                                        .query(BlacklistTransporter)
+                                                        .filter(BlacklistTransporter.bt_shipper_id == shipper_id,
+                                                                BlacklistTransporter.bt_transporter_id == MapTransporterSegment.mts_transporter_id,
+                                                                BlacklistTransporter.is_active == True
+                                                                )
+                                                        .exists()
+                                                        )
                                                     )
                                                 )
-                                            )
-                                    .all()
-                                    )
-                    transporter_ids = [transporter.mst_transporter_id for transporter in transporters]
+                                        .all()
+                                        )
+                        transporter_ids = [transporter.mts_transporter_id for transporter in transporters]
 
-                if segment_id:
-                    transporters =(session
-                                    .query(MapTransporterSegment)
-                                    .filter(MapTransporterSegment.mts_segment_id == segment_id,
-                                            MapTransporterSegment.is_active == True,
-                                            not_(
-                                                    (session
-                                                    .query(BlacklistTransporter)
-                                                    .filter(BlacklistTransporter.bt_shipper_id == shipper_id,
-                                                            BlacklistTransporter.bt_transporter_id == MapTransporterSegment.mts_transporter_id,
-                                                            BlacklistTransporter.is_active == True
-                                                            )
-                                                    .exists()
-                                                    )
-                                                )
-                                            )
-                                    .all()
-                                    )
-                    transporter_ids = [transporter.mts_transporter_id for transporter in transporters]
+                elif bid_mode == "indent":
 
-            elif bid_mode == "indent":
-
-                transporter_ids = transporter_ids.append(indent_transporter_id)
+                    transporter_ids = transporter_ids.append(indent_transporter_id)
 
             kam_details = (session
                             .query(User)
