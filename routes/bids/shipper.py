@@ -253,7 +253,7 @@ async def cancel_bid(request: Request, bid_id: str, r: CancelBidReq):
                                                                                                                                                 "receiver_ids": bid_related_kam,
                                                                                                                                                 "text":f"Bid L-{bid_id[-5:].upper()} has been Cancelled. SORRY for the INCONVENIENCE",
                                                                                                                                                 "type":"Bid Cancellation",
-                                                                                                                                                "deep_link":"#"
+                                                                                                                                                "deep_link":"transporter_dashboard_upcoming"
                                                                                                                                             }
                                                                                                                                             )
                                                                                     )
