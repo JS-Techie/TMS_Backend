@@ -25,6 +25,7 @@ from utils.utilities import (add_filter, convert_date_to_string, log,
                              structurize_bidding_stats,
                              structurize_confirmed_cancelled_trip_trend_stats,
                              structurize_transporter_bids)
+from utils.notification_service_manager import notification_service_manager, NotificationServiceManagerReq
 
 sched = Scheduler()
 redis = Redis()
@@ -450,7 +451,7 @@ class Bid:
         finally:
             session.close()
 
-    async def assign(self, bid_id: str, transporters: list, split: bool, status: str, user_id: str) -> (list, str):
+    async def assign(self, bid_id: str, transporters: list, split: bool, status: str, user_id: str, authtoken: any) -> (list, str):
 
         session = Session()
 
@@ -459,6 +460,7 @@ class Bid:
             transporter_ids = []
             fetched_transporter_ids = []
             assigned_transporters = []
+            transporters_with_updated_assignment = []
 
             for transporter in transporters:
                 transporter_ids.append(
@@ -510,6 +512,8 @@ class Bid:
                     for transporter in transporters:
                         if getattr(transporter, "la_transporter_id") == getattr(transporter_detail, "la_transporter_id"):
 
+                            transporters_with_updated_assignment.append(transporter_detail.la_transporter_id)
+
                             setattr(transporter_detail, "la_transporter_id", getattr(
                                 transporter, "la_transporter_id"))
                             setattr(transporter_detail, "trans_pos_in_bid",
@@ -547,10 +551,44 @@ class Bid:
             setattr(bid_details, "load_status", status)
             setattr(bid_details, "updated_at", "NOW()")
 
-            session.bulk_save_objects(assigned_transporters)
+            session.add_all(assigned_transporters)
             session.commit()
 
             if assigned_transporters:
+                
+                assigned_transporters_ids = [assignment.la_transporter_id for assignment in assigned_transporters]
+                (kam_ids, error) = await self.transporter_kams(transporter_ids=assigned_transporters_ids)
+                if error:
+                    return ([],error)
+                
+                (notification_response_success, notification_error) = await notification_service_manager(authtoken=authtoken, req=NotificationServiceManagerReq(**{
+                                                                                                                                                "receiver_ids": kam_ids,
+                                                                                                                                                "text":f"Bid L-{bid_id[-5:].upper()} has been assigned to you! CONGRATS ...  NOW GO READY YOUR HORSES UP !!!",
+                                                                                                                                                "type":"Bid Assignment",
+                                                                                                                                                "deep_link":"transporter_dashboard_pending" if status != "confirmed" else "transporter_dashboard_selected"
+                                                                                                                                            }
+                                                                                                                                            )
+                                                                                            )
+                log("ASSIGNMENT CREATION NOTIFICATION SERVICE ", notification_response_success)
+                if notification_error:
+                    log("::: NOTIFICATION ERROR DURING NEW BID ASSIGNMENT  ::: ",notification_error)
+                    
+                (kam_ids_for_updated_assignments, error) = await self.transporter_kams(transporter_ids=transporters_with_updated_assignment)
+                if error:
+                    return ([],error)
+                
+                (notification_response_success, notification_error) = await notification_service_manager(authtoken=authtoken, req=NotificationServiceManagerReq(**{
+                                                                                                                                                "receiver_ids": kam_ids_for_updated_assignments,
+                                                                                                                                                "text":f"Assignment Details for Bid L-{bid_id[-5:].upper()} has been changed! GO CHECK IT OUT AND REMAIN UPDATED FOR THE TRIP !!!",
+                                                                                                                                                "type":"Bid Assignment",
+                                                                                                                                                "deep_link":"transporter_dashboard_pending" if status != "confirmed" else "transporter_dashboard_selected"
+                                                                                                                                            }
+                                                                                                                                            )
+                                                                                            )
+                log("ASSIGNMENT UPDATION NOTIFICATION SERVICE ", notification_response_success)
+                if notification_error:
+                    log("::: NOTIFICATION ERROR DURING UPDATING BID ASSIGNMENT ::: ",notification_error)
+                
                 return (assigned_transporters, "")
             else:
                 return ([], "")

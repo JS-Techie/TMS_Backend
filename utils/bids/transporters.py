@@ -14,6 +14,7 @@ from utils.response import ServerError, SuccessResponse
 from models.models import BidTransaction, TransporterModel, MapShipperTransporter, LoadAssigned, BiddingLoad, User, ShipperModel, MapLoadSrcDestPair, BlacklistTransporter, TrackingFleet, BidSettings
 from utils.bids.bidding import Bid
 from utils.utilities import log, structurize_transporter_bids
+from utils.notification_service_manager import notification_service_manager, NotificationServiceManagerReq
 from data.bidding import lost_participated_transporter_bids, live_bid_details, assignment_events
 
 
@@ -366,7 +367,7 @@ class Transporter:
         finally:
             session.close()
 
-    async def unassign(self, bid_id: str, transporter_request: any) -> (any, str):
+    async def unassign(self, bid_id: str, transporter_request: any, authtoken: any) -> (any, str):
 
         session = Session()
 
@@ -410,23 +411,40 @@ class Transporter:
                 elif no_transporter_assigned and transporter.la_transporter_id != UUID(transporter_id):
                     no_transporter_assigned = False
 
-            bid = (session
+            bid_details = (session
                    .query(BiddingLoad)
                    .filter(BiddingLoad.bl_id == bid_id)
                    .first()
                    )
 
-            if not bid:
+            if not bid_details:
                 return ({}, "Bid details could not be found")
 
             if no_transporter_assigned:
-                bid.load_status = "pending"
-                bid.updated_at = "NOW()"
+                bid_details.load_status = "pending"
+                bid_details.updated_at = "NOW()"
             else:
-                bid.load_status = "partially_confirmed"
-                bid.updated_at = "NOW()"
+                bid_details.load_status = "partially_confirmed"
+                bid_details.updated_at = "NOW()"
 
             session.commit()
+
+            (kam_ids, error) = await bid.transporter_kams(transporter_ids=[transporter_id])
+            if error:
+                return ([],error)
+            
+            (notification_response_success, notification_error) = await notification_service_manager(authtoken=authtoken, req=NotificationServiceManagerReq(**{
+                                                                                                                                            "receiver_ids": kam_ids,
+                                                                                                                                            "text":f"Bid L-{bid_id[-5:].upper()} has been Unassigned from you! NO WORRIES BUDDY ... HOPE FOR THE BEST, EXPECT THE WORST, LIFE IS A PLAY & WE ARE UNREHEARSED !!!",
+                                                                                                                                            "type":"Bid Unassignment",
+                                                                                                                                            "deep_link":"transporter_dashboard_pending"
+                                                                                                                                        }
+                                                                                                                                        )
+                                                                                        )
+            log("ASSIGNMENT CREATION NOTIFICATION SERVICE ", notification_response_success)
+            if notification_error:
+                log("::: NOTIFICATION ERROR DURING NEW BID ASSIGNMENT  ::: ",notification_error)
+                
 
             return (transporter, "")
 
@@ -863,7 +881,6 @@ class Transporter:
             return ({}, str(e))
         finally:
             session.close()
-            
 
     async def bid_details(self, bid_id: str, transporter_id: str | None = None) -> (any, str):
 

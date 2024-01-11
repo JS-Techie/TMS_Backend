@@ -308,7 +308,7 @@ async def assign_to_transporter(request: Request, bid_id: str, transporters: Lis
         if len(transporters) > 1:
             load_split = True
 
-        (assigned_loads, error) = await bid.assign(bid_id=bid_id, transporters=transporters, split=load_split, status=load_status, user_id=user_id)
+        (assigned_loads, error) = await bid.assign(bid_id=bid_id, transporters=transporters, split=load_split, status=load_status, user_id=user_id, authtoken=request.headers.get("authorization", ""))
 
         if error:
             return ErrorResponse(data=[], client_msg="Something Went Wrong While Assigning Transporters", dev_msg=error)
@@ -465,7 +465,7 @@ async def unassign_transporter_for_bid(request: Request, bid_id: str, tr: Transp
         if not valid_bid_id:
             return ErrorResponse(data=[], client_msg=os.getenv("INVALID_BID_ERROR"), dev_msg=error)
 
-        (unassigned_transporter, error) = await transporter.unassign(bid_id=bid_id, transporter_request=tr)
+        (unassigned_transporter, error) = await transporter.unassign(bid_id=bid_id, transporter_request=tr, authtoken=request.headers.get("authorization", ""))
 
         if error:
             return ErrorResponse(data=[], client_msg=os.getenv("INVALID_BID_ERROR"), dev_msg=error)
