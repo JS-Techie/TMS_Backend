@@ -640,6 +640,42 @@ class Bid:
         finally:
             session.close()
 
+    def move_from_pending_to_cancelled(self):
+
+        session = Session()
+        ist_timezone = pytz.timezone("Asia/Kolkata")
+        current_time = datetime.now(ist_timezone).replace(tzinfo=None)
+
+        try:
+
+            bids = session.query(BiddingLoad).filter(
+                BiddingLoad.is_active == True, BiddingLoad.load_status == "pending")
+
+            bids = bids.all()
+
+            log("THE BIDS TO MOVE FROM PENDING TO CANCELLED:", bids)
+
+            if not bids:
+                log("ERROR OCCURED DURING FETCH PENDING BIDS STATUSWISE TO MOVE TO CANCELLED", bids)
+                return
+
+            for bid in bids:
+                if (current_time - bid.bid_end_time).total_seconds() > 259200 : ##72 hours to seconds
+                    setattr(bid, "load_status", "cancelled")
+                    setattr(bid, "updated_at", "NOW()")
+
+            session.commit()
+
+            return
+
+        except Exception as e:
+            session.rollback()
+            log("ERROR DURING MOVING BID FROM PENDING TO CANCELLED ", str(e))
+            return
+
+        finally:
+            session.close()
+
     async def setting_details(self, shipper_id: str) -> (bool, str):
 
         session = Session()
