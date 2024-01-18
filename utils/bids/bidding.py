@@ -512,7 +512,7 @@ class Bid:
                     for transporter in transporters:
                         if getattr(transporter, "la_transporter_id") == getattr(transporter_detail, "la_transporter_id"):
 
-                            transporters_with_updated_assignment.append(transporter_detail.la_transporter_id)
+                            transporters_with_updated_assignment.append(transporter_detail.la_transporter_id) if transporter_detail.is_assigned else assigned_transporters.append(transporter_detail.la_transporter_id)
 
                             setattr(transporter_detail, "la_transporter_id", getattr(
                                 transporter, "la_transporter_id"))
