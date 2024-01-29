@@ -13,5 +13,5 @@ def schedule_jobs():
     scheduler.add_job(func=bid.close, trigger="interval",
                       id="close-bid", minutes=1)
     scheduler.add_job(func=bid.move_from_pending_to_cancelled, trigger="interval",
-                      id="move-bid-from-pending-to-cancelled", minutes=1)
+                      id="move-bid-from-pending-to-cancelled", minutes=30)
     sched.start(scheduler=scheduler)
