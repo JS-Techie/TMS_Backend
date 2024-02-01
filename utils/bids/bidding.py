@@ -1267,3 +1267,41 @@ class Bid:
             return ([], str(e))
         finally:
             session.close()
+
+    async def shipper_users(self, bid_ids:list | None=[]) -> (any,str):
+
+        session = Session()
+
+        try:
+            
+            bid_details = (session
+                            .query(BiddingLoad)
+                            .filter(BiddingLoad.bl_id.in_(bid_ids),
+                                    BiddingLoad.is_active == True
+                                    )
+                            .all()
+                        )
+            
+            for each in bid_details:
+                print("BID DETAILS :::: ", each, each.bl_shipper_id)
+            
+            if bid_details:
+                shipper_ids = [str(bid_detail.bl_shipper_id) for bid_detail in bid_details]
+
+            print("SHIPPER IDS ::::: ", shipper_ids)
+            user_details = (session
+                            .query(User)
+                            .filter(User.user_shipper_id.in_(shipper_ids),
+                                    User.is_active == True
+                                    )
+                            .all()
+                        )
+            
+            user_ids = [str(user.user_id) for user in user_details]
+
+            return (user_ids, "")
+        except Exception as e:
+            session.rollback()
+            return ([], str(e))
+        finally:
+            session.close()

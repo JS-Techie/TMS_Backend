@@ -4,7 +4,7 @@ import json
 import requests
 import ast
 import pytz
-from datetime import datetime
+from datetime import datetime, timedelta
 from sqlalchemy import text, and_, or_, func, select
 from uuid import UUID
 from typing import List
@@ -129,6 +129,8 @@ class Transporter:
                                  )
 
             historical_rates = [{**historical_rate.__dict__, "event":"Live Bid Rates"} for historical_rate in historical_rates]
+            for historical_rate in historical_rates:
+                historical_rate["created_at"] = historical_rate["created_at"]+timedelta(hours=5.5)
             history = []
 
             if price_match_rates:
@@ -143,7 +145,7 @@ class Transporter:
                             history.append({
                                 "event": event,
                                 "rate": rate,
-                                "created_at": created_at,
+                                "created_at":created_at,
                                 "comment": reason
                             })
             
@@ -1081,7 +1083,7 @@ class Transporter:
         finally:
             session.close()
 
-    async def bid_match_approval(self, transporter_id: str, bid_id: str, req: any, user_id: str) -> (any, str):
+    async def bid_match_approval(self, transporter_id: str, bid_id: str, req: any, user_id: str, authtoken: any) -> (any, str):
 
         session = Session()
 
@@ -1146,6 +1148,26 @@ class Transporter:
                 transporter_detail.history = str([(tuple(event))])
 
             session.commit()
+                        
+            (shipper_user_ids,error)  = await bid.shipper_users(bid_ids=[bid_id])
+            if error:
+                return ([], error)
+
+            log("::: SHIPPER RELATED USERS ::: ", shipper_user_ids)
+            
+            (notification_response_success, error) = await notification_service_manager(authtoken=authtoken, req=NotificationServiceManagerReq(**{
+                                                                                                                                                "receiver_ids": shipper_user_ids,
+                                                                                                                                                "text":f"Transporter has responded to the PRICE MATCH REQUEST for L-{bid_id[-5:].upper()} ! GO AND CHECK IF ITS NEGOTIATED !!!",
+                                                                                                                                                "type":"Transporter Bid Match Response",
+                                                                                                                                                "deep_link":"manage_trip_partially_confirmed"
+                                                                                                                                            }
+                                                                                                                                            )
+                                                                                    )
+            
+            print("::::: NOTIFICATION RESPONSE ::::",notification_response_success)
+            if error:
+                log("::: NOTIFICATION ERROR DURING BID PUBLISH ::: ",error)
+                
             return (approval_status,"")
 
         except Exception as err:

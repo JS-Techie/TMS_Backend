@@ -498,12 +498,13 @@ async def provide_new_rate_for_bid(request: Request, bid_id: str, bid_req: Trans
 async def bid_match_for_transporter(request: Request, bid_id: str, req: TransporterBidMatchApproval):
     transporter_id = request.state.current_user["transporter_id"]
     user_id = request.state.current_user["id"]
+    authtoken = request.headers.get("authorization", "")
 
     try:
         if not transporter_id:
             return ErrorResponse(data=[], dev_msg=os.getenv("TRANSPORTER_ID_NOT_FOUND_ERROR"), client_msg=os.getenv("GENERIC_ERROR"))
 
-        (bid_match_result, error) = await transporter.bid_match_approval(transporter_id= transporter_id, bid_id= bid_id, req=req, user_id = user_id)
+        (bid_match_result, error) = await transporter.bid_match_approval(transporter_id= transporter_id, bid_id= bid_id, req=req, user_id = user_id, authtoken = authtoken)
 
         if error :
             return ErrorResponse(data=[], client_msg="Something Went Wrong. Pls Try Again after Sometime", dev_msg=error)
