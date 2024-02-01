@@ -461,6 +461,7 @@ class Bid:
             fetched_transporter_ids = []
             assigned_transporters = []
             transporters_with_updated_assignment = []
+            transporters_already_assigned = []
 
             for transporter in transporters:
                 transporter_ids.append(
@@ -512,7 +513,7 @@ class Bid:
                     for transporter in transporters:
                         if getattr(transporter, "la_transporter_id") == getattr(transporter_detail, "la_transporter_id"):
 
-                            transporters_with_updated_assignment.append(transporter_detail.la_transporter_id) if transporter_detail.is_assigned else assigned_transporters.append(transporter_detail.la_transporter_id)
+                            transporters_with_updated_assignment.append(transporter_detail.la_transporter_id) if transporter_detail.is_assigned else transporters_already_assigned.append(transporter_detail.la_transporter_id)
 
                             setattr(transporter_detail, "la_transporter_id", getattr(
                                 transporter, "la_transporter_id"))
@@ -554,9 +555,11 @@ class Bid:
             session.add_all(assigned_transporters)
             session.commit()
 
-            if assigned_transporters:
-                
+            assigned_transporters_ids = []
+            if assigned_transporters or transporters_already_assigned:
+
                 assigned_transporters_ids = [assignment.la_transporter_id for assignment in assigned_transporters]
+                assigned_transporters_ids = assigned_transporters_ids + transporters_already_assigned
                 (kam_ids, error) = await self.transporter_kams(transporter_ids=assigned_transporters_ids)
                 if error:
                     return ([],error)
