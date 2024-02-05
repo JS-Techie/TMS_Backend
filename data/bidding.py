@@ -201,7 +201,8 @@ FROM
 JOIN
     t_transporter ON t_bid_transaction.transporter_id = t_transporter.trnsp_id
 where 
-	t_bid_transaction.bid_id = :bid_id
+	t_bid_transaction.bid_id = :bid_id AND
+    t_bid_transaction.rate > 0
 GROUP BY
     t_transporter.name,
     t_bid_transaction.transporter_id,
