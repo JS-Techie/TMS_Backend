@@ -207,7 +207,7 @@ def structurize_transporter_bids(bids):
 
     bid_details = []
 
-    for bid_load, shipper_id, shipper_name, shipper_contact_no, src_city, src_street, src_state, dest_street, dest_state, dest_city, fleets_provided  in bids:
+    for bid_load, shipper_id, shipper_name, shipper_contact_no, src_city, src_street_address, src_state, dest_street_address, dest_state, dest_city, fleets_provided  in bids:
         log("BID_LOAD ", bid_load)
         log("SHIPPER ", shipper_name)
         log("SRC ", src_city)
@@ -216,10 +216,10 @@ def structurize_transporter_bids(bids):
         
         src_addresses = []
         dest_addresses = []
-        for city, street, state in zip(src_city, src_street, src_state):
+        for city, street, state in zip(src_city, src_street_address, src_state):
             src_addresses.append(street + " ," + city + " ," + state)
         
-        for city, street, state in zip(dest_city, dest_street, dest_state):
+        for city, street, state in zip(dest_city, dest_street_address, dest_state):
             dest_addresses.append(street + " ," + city + " ," + state)
         
         bid_detail = {

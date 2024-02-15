@@ -114,6 +114,23 @@ async def fetch_bids_for_transporter_by_status(request: Request, participated: b
                     bids["private"] = filtered_private_bids
                     bids["public"] = filtered_public_bids
                     log("BIDS PUBLIC :", bids["public"])
+                
+                (participated_shipper_of_private_bids, error) = await transporter.participated_bids_shipper(transporter_id= transporter_id)
+                if error :
+                    return ErrorResponse(data=[], dev_msg=error)
+                
+                (participated_shipper_of_public_bids, error) = await transporter.participated_bids_shipper(transporter_id= transporter_id)
+                if error :
+                    return ErrorResponse(data=[], dev_msg=error)
+
+                private_bids_with_participated_shipper = [{**private_bid, "participated_for_shipper": 1} if private_bid["shipper_id"] in participated_shipper_of_private_bids 
+                                                            else {**private_bid, "participated_for_shipper": 0} for private_bid in bids["private"]]
+
+                public_bids_with_participated_shipper = [{**public_bid, "participated_for_shipper": 1} if public_bid["shipper_id"] in participated_shipper_of_public_bids 
+                                                            else {**public_bid, "participated_for_shipper": 0} for public_bid in bids["public"]]
+
+                bids["private"] = private_bids_with_participated_shipper
+                bids["public"] = public_bids_with_participated_shipper
 
 
             if status == "live":
@@ -425,11 +442,11 @@ async def provide_new_rate_for_bid(request: Request, bid_id: str, bid_req: Trans
             if current_time < bid_details.bid_time and current_time < bid_details.bid_end_time:
                 return ErrorResponse(data=[], client_msg=f"This Load is not Accepting Bids yet, the start time is {bid_details.bid_time}", dev_msg="Tried bidding, but bid is not live yet")
 
-            elif current_time > bid_details.bid_time and current_time > bid_details.bid_end_time:
+            elif current_time > bid_details.bid_time and current_time >= bid_details.bid_end_time:
                 return ErrorResponse(data=[], client_msg=f"This Load is not Accepting Bids anymore, the end time was {bid_details.bid_end_time}", dev_msg="Tried bidding, but bid is not live anymore")
             
         if bid_details.load_status in valid_bid_status:
-            if current_time > bid_details.bid_end_time:
+            if current_time >= bid_details.bid_end_time:
                 return ErrorResponse(data=[], client_msg=f"This Load is not Accepting Bids anymore, the end time was {bid_details.bid_end_time}", dev_msg="Tried bidding, but bid is not live anymore")
 
         log("BID DETAILS FOUND", bid_id)
@@ -512,6 +529,10 @@ async def bid_match_for_transporter(request: Request, bid_id: str, req: Transpor
         (bid_match_result, error) = await transporter.bid_match_approval(transporter_id= transporter_id, bid_id= bid_id, req=req, user_id = user_id, authtoken = authtoken)
 
         if error :
+            if error == "Bid Match Approval Period is Over":
+                return ErrorResponse(data=[], client_msg=f"Bid Match Approval EXPIRED. Approval Period was for Three days. Bid Match was Requested on {bid_match_result}", dev_msg=error) 
+            if error == "rate greater than lowest rate negotiated":
+                return ErrorResponse(data=[], client_msg=f"Negotiating Rate Must Be Lesser than the Current Lowest Rate of {bid_match_result}", dev_msg=error)
             return ErrorResponse(data=[], client_msg="Something Went Wrong. Pls Try Again after Sometime", dev_msg=error)
         
         client_msg = ""

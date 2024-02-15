@@ -30,6 +30,9 @@ async def increment_time_of_bid(bid_id: str):
         if not error:
             return ErrorResponse(data=[], client_msg="Something went wrong while trying to increment Bid Time", dev_msg=setting_details)
 
+        if (bid_details.bid_end_time-current_time).total_seconds() <= 2:
+            return SuccessResponse(data=[],dev_msg="No Increment ALLOWED", client_msg="Rate Accepted But No Time Incremented.")
+
         if (bid_details.bid_end_time-current_time).total_seconds()/60 > setting_details.bid_increment_time:
             return SuccessResponse(data=[],dev_msg="No Increment Needed", client_msg="No Increment Needed.")
 

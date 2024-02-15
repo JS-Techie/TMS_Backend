@@ -293,6 +293,9 @@ class Transporter:
 
             log("Fetched Transporter Detail ", transporter_details)
             for transporter_detail in transporter_details:
+                if transporter_detail.is_pmr_approved == True:
+                    transporter_personals = (session.query(TransporterModel).filter(TransporterModel.trnsp_id == transporter_detail.la_transporter_id).first())
+                    return (transporter_personals.name, "Price Match Already Accepted")
                 fetched_transporter_ids.append(
                     transporter_detail.la_transporter_id)
 
@@ -319,6 +322,7 @@ class Transporter:
                         pmr_comment=getattr(
                             transporter, "comment"
                         ),
+                        pm_req_timestamp=current_time,
                         is_pmr_approved = True if superuser else False,
                         is_negotiated_by_aculead = True if superuser else False,
                         history = str([(assignment_events["superuser-negotiation"] if superuser else assignment_events["pm-request"] ,getattr(transporter, "rate"), str(current_time), getattr(transporter, "comment"))]),
@@ -346,7 +350,8 @@ class Transporter:
                             setattr(transporter_detail, "trans_pos_in_bid",
                                     getattr(transporter, "trans_pos_in_bid"))
                             setattr(transporter_detail, "pmr_comment",
-                                    getattr(transporter, "comment"))
+                                    getattr(transporter, "comment")),
+                            setattr(transporter_detail, "pm_req_timestamp",current_time)
                             setattr(transporter_detail, "is_pmr_approved", True if superuser else False)
                             setattr(transporter_detail, "is_negotiated_by_aculead", True if superuser else False)
                             setattr(transporter_detail, "history", str(fetched_history))
@@ -1102,6 +1107,9 @@ class Transporter:
 
             if not transporter_detail:
                 return ([], "Transporter's Assigned Load Detail not Found")
+            
+            if (current_time - transporter_detail.pm_req_timestamp).total_seconds() > 259200 :
+                return(transporter_detail.pm_req_timestamp, "Bid Match Approval Period is Over")
 
             if req.approval :
                 event.append(assignment_events["pm-approved"])
@@ -1114,19 +1122,36 @@ class Transporter:
                 approval_status = "approved"
 
             else:
+                event_detail = ''
+                if transporter_detail.history:
+                    event_details = ast.literal_eval(transporter_detail.history)[::-1]
+                    event_detail = next ((event_detail for event_detail in event_details if event_detail[0] == assignment_events["pm-negotiated"]), None)
+
                 if req.rate:
+                    
+                    lowest_rate_provided_by_transporter=-1
+                    if event_detail:
+                        lowest_rate_provided_by_transporter = event_detail[1]
+                    else:
+                        detail_of_lowest_bid_provided_by_transporter = (session
+                                                                        .query(BidTransaction)
+                                                                        .filter(BidTransaction.bid_id == bid_id, BidTransaction.transporter_id == transporter_id, BidTransaction.is_active == True)
+                                                                        .order_by(BidTransaction.rate.asc())
+                                                                        .first()
+                                                                        )
+                        
+                        if detail_of_lowest_bid_provided_by_transporter:
+                            lowest_rate_provided_by_transporter = detail_of_lowest_bid_provided_by_transporter.rate
+                    
+                    if req.rate > lowest_rate_provided_by_transporter:
+                        return(lowest_rate_provided_by_transporter,"rate greater than lowest rate negotiated")
+                    
                     event.append(assignment_events["pm-negotiated"])
                     transporter_detail.pmr_price = req.rate
                     approval_status = "negotiated"
                 else:
                     event.append(assignment_events["pm-rejected"])
                     approval_status = "rejected"
-
-                    event_detail = ''
-                    if transporter_detail.history:
-                        event_details = ast.literal_eval(transporter_detail.history)[::-1]
-                        event_detail = next ((event_detail for event_detail in event_details if event_detail[0] == assignment_events["pm-negotiated"]), None)
-
                     transporter_detail.pmr_price = event_detail[1] if event_detail else None
 
                 event.append(req.rate)

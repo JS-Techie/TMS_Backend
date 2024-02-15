@@ -340,6 +340,7 @@ class LoadAssigned(Base, Persistance):
     is_assigned = Column(Boolean, default=None, nullable=True)
     pmr_price = Column(Double, nullable = True)
     pmr_comment = Column(String,nullable=True)
+    pm_req_timestamp = Column(DateTime, nullable = True)
     is_pmr_approved = Column(Boolean, nullable=True, default=False)
     is_negotiated_by_aculead= Column(Boolean, nullable=False, default=False)
     unassignment_reason = Column(String, nullable=True)

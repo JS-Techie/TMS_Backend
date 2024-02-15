@@ -788,7 +788,7 @@ class Bid:
 
             filtered_bids = []
             for bid in bids:
-                (bid_load, shipper_id, _, _, _, _, _) = bid
+                (bid_load, shipper_id, _, _, _, _, _, _, _, _, _) = bid
                 if shipper_id not in blocked_shippers:
                     filtered_bids.append(bid)
                     log("BID LOAD ID::", bid_load.bl_id)
