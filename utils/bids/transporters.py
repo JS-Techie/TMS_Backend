@@ -522,7 +522,7 @@ class Transporter:
                            ShipperModel.shpr_id,
                            ShipperModel.name,
                            ShipperModel.contact_no,
-                           func.array_agg(MapLoadSrcDestPair.src_city),
+                           func.array_agg(MapLoadSrcDestPair.src_city), func.array_agg(MapLoadSrcDestPair.src_street_address), func.array_agg(MapLoadSrcDestPair.src_state), func.array_agg(MapLoadSrcDestPair.dest_street_address), func.array_agg(MapLoadSrcDestPair.dest_state),
                            func.array_agg(MapLoadSrcDestPair.dest_city),
                            func.array_agg(select(func.count())
                                                             .where(
@@ -587,7 +587,7 @@ class Transporter:
                            ShipperModel.shpr_id,
                            ShipperModel.name,
                            ShipperModel.contact_no,
-                           func.array_agg(MapLoadSrcDestPair.src_city),
+                           func.array_agg(MapLoadSrcDestPair.src_city), func.array_agg(MapLoadSrcDestPair.src_street_address), func.array_agg(MapLoadSrcDestPair.src_state), func.array_agg(MapLoadSrcDestPair.dest_street_address), func.array_agg(MapLoadSrcDestPair.dest_state),
                            func.array_agg(MapLoadSrcDestPair.dest_city),
                            func.array_agg(select(func.count())
                                                             .where(
@@ -656,7 +656,7 @@ class Transporter:
                            ShipperModel.shpr_id,
                            ShipperModel.name,
                            ShipperModel.contact_no,
-                           func.array_agg(MapLoadSrcDestPair.src_city),
+                           func.array_agg(MapLoadSrcDestPair.src_city), func.array_agg(MapLoadSrcDestPair.src_street_address), func.array_agg(MapLoadSrcDestPair.src_state), func.array_agg(MapLoadSrcDestPair.dest_street_address), func.array_agg(MapLoadSrcDestPair.dest_state),
                            func.array_agg(MapLoadSrcDestPair.dest_city),
                            func.array_agg(select(func.count())
                                                             .where(
@@ -707,7 +707,7 @@ class Transporter:
                            ShipperModel.shpr_id,
                            ShipperModel.name,
                            ShipperModel.contact_no,
-                           func.array_agg(MapLoadSrcDestPair.src_city),
+                           func.array_agg(MapLoadSrcDestPair.src_city), func.array_agg(MapLoadSrcDestPair.src_street_address), func.array_agg(MapLoadSrcDestPair.src_state), func.array_agg(MapLoadSrcDestPair.dest_street_address), func.array_agg(MapLoadSrcDestPair.dest_state),
                            func.array_agg(MapLoadSrcDestPair.dest_city),
                            func.array_agg(select(func.count())
                                                             .where(
@@ -957,7 +957,7 @@ class Transporter:
                            ShipperModel.shpr_id,
                            ShipperModel.name,
                            ShipperModel.contact_no,
-                           func.array_agg(MapLoadSrcDestPair.src_city),
+                           func.array_agg(MapLoadSrcDestPair.src_city), func.array_agg(MapLoadSrcDestPair.src_street_address), func.array_agg(MapLoadSrcDestPair.src_state), func.array_agg(MapLoadSrcDestPair.dest_street_address), func.array_agg(MapLoadSrcDestPair.dest_state),
                            func.array_agg(MapLoadSrcDestPair.dest_city),
                            func.array_agg(select(func.count())
                                                             .where(

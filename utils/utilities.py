@@ -207,12 +207,21 @@ def structurize_transporter_bids(bids):
 
     bid_details = []
 
-    for bid_load, shipper_id, shipper_name, shipper_contact_no, src, dest, fleets_provided  in bids:
+    for bid_load, shipper_id, shipper_name, shipper_contact_no, src_city, src_street, src_state, dest_street, dest_state, dest_city, fleets_provided  in bids:
         log("BID_LOAD ", bid_load)
         log("SHIPPER ", shipper_name)
-        log("SRC ", src)
-        log("DEST ", dest)
+        log("SRC ", src_city)
+        log("DEST ", dest_city)
         log("NO OF FLEETS PROVIDED ", fleets_provided)
+        
+        src_addresses = []
+        dest_addresses = []
+        for city, street, state in zip(src_city, src_street, src_state):
+            src_addresses.append(street + " ," + city + " ," + state)
+        
+        for city, street, state in zip(dest_city, dest_street, dest_state):
+            dest_addresses.append(street + " ," + city + " ," + state)
+        
         bid_detail = {
             "bid_id": bid_load.bl_id,
             "branch_id": bid_load.bl_branch_id,
@@ -221,8 +230,10 @@ def structurize_transporter_bids(bids):
             "shipper_id": shipper_id,
             "contact_number": shipper_contact_no,
             "rate_qoute_type": bid_load.rate_quote_type,
-            "src_city": ','.join(set(city for city in src if city is not None)) if src else None,
-            "dest_city": ','.join(set(city for city in dest if city is not None)) if dest else None,
+            # "src_city": ','.join(set(city for city in src_city if city is not None)) if src_city else None,
+            # "dest_city": ','.join(set(city for city in dest_city if city is not None)) if dest_city else None,
+            "src_city": ' | '.join(list(set(src_addresses))),
+            "dest_city": ' | '.join(list(set(dest_addresses))),
             "bid_time": bid_load.bid_time,
             "bid_end_time": bid_load.bid_end_time,
             "bid_extended_time": bid_load.bid_extended_time,
