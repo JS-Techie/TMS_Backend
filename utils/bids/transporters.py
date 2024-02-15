@@ -1108,7 +1108,13 @@ class Transporter:
             if not transporter_detail:
                 return ([], "Transporter's Assigned Load Detail not Found")
             
-            if (current_time - transporter_detail.pm_req_timestamp).total_seconds() > 259200 :
+            bid_details = (session.query(BiddingLoad).filter(BiddingLoad.bl_id == bid_id).first())
+            if not bid_details:
+                return([],"Bid Details Not Found ")
+            
+            bid_settings = (session.query(BidSettings).filter(BidSettings.bdsttng_shipper_id == bid_details.bl_shipper_id, BidSettings.bdsttng_branch_id == bid_details.bl_branch_id).first())
+            
+            if (current_time - transporter_detail.pm_req_timestamp).total_seconds()/60 > bid_settings.price_match_duration :
                 return(transporter_detail.pm_req_timestamp, "Bid Match Approval Period is Over")
 
             if req.approval :
@@ -1135,7 +1141,7 @@ class Transporter:
                     else:
                         detail_of_lowest_bid_provided_by_transporter = (session
                                                                         .query(BidTransaction)
-                                                                        .filter(BidTransaction.bid_id == bid_id, BidTransaction.transporter_id == transporter_id, BidTransaction.is_active == True)
+                                                                        .filter(BidTransaction.bid_id == bid_id, BidTransaction.transporter_id == transporter_id, BidTransaction.is_active == True, BidTransaction.rate > 0)
                                                                         .order_by(BidTransaction.rate.asc())
                                                                         .first()
                                                                         )
