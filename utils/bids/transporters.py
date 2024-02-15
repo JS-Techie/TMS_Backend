@@ -1112,7 +1112,12 @@ class Transporter:
             if not bid_details:
                 return([],"Bid Details Not Found ")
             
-            bid_settings = (session.query(BidSettings).filter(BidSettings.bdsttng_shipper_id == bid_details.bl_shipper_id, BidSettings.bdsttng_branch_id == bid_details.bl_branch_id).first())
+            bid_settings = (session
+                            .query(BidSettings)
+                            .filter(BidSettings.bdsttng_shipper_id == bid_details.bl_shipper_id, BidSettings.is_active, or_(BidSettings.bdsttng_branch_id == bid_details.bl_branch_id, BidSettings.bdsttng_branch_id.is_(None)))
+                            .order_by(BidSettings.bdsttng_branch_id).limit(1)
+                            .first()
+                            )
             
             if (current_time - transporter_detail.pm_req_timestamp).total_seconds()/60 > bid_settings.price_match_duration :
                 return(transporter_detail.pm_req_timestamp, "Bid Match Approval Period is Over")
