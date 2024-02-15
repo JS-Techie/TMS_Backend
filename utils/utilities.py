@@ -63,18 +63,31 @@ def structurize(input_array):
                 "transporters": []  # Rename bid_items to transporters
             }
             if item["src_cities"]:
-                log("SRC CITIES", item["src_cities"])
-                # result_dict[bl_id]["src_cities"]= ','.join(set(city for city in item["src_cities"] if city is not None))
-                result_dict[bl_id]["src_cities"]= [city for city in item["src_cities"] if city is not None]
-                src_city_list=copy.deepcopy(result_dict[bl_id]["src_cities"])
-                counter = Counter(src_city_list)
-                result_dict[bl_id]["src_cities"]= ', '.join(f"{key}({count})" if count > 1 else key for key, count in counter.items())
+                
+                address_data_arr = []
+                for add, city, state in zip(item["src_street_addresses"], item["src_cities"], item["src_states"]):
+                    address_data_arr.append(add+", "+city+", "+state)
+                    
+                result_dict[bl_id]["src_cities"] = ' | '.join(list(set(address_data_arr)))
+                # log("SRC CITIES", item["src_cities"])
+                # # result_dict[bl_id]["src_cities"]= ','.join(set(city for city in item["src_cities"] if city is not None))
+                # result_dict[bl_id]["src_cities"]= [city for city in item["src_cities"] if city is not None]
+                # src_city_list=copy.deepcopy(result_dict[bl_id]["src_cities"])
+                # counter = Counter(src_city_list)
+                # result_dict[bl_id]["src_cities"]= ', '.join(f"{key}({count})" if count > 1 else key for key, count in counter.items())
             if item["dest_cities"]:
-                # result_dict[bl_id]["dest_cities"]= ','.join(set(city for city in item["dest_cities"] if city is not None))
-                result_dict[bl_id]["dest_cities"]= [city for city in item["dest_cities"] if city is not None]
-                dest_city_list=copy.deepcopy(result_dict[bl_id]["dest_cities"])
-                counter = Counter(dest_city_list)
-                result_dict[bl_id]["dest_cities"]= ', '.join(f"{key}({count})" if count > 1 else key for key, count in counter.items())
+                
+                address_data_arr = []
+                for add, city, state in zip(item["dest_street_addresses"], item["dest_cities"], item["dest_states"]):
+                    address_data_arr.append(add+", "+city+", "+state)
+                    
+                result_dict[bl_id]["dest_cities"] = ' | '.join(list(set(address_data_arr)))
+                
+                # # result_dict[bl_id]["dest_cities"]= ','.join(set(city for city in item["dest_cities"] if city is not None))
+                # result_dict[bl_id]["dest_cities"]= [city for city in item["dest_cities"] if city is not None]
+                # dest_city_list=copy.deepcopy(result_dict[bl_id]["dest_cities"])
+                # counter = Counter(dest_city_list)
+                # result_dict[bl_id]["dest_cities"]= ', '.join(f"{key}({count})" if count > 1 else key for key, count in counter.items())
             
 
         bid_item = {
