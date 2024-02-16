@@ -409,8 +409,7 @@ async def bid_match_for_transporters(request: Request, bid_id: str, transporters
             if error == "Price Match Already Accepted":
                 return ErrorResponse(data=[], client_msg=f"Transporter {assignment_details} Not Eligible for Price Match. Had already been requested for Price match and they have Accepted It", dev_msg=error)
             if error == "Price Match Locked":
-                x = assignment_details.strftime("%Y-%m-%d %I:%M:%S %p")
-                return ErrorResponse(data=[], client_msg=f"Price Match Window Expired on {x}", dev_msg=error)
+                return ErrorResponse(data=[], client_msg=f"Price Match Window Expired on {assignment_details.strftime('%Y-%m-%d %I:%M:%S %p')}", dev_msg=error)
             if error == "Transporter already assigned":
                 return ErrorResponse(data=[], client_msg="Price Match Ineligible as some transporters are already assigned", dev_msg=error)
             return ErrorResponse(data=[], client_msg=os.getenv("GENERIC_ERROR"), dev_msg=error)
