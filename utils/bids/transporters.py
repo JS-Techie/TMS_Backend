@@ -304,13 +304,10 @@ class Transporter:
                             .order_by(BidSettings.bdsttng_branch_id).limit(1)
                             .first()
                             )
+            
+            all_transporter_details = (session.query(LoadAssigned).filter(LoadAssigned.la_bidding_load_id == bid_id, LoadAssigned.is_active == True).order_by(LoadAssigned.pm_req_timestamp).all())
 
-            for transporter_detail in transporter_details:
-
-                if not superuser:
-                    if transporter_detail.is_pmr_approved == True:
-                        transporter_personals = (session.query(TransporterModel).filter(TransporterModel.trnsp_id == transporter_detail.la_transporter_id).first())
-                        return (transporter_personals.name, "Price Match Already Accepted")
+            for transporter_detail in all_transporter_details:
 
                 if not superuser:
                     if transporter_detail.is_negotiated_by_aculead == False and transporter_detail.pm_req_timestamp is not None:
@@ -319,6 +316,13 @@ class Transporter:
                         else:
                             if price_match_window_start_time > transporter_detail.pm_req_timestamp:
                                 price_match_window_start_time = transporter_detail.pm_req_timestamp
+
+            for transporter_detail in transporter_details:
+
+                if not superuser:
+                    if transporter_detail.is_pmr_approved == True:
+                        transporter_personals = (session.query(TransporterModel).filter(TransporterModel.trnsp_id == transporter_detail.la_transporter_id).first())
+                        return (transporter_personals.name, "Price Match Already Accepted")
 
                 fetched_transporter_ids.append(
                     transporter_detail.la_transporter_id)
@@ -350,7 +354,7 @@ class Transporter:
                         pmr_comment=getattr(
                             transporter, "comment"
                         ),
-                        pm_req_timestamp=current_time if superuser else None,
+                        pm_req_timestamp=current_time if not superuser else None,
                         is_pmr_approved = True if superuser else False,
                         is_negotiated_by_aculead = True if superuser else False,
                         history = str([(assignment_events["superuser-negotiation"] if superuser else assignment_events["pm-request"] ,getattr(transporter, "rate"), str(current_time), getattr(transporter, "comment"))]),
@@ -379,7 +383,7 @@ class Transporter:
                                     getattr(transporter, "trans_pos_in_bid"))
                             setattr(transporter_detail, "pmr_comment",
                                     getattr(transporter, "comment")),
-                            setattr(transporter_detail, "pm_req_timestamp",current_time if superuser else None)
+                            setattr(transporter_detail, "pm_req_timestamp",current_time if not superuser else None)
                             setattr(transporter_detail, "is_pmr_approved", True if superuser else False)
                             setattr(transporter_detail, "is_negotiated_by_aculead", True if superuser else False)
                             setattr(transporter_detail, "history", str(fetched_history))
