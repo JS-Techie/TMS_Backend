@@ -69,8 +69,8 @@ status_wise_fetch_query = """
                 t_load_assigned.is_active as la_active,
                 t_transporter.is_active as tr_active,
                 t_tracking_fleet.is_active as trf_active,
-                (select count(*) from t_bid_transaction where t_bid_transaction.bid_id = t_bidding_load.bl_id) as total_no_of_bids,
-				(select count(distinct(t_bid_transaction.transporter_id)) from t_bid_transaction where t_bid_transaction.bid_id = t_bidding_load.bl_id) as participants
+                (select count(*) from t_bid_transaction where t_bid_transaction.bid_id = t_bidding_load.bl_id and t_bid_transaction.rate > 0) as total_no_of_bids,
+				(select count(distinct(t_bid_transaction.transporter_id)) from t_bid_transaction where t_bid_transaction.bid_id = t_bidding_load.bl_id and t_bid_transaction.rate > 0) as participants
             FROM t_bidding_load
             LEFT JOIN t_bid_settings ON ( t_bid_settings.is_active = true AND t_bid_settings.bdsttng_shipper_id = t_bidding_load.bl_shipper_id
                                             AND (
@@ -153,8 +153,8 @@ filter_wise_fetch_query = """
                 t_load_assigned.is_active as la_active,
                 t_transporter.is_active as tr_active,
                 t_tracking_fleet.is_active as trf_active,
-                (select count(*) from t_bid_transaction where t_bid_transaction.bid_id = t_bidding_load.bl_id) as total_no_of_bids,
-				(select count(distinct(t_bid_transaction.transporter_id)) from t_bid_transaction where t_bid_transaction.bid_id = t_bidding_load.bl_id) as participants
+                (select count(*) from t_bid_transaction where t_bid_transaction.bid_id = t_bidding_load.bl_id and t_bid_transaction.rate > 0) as total_no_of_bids,
+				(select count(distinct(t_bid_transaction.transporter_id)) from t_bid_transaction where t_bid_transaction.bid_id = t_bidding_load.bl_id and t_bid_transaction.rate > 0) as participants
             FROM t_bidding_load
             LEFT JOIN t_bid_settings ON ( t_bid_settings.is_active = true AND t_bid_settings.bdsttng_shipper_id = t_bidding_load.bl_shipper_id
                                             AND (
@@ -224,7 +224,7 @@ SELECT DISTINCT bt.bid_id
 FROM t_bid_transaction bt
 LEFT JOIN t_load_assigned la
 ON bt.bid_id = la.la_bidding_load_id AND bt.transporter_id = la.la_transporter_id
-WHERE bt.transporter_id = :transporter_id  AND (la.la_id IS NULL OR (la.is_active = true AND (la.is_assigned = false OR la.is_assigned is NULL )))
+WHERE bt.transporter_id = :transporter_id AND bt.rate > 0 AND (la.la_id IS NULL OR (la.is_active = true AND (la.is_assigned = false OR la.is_assigned is NULL )))
 '''
 
 transporter_analysis = '''SELECT
@@ -235,7 +235,7 @@ transporter_analysis = '''SELECT
 FROM
     t_transporter tt
 LEFT JOIN
-    t_bid_transaction tbt ON tt.trnsp_id = tbt.transporter_id
+    t_bid_transaction tbt ON tt.trnsp_id = tbt.transporter_id and tbt.rate > 0
 LEFT JOIN
     t_bidding_load tbl ON tbl.bl_id = tbt.bid_id AND tbl.is_active = true
 LEFT JOIN
