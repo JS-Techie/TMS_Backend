@@ -62,20 +62,18 @@ async def fetch_bids_for_transporter_by_status(request: Request, participated: b
             if status == "not_started":
                 (bids_participated, error) = await transporter.participated_bids(transporter_id=transporter_id)
 
-                if bids_participated:
+                filtered_private_bids = [
+                    private_record for private_record in bids["private"]
+                    if not any(participated_bid["bid_id"] == private_record["bid_id"] and participated_bid["load_status"] == "not_started" for participated_bid in bids_participated)
+                ]
 
-                    filtered_private_bids = [
-                        private_record for private_record in bids["private"]
-                        if not any(participated_bid["bid_id"] == private_record["bid_id"] and participated_bid["load_status"] == "not_started" for participated_bid in bids_participated)
-                    ]
+                filtered_public_bids = [
+                    public_record for public_record in bids["public"]
+                    if not any(participated_bid["bid_id"] == public_record["bid_id"] and participated_bid["load_status"] == "not_started" for participated_bid in bids_participated)
+                ]
 
-                    filtered_public_bids = [
-                        public_record for public_record in bids["public"]
-                        if not any(participated_bid["bid_id"] == public_record["bid_id"] and participated_bid["load_status"] == "not_started" for participated_bid in bids_participated)
-                    ]
-
-                    bids["private"] = filtered_private_bids
-                    bids["public"] = filtered_public_bids
+                bids["private"] = filtered_private_bids
+                bids["public"] = filtered_public_bids
 
                 
                 (participated_shipper_of_bids, error) = await transporter.participated_bids_shipper(transporter_id= transporter_id)
@@ -95,21 +93,19 @@ async def fetch_bids_for_transporter_by_status(request: Request, participated: b
             elif status == "active":
                 (bids_participated, error) = await transporter.participated_bids(transporter_id=transporter_id)
 
-                if bids_participated:
+                filtered_private_bids = [
+                    private_record for private_record in bids["private"]
+                    if any(participated_bid["bid_id"] == private_record["bid_id"] and participated_bid["load_status"] == "not_started" for participated_bid in bids_participated)
+                ]
 
-                    filtered_private_bids = [
-                        private_record for private_record in bids["private"]
-                        if any(participated_bid["bid_id"] == private_record["bid_id"] and participated_bid["load_status"] == "not_started" for participated_bid in bids_participated)
-                    ]
+                filtered_public_bids = [
+                    public_record for public_record in bids["public"]
+                    if any(participated_bid["bid_id"] == public_record["bid_id"] and participated_bid["load_status"] == "not_started" for participated_bid in bids_participated)
+                ]
 
-                    filtered_public_bids = [
-                        public_record for public_record in bids["public"]
-                        if any(participated_bid["bid_id"] == public_record["bid_id"] and participated_bid["load_status"] == "not_started" for participated_bid in bids_participated)
-                    ]
-
-                    bids["private"] = filtered_private_bids
-                    bids["public"] = filtered_public_bids
-                    log("BIDS PUBLIC :", bids["public"])
+                bids["private"] = filtered_private_bids
+                bids["public"] = filtered_public_bids
+                log("BIDS PUBLIC :", bids["public"])
                 
                 # (participated_shipper_of_bids, error) = await transporter.participated_bids_shipper(transporter_id= transporter_id)
                 # if error :
@@ -145,58 +141,54 @@ async def fetch_bids_for_transporter_by_status(request: Request, participated: b
 
                 else:
 
-                    if bids_participated:
+                    filtered_private_bids = [
+                        private_record for private_record in bids["private"]
+                        if not any(participated_bid["bid_id"] == private_record["bid_id"] and participated_bid["load_status"] == "live" for participated_bid in bids_participated)
+                    ]
 
-                        filtered_private_bids = [
-                            private_record for private_record in bids["private"]
-                            if not any(participated_bid["bid_id"] == private_record["bid_id"] and participated_bid["load_status"] == "live" for participated_bid in bids_participated)
-                        ]
+                    filtered_public_bids = [
+                        public_record for public_record in bids["public"]
+                        if not any(participated_bid["bid_id"] == public_record["bid_id"] and participated_bid["load_status"] == "live" for participated_bid in bids_participated)
+                    ]
 
-                        filtered_public_bids = [
-                            public_record for public_record in bids["public"]
-                            if not any(participated_bid["bid_id"] == public_record["bid_id"] and participated_bid["load_status"] == "live" for participated_bid in bids_participated)
-                        ]
+                    bids["private"] = filtered_private_bids
+                    bids["public"] = filtered_public_bids
+                    
+                    (participated_shipper_of_private_bids, error) = await transporter.participated_bids_shipper(transporter_id= transporter_id)
+                    if error :
+                        return ErrorResponse(data=[], dev_msg=error)
+                    
+                    (participated_shipper_of_public_bids, error) = await transporter.participated_bids_shipper(transporter_id= transporter_id)
+                    if error :
+                        return ErrorResponse(data=[], dev_msg=error)
 
-                        bids["private"] = filtered_private_bids
-                        bids["public"] = filtered_public_bids
-                        
-                        (participated_shipper_of_private_bids, error) = await transporter.participated_bids_shipper(transporter_id= transporter_id)
-                        if error :
-                            return ErrorResponse(data=[], dev_msg=error)
-                        
-                        (participated_shipper_of_public_bids, error) = await transporter.participated_bids_shipper(transporter_id= transporter_id)
-                        if error :
-                            return ErrorResponse(data=[], dev_msg=error)
+                    private_bids_with_participated_shipper = [{**private_bid, "participated_for_shipper": 1} if private_bid["shipper_id"] in participated_shipper_of_private_bids 
+                                                                else {**private_bid, "participated_for_shipper": 0} for private_bid in bids["private"]]
 
-                        private_bids_with_participated_shipper = [{**private_bid, "participated_for_shipper": 1} if private_bid["shipper_id"] in participated_shipper_of_private_bids 
-                                                                    else {**private_bid, "participated_for_shipper": 0} for private_bid in bids["private"]]
+                    public_bids_with_participated_shipper = [{**public_bid, "participated_for_shipper": 1} if public_bid["shipper_id"] in participated_shipper_of_public_bids 
+                                                                else {**public_bid, "participated_for_shipper": 0} for public_bid in bids["public"]]
 
-                        public_bids_with_participated_shipper = [{**public_bid, "participated_for_shipper": 1} if public_bid["shipper_id"] in participated_shipper_of_public_bids 
-                                                                    else {**public_bid, "participated_for_shipper": 0} for public_bid in bids["public"]]
-
-                        bids["private"] = private_bids_with_participated_shipper
-                        bids["public"] = public_bids_with_participated_shipper
-                        
-                        log("BIDS PUBLIC :", bids["public"])
+                    bids["private"] = private_bids_with_participated_shipper
+                    bids["public"] = public_bids_with_participated_shipper
+                    
+                    log("BIDS PUBLIC :", bids["public"])
 
 
             elif status == "pending":
                 (bids_participated, error) = await transporter.participated_bids(transporter_id=transporter_id)
 
-                if bids_participated:
+                filtered_private_bids = [
+                    private_record for private_record in bids["private"]
+                    if any(participated_bid["bid_id"] == private_record["bid_id"] and participated_bid["load_status"] in ["pending", "partially_confirmed"] for participated_bid in bids_participated)
+                ]
 
-                    filtered_private_bids = [
-                        private_record for private_record in bids["private"]
-                        if any(participated_bid["bid_id"] == private_record["bid_id"] and participated_bid["load_status"] in ["pending", "partially_confirmed"] for participated_bid in bids_participated)
-                    ]
+                filtered_public_bids = [
+                    public_record for public_record in bids["public"]
+                    if any(participated_bid["bid_id"] == public_record["bid_id"] and participated_bid["load_status"] in ["pending", "partially_confirmed"] for participated_bid in bids_participated)
+                ]
 
-                    filtered_public_bids = [
-                        public_record for public_record in bids["public"]
-                        if any(participated_bid["bid_id"] == public_record["bid_id"] and participated_bid["load_status"] in ["pending", "partially_confirmed"] for participated_bid in bids_participated)
-                    ]
-
-                    bids["private"] = filtered_private_bids
-                    bids["public"] = filtered_public_bids
+                bids["private"] = filtered_private_bids
+                bids["public"] = filtered_public_bids
 
 
             for private_bid in bids["private"]:
