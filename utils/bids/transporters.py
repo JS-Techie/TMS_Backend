@@ -280,6 +280,7 @@ class Transporter:
 
             fetched_transporter_ids = []
             assigned_transporters = []
+            price_match_window_start_time = None
             superuser = (user_type == "acu")
             ist_timezone = pytz.timezone("Asia/Kolkata")
             current_time = datetime.now(ist_timezone)
@@ -292,12 +293,39 @@ class Transporter:
                 LoadAssigned.la_bidding_load_id == bid_id, LoadAssigned.la_transporter_id.in_(transporter_ids)).all()
 
             log("Fetched Transporter Detail ", transporter_details)
+
+            bid_details = (session.query(BiddingLoad).filter(BiddingLoad.bl_id == bid_id).first())
+            if not bid_details:
+                return([],"Bid Details Not Found ")
+            
+            bid_settings = (session
+                            .query(BidSettings)
+                            .filter(BidSettings.bdsttng_shipper_id == bid_details.bl_shipper_id, BidSettings.is_active, or_(BidSettings.bdsttng_branch_id == bid_details.bl_branch_id, BidSettings.bdsttng_branch_id.is_(None)))
+                            .order_by(BidSettings.bdsttng_branch_id).limit(1)
+                            .first()
+                            )
+
             for transporter_detail in transporter_details:
-                if transporter_detail.is_pmr_approved == True:
-                    transporter_personals = (session.query(TransporterModel).filter(TransporterModel.trnsp_id == transporter_detail.la_transporter_id).first())
-                    return (transporter_personals.name, "Price Match Already Accepted")
+
+                if not superuser:
+                    if transporter_detail.is_pmr_approved == True:
+                        transporter_personals = (session.query(TransporterModel).filter(TransporterModel.trnsp_id == transporter_detail.la_transporter_id).first())
+                        return (transporter_personals.name, "Price Match Already Accepted")
+
+                if not superuser:
+                    if transporter_detail.is_negotiated_by_aculead == False and transporter_detail.pm_req_timestamp is not None:
+                        if not price_match_window_start_time :
+                            price_match_window_start_time = transporter_detail.pm_req_timestamp
+                        else:
+                            if price_match_window_start_time > transporter_detail.pm_req_timestamp:
+                                price_match_window_start_time = transporter_detail.pm_req_timestamp
+
                 fetched_transporter_ids.append(
                     transporter_detail.la_transporter_id)
+
+            if not superuser and price_match_window_start_time is not None:
+                if current_time > price_match_window_start_time + timedelta(minutes=bid_settings.price_match_duration):
+                    return(price_match_window_start_time + timedelta(minutes=bid_settings.price_match_duration),"Price Match Locked")
 
             transporters_not_assigned = list(
                 set(transporter_ids) - set(fetched_transporter_ids))
@@ -322,7 +350,7 @@ class Transporter:
                         pmr_comment=getattr(
                             transporter, "comment"
                         ),
-                        pm_req_timestamp=current_time,
+                        pm_req_timestamp=current_time if superuser else None,
                         is_pmr_approved = True if superuser else False,
                         is_negotiated_by_aculead = True if superuser else False,
                         history = str([(assignment_events["superuser-negotiation"] if superuser else assignment_events["pm-request"] ,getattr(transporter, "rate"), str(current_time), getattr(transporter, "comment"))]),
@@ -351,7 +379,7 @@ class Transporter:
                                     getattr(transporter, "trans_pos_in_bid"))
                             setattr(transporter_detail, "pmr_comment",
                                     getattr(transporter, "comment")),
-                            setattr(transporter_detail, "pm_req_timestamp",current_time)
+                            setattr(transporter_detail, "pm_req_timestamp",current_time if superuser else None)
                             setattr(transporter_detail, "is_pmr_approved", True if superuser else False)
                             setattr(transporter_detail, "is_negotiated_by_aculead", True if superuser else False)
                             setattr(transporter_detail, "history", str(fetched_history))
@@ -1093,9 +1121,9 @@ class Transporter:
         session = Session()
 
         try:
-
             event = []
             approval_status = ""
+            price_match_window_start_time=None
 
             ist_timezone = pytz.timezone("Asia/Kolkata")
             current_time = datetime.now(ist_timezone)
@@ -1119,8 +1147,20 @@ class Transporter:
                             .first()
                             )
             
-            if (current_time - transporter_detail.pm_req_timestamp).total_seconds()/60 > bid_settings.price_match_duration :
-                return(transporter_detail.pm_req_timestamp, "Bid Match Approval Period is Over")
+            all_transporter_details = (session.query(LoadAssigned).filter(LoadAssigned.la_bidding_load_id == bid_id, LoadAssigned.is_active == True).all())
+            
+            for each_transporter_detail in all_transporter_details:
+
+                if each_transporter_detail.is_negotiated_by_aculead == False and each_transporter_detail.pm_req_timestamp is not None:
+                    if not price_match_window_start_time :
+                        price_match_window_start_time = each_transporter_detail.pm_req_timestamp
+                    else:
+                        if price_match_window_start_time > each_transporter_detail.pm_req_timestamp:
+                            price_match_window_start_time = each_transporter_detail.pm_req_timestamp
+            
+            
+            if (current_time - price_match_window_start_time).total_seconds()/60 > bid_settings.price_match_duration :
+                return(price_match_window_start_time + timedelta(minutes=bid_settings.price_match_duration), "Bid Match Approval Period is Over")
 
             if req.approval :
                 event.append(assignment_events["pm-approved"])

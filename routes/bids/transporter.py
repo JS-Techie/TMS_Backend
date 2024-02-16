@@ -530,7 +530,7 @@ async def bid_match_for_transporter(request: Request, bid_id: str, req: Transpor
 
         if error :
             if error == "Bid Match Approval Period is Over":
-                return ErrorResponse(data=[], client_msg=f"Bid Match Approval EXPIRED. Approval Period was for Three days. Bid Match was Requested on {bid_match_result}", dev_msg=error) 
+                return ErrorResponse(data=[], client_msg=f"Bid Match Approval EXPIRED on {bid_match_result.strftime("%Y-%m-%d %I:%M:%S %p")}", dev_msg=error) 
             if error == "rate greater than lowest rate negotiated":
                 return ErrorResponse(data=[], client_msg=f"Negotiating Rate Must Be Lesser than the Current Lowest Rate of {bid_match_result}", dev_msg=error)
             return ErrorResponse(data=[], client_msg="Something Went Wrong. Pls Try Again after Sometime", dev_msg=error)
